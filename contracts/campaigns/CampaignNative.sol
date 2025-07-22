@@ -1,17 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "../interfaces/ICampaign.sol";
+import "../interfaces/ICampaign.sol"; //интерфейс
+import "./CampaignBase.sol"; //общий код
+
 /**
- * @title пока совсем черновик - будет контракт кампании в нативной валюте
- * @author 
- * @notice 
+ * @title Контракт кампании (разновидность в нативной валюте) 
+ * @notice обеспечивает сбор денег на конкретную цель
  */
-contract CampaignNative is ICampaign {    
+contract CampaignNative is ICampaign, CampaignBase {    
+
+    constructor(){
+
+    }
+
 
     // Основные функции взаимодействия
 
-    /// @notice Внести средства (ETH или ERC20 — зависит от реализации)
+    /// @notice Внести средства (ETH - cчитаем в wei)
     function contribute(uint256 amount) external payable {}
 
     /// @notice Получить текущий собранный баланс

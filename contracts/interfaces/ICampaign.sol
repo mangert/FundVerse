@@ -40,5 +40,6 @@ interface ICampaign {
         );
 
     /// @notice Статус кампании
-    function isSuccessful() external view returns (bool);
+    function isSuccessful() external view returns (bool);   
+    
 }

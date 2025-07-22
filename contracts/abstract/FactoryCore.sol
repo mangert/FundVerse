@@ -2,20 +2,16 @@
 pragma solidity ^0.8.30;
 
 import "../interfaces/ICampaign.sol";
+import "../abstract/PlatformStorage.sol";
 import "../campaigns/CampaignNative.sol";
 import "../campaigns/CampaignToken.sol";
 
 
 /**
- * @title пока совсем черновик
- * @author 
+ * @title пока совсем черновик 
  * @notice 
  */
-abstract contract FactoryCore {
-
-    //временно - заменить на мэппинг с id вместо простого счетчика, продумать логику
-    mapping(uint256 => ICampaign) campaings; 
-    uint256 counter;
+abstract contract FactoryCore is PlatformStorage {  
     
     
     event CampaingCreated(); //добавить аргументы
