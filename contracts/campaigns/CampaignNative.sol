@@ -8,20 +8,78 @@ import "./CampaignBase.sol"; //общий код
  * @title Контракт кампании (разновидность в нативной валюте) 
  * @notice обеспечивает сбор денег на конкретную цель
  */
-contract CampaignNative is ICampaign, CampaignBase {    
+contract CampaignNative is ICampaign, CampaignBase {
+    constructor(
+        address _creator,
+        string memory _campaignName,
+        uint32 _Id,
+        uint128 _goal,
+        uint32 _deadline,
+        string memory _campaignMeta,
+        uint128 _platformFee
+    ) {
+        creator = _creator;
+        campaignName = _campaignName;
+        Id = _Id;
+        goal = _goal;
+        deadline = _deadline;
+        campaignMeta = _campaignMeta;
+        platformFee = _platformFee;
 
-    constructor(){
-
+        status = Status.Live; //для ясности - можно убрать
+        token = address(0); // для ясности - можно убрать
     }
-
 
     // Основные функции взаимодействия
 
+    /// @notice Внести средства - неиспользуемая перегрузка
+    function contribute(uint128 amount) external pure{
+        revert CampaingIncorrertFunction();
+    }
+
     /// @notice Внести средства (ETH - cчитаем в wei)
-    function contribute(uint256 amount) external payable {}
+    function contribute() external updateStatusIfNeeded isLive() payable {
+        
+        require(msg.value > 0, CampaingZeroDonation(msg.sender)); //проверяем, что не ноль
+
+        uint128 accepted = goal - raised; //проверяем, сколько осталось до цели
+
+        uint256 refund; //переменная для возвратов
+        uint256 contribution; //сумма к зачислению
+
+        //в этом блоке смотрим, сколько из взноса зачислим, а сколько вернем излишков
+        if (msg.value > accepted) {
+            refund = msg.value - accepted;
+            contribution = accepted;
+        } else {
+            refund = 0;
+            contribution = msg.value;
+        }
+        //если есть, что возвращать
+        if (refund > 0) {
+            (bool success, ) = payable(msg.sender).call{value: refund}("");
+            if (!success) {
+                pendingWithdrawals[msg.sender] += refund;
+                emit CampaignTrasferFailed(msg.sender, refund, address(0));
+            } else {
+                emit CampaignRefunded(msg.sender, refund, address(0));
+            }    
+        }
+        //зачисляем взнос
+        donates[msg.sender] += contribution;
+        raised += uint128(contribution);
+
+        emit CampaignContribution(msg.sender, contribution); 
+    }    
+
+    /*fallback() external payable{
+        revert CampaingIncorrertFunction();        
+    }*/
 
     /// @notice Получить текущий собранный баланс
-    function getCurrentBalance() external view returns (uint256) { return 0;}
+    function getCurrentBalance() external view returns (uint256) {
+        return 0;
+    }
 
     /// @notice Забрать средства фаундером (если условия выполнены)
     function withdrawFunds() external {}
@@ -35,22 +93,28 @@ contract CampaignNative is ICampaign, CampaignBase {
         view
         returns (
             address creator,
-            address token,       // 0x0 для ETH
+            address token, // 0x0 для ETH
             uint256 goal,
             uint256 raised,
             uint256 deadline,
             bool finalized,
             bool successful
-        ) { //заглушка
-            creator = address(0);
-            token = address(0);       
-            goal = 0;
-            raised = 0;
-            deadline = 0;
-            finalized = false;
-            successful = false;
-        }
+        )
+    {
+        //заглушка
+        creator = address(0);
+        token = address(0);
+        goal = 0;
+        raised = 0;
+        deadline = 0;
+        finalized = false;
+        successful = false;
+    }
 
     /// @notice Статус кампании
-    function isSuccessful() external view returns (bool) { false; }
+    function isSuccessful() external view returns (bool) {
+        false;
+    }
+
+    
 }

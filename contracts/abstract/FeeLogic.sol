@@ -4,14 +4,14 @@ pragma solidity ^0.8.30;
 
 abstract contract FeeLogic {
     // Платформа получает комиссию в промилле (например, 50 = 5.0%)
-    uint256 internal _platformFee;
+    uint128 internal _platformFee;
     address internal _feeRecipient;
 
     event PlatformFeeChanged(uint256 newFee);
     event FeeRecipientChanged(address newRecipient);
 
     // Устанавливается при инициализации платформы
-    function _initializeFeeLogic(uint256 initialFee, address recipient) internal {
+    function _initializeFeeLogic(uint128 initialFee, address recipient) internal {
         require(recipient != address(0), "Invalid fee recipient");
         require(initialFee <= 1000, "Fee too high"); // макс 100%
         _platformFee = initialFee;
@@ -27,7 +27,7 @@ abstract contract FeeLogic {
     }
 
     // Можно переопределить в Platform с модификатором onlyRole(ADMIN_ROLE)
-    function _setPlatformFee(uint256 newFee) internal {
+    function _setPlatformFee(uint128 newFee) internal {
         require(newFee <= 1000, "Fee too high");
         _platformFee = newFee;
         emit PlatformFeeChanged(newFee);
