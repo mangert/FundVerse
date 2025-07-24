@@ -33,13 +33,12 @@ contract CampaignNative is ICampaign, CampaignBase {
     // Основные функции взаимодействия
 
     /// @notice Внести средства - неиспользуемая перегрузка
-    function contribute(uint128 amount) external pure{
+    function contribute(uint128 amount) external pure {
         revert CampaingIncorrertFunction();
     }
 
     /// @notice Внести средства (ETH - cчитаем в wei)
-    function contribute() external updateStatusIfNeeded isLive() payable {
-        
+    function contribute() external payable updateStatusIfNeeded isLive {
         require(msg.value > 0, CampaingZeroDonation(msg.sender)); //проверяем, что не ноль
 
         uint128 accepted = goal - raised; //проверяем, сколько осталось до цели
@@ -63,57 +62,31 @@ contract CampaignNative is ICampaign, CampaignBase {
                 emit CampaignTrasferFailed(msg.sender, refund, address(0));
             } else {
                 emit CampaignRefunded(msg.sender, refund, address(0));
-            }    
+            }
         }
         //зачисляем взнос
         donates[msg.sender] += contribution;
         raised += uint128(contribution);
 
-        emit CampaignContribution(msg.sender, contribution); 
-    }    
-
-    /*fallback() external payable{
-        revert CampaingIncorrertFunction();        
-    }*/
-
-    /// @notice Получить текущий собранный баланс
-    function getCurrentBalance() external view returns (uint256) {
-        return 0;
+        emit CampaignContribution(msg.sender, contribution);
     }
+
+    function claimContribution() external override {}
+
+    function claimPendingFunds() external override {}
+
+    //функции для владельца
 
     /// @notice Забрать средства фаундером (если условия выполнены)
-    function withdrawFunds() external {}
+    function withdrawFunds() external {}    
 
-    /// @notice Отметить кампанию как завершенную (вручную или автоматически)
-    function finalizeCampaign() external {}
-
-    /// @notice Получить краткие данные о кампании
-    function getSummary()
-        external
-        view
-        returns (
-            address creator,
-            address token, // 0x0 для ETH
-            uint256 goal,
-            uint256 raised,
-            uint256 deadline,
-            bool finalized,
-            bool successful
-        )
-    {
-        //заглушка
-        creator = address(0);
-        token = address(0);
-        goal = 0;
-        raised = 0;
-        deadline = 0;
-        finalized = false;
-        successful = false;
+    //вспомогательные функции
+    receive() external payable {
+        revert CampaignIncorrectCall(msg.sender, msg.value, "");
     }
 
-    /// @notice Статус кампании
-    function isSuccessful() external view returns (bool) {
-        false;
+    fallback() external payable {
+        revert CampaignIncorrectCall(msg.sender, msg.value, msg.data);
     }
 
     

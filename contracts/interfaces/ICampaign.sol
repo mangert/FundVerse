@@ -39,7 +39,6 @@ interface ICampaign {
 
     event FundsWithdrawn(address indexed recipient, uint256 amount);
 
-
     /**
      * @notice порождается, когда контракт не может перевести пользователю деньги 
      * (при рефанде излишков, вкладов или истребовании средств фаундером)
@@ -50,12 +49,14 @@ interface ICampaign {
     event CampaignTrasferFailed(address indexed recipient, uint256 amount, address token);    
 
     /**
-     * @notice порождается при завершении кампании (успешном либо неуспешном)
-     * @param status конечный статус кампании
+     * @notice порождается при изменении статуса
+     * @param oldStatus исходный статус кампании      
+     * @param newStatus новый статус кампании      
      * @param timeStamp время финализации
      */
-    event CampaignFinalized(Status status, uint256 timeStamp);
+    event CampaignStatusChanged(Status oldStatus, Status newStatus, uint256 timeStamp);
 
+    //ошибки
     /**
      * @notice индицирует попытку доступа к функциям кампании не владельцем
      * @param account адрес, с которого вызывалась функция
@@ -70,16 +71,75 @@ interface ICampaign {
     error CampaingInvalidStatus(Status actual, Status needed);
 
     /**
+     * @notice индицирует ошибку изменения статуса
+     * @param newStatus статус, который не удалось присвоить     
+     */
+    error CampaingInvalidChandgedStatus(Status newStatus);
+
+    /**
+     * @notice Ошибка при попытке расшифровать недопустимый статус
+     * @param invalid статус, который вышел за допустимые пределы
+     */
+    error CampaignUnknownStatus(Status invalid);
+
+
+    /**
      * @notice индицирует вызов некорректиной перегрузки функции
      * @dev использовать для отказа вызовов недействительных перегрузок в функциях
      */
     error CampaingIncorrertFunction();
 
     /**
+     * @notice индицирует вызов несуществующей фукнции или попытку прямой отправки денег на контракт
+     * @dev используется в receive и fallback функциях
+     * @param caller адрес, инициирующий вызов
+     * @param value отправленная в вызове сумма
+     * @param data данные сообщения
+     */
+    error CampaignIncorrectCall(address caller, uint256 value, bytes data);
+
+    /**
      * @notice индицирует нулевую сумму взноса    
      * @param investor адрес вносителя
      */
-    error CampaingZeroDonation(address investor);
+    error CampaingZeroDonation(address investor);    
+
+    //геттеры    
+    
+    /**
+     * @notice функция-геттер возвращает сводную информацию о кампании
+     */
+    function getSummary()
+        external
+        view        
+        returns (
+            address _creator,
+            string memory _campaignName,
+            uint32 _Id,
+            address _token, // 0x0 для ETH
+            uint128 _goal,
+            uint128 _raised,
+            uint32 _deadline,
+            string memory _campaignMeta,
+            Status _status            
+        );   
+    /**
+     * @notice функция возвращает сумму перечисленных инвестором средств
+     * @param investor адрес инвестора
+     */
+    function getUserContribute(address investor) external view returns(uint256);
+
+    /**
+     * @notice функция возращает сумму "зависших" средств (непрошедшие рефанды, неуспешно заклейменные взносы, неуспешно выведенные фонды)
+     * @param recipient aдрес возврата
+     */
+    function getPendingFunds(address recipient) external view returns(uint256);
+
+    /**
+     * @notice техническая функция - расшифровка статуса "словами"
+     * @param status статус, который надо "расшифровать"
+     */ 
+    function getStatusName(Status status) external pure returns(string memory);    
 
     // Основные функции взаимодействия
 
@@ -95,33 +155,19 @@ interface ICampaign {
      * @dev перегрузка для нативной валюты, в версии для токенов ERC20 всегда завершается ошибкой
      */
     function contribute() external payable;
+    
+    /// @notice Затребовать взнос инвестором (если кампания провалилась)
+    function claimContribution()  external;
 
-    /// @notice Получить текущий собранный баланс
-    function getCurrentBalance() external view returns (uint256);
+    /// @notice Затребовать "зависшую" сумму (непрошедший рефанд, неполлученный взнос или все средства)
+    function claimPendingFunds()  external;
 
+    //функции для владельца
+    
     /// @notice Забрать средства фаундером (если условия выполнены)
     function withdrawFunds() external;
 
-    /// @notice Отметить кампанию как завершенную (вручную или автоматически)
-    function finalizeCampaign() external;
-
-    /// @notice Получить краткие данные о кампании
-    function getSummary()
-        external
-        view
-        returns (
-            address creator,
-            address token,       // 0x0 для ETH
-            uint256 goal,
-            uint256 raised,
-            uint256 deadline,
-            bool finalized,
-            bool successful
-        );
-
-    /// @notice Статус кампании
-    function isSuccessful() external view returns (bool); 
-
-
+    /// @notice установить новый статус
+    function setCampaignStatus(Status status) external;    
     
 }
