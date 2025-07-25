@@ -10,7 +10,7 @@ abstract contract CampaignBase is ICampaign {
     
     //хранилище данных 
     /// @notice адрес платформы краудфандинга (для получения комиссии)
-    address payable internal immutable platformAddress;
+    address internal immutable platformAddress;
     
     /// @notice создатель, он же владелец
     address public immutable creator;
@@ -130,7 +130,7 @@ abstract contract CampaignBase is ICampaign {
     }
     
     /// @notice узнать сумму взносов инвестора
-    function getUserContribute(address investor) external view returns(uint256) {
+    function getContribution(address investor) external view returns(uint256) {
         return donates[investor];
     }
     
@@ -153,8 +153,57 @@ abstract contract CampaignBase is ICampaign {
         require(statuses.length > index, CampaignUnknownStatus(_status));
         return statuses[index];
     } 
+    //общие функции по выводу средств
+    /// @notice затребовать взнос с провалившейстя или отмененной кампании
+    function claimContribution() updateStatusIfNeeded external override {
+        
+        address recipient = msg.sender;
+        
+        require(status == Status.Failed || status == Status.Cancelled,
+            CampaingInvalidStatus(status, Status.Failed));
+        uint256 contiribution = donates[recipient];
+        
+        require(contiribution > 0, CampaingZeroWithdraw(recipient));
+        donates[recipient] = 0;
+        
+        if(_transferTo(recipient, contiribution)){
+            emit CampaignContributionClaimed(recipient, contiribution);    
+        } else {
+            emit CampaignContributionDeffered(recipient, contiribution);
+        }
+    }
+    /// @notice функция для владельца    
+    /// @notice Забрать средства фаундером (если условия выполнены)
+    function withdrawFunds() external updateStatusIfNeeded onlyCreator {
+        //сначала проверяем статус
+        require(status == Status.Successful, CampaingInvalidStatus(status, Status.Successful));
+        //проверям, есть ли фонды, которые можно перевести
+        uint256 fund = raised;
+        require(fund > 0, CampaingZeroWithdraw(msg.sender));
+        
+        uint256 fee = ((fund * 1000) * platformFee) / (1000_000);
+        uint256 withdrawnAmount = fund - fee;
 
-    //функция для владельца    
+        //обнуляем баланс
+        raised = 0;
+        //переводим сначала комиссию
+        if(_transferTo(platformAddress, fee)){
+            emit CampaignFeePayed(platformAddress, fee);
+        }
+        else{
+            emit CampaignFeeDeffered(platformAddress, fee);
+        }
+
+        //теперь переводим себе
+        if(_transferTo(creator, withdrawnAmount)){
+            emit CampaignFundsClaimed(creator, fund);
+        }
+        else{
+            emit CampaignFundsDeffered(creator, fund);
+        }
+    }
+
+    /// @notice функция для владельца    
     /// @notice установить новый статус
     function setCampaignStatus(Status newStatus) external onlyCreator {
         Status oldStatus = status; //запоминаем текущий статус        
@@ -185,5 +234,15 @@ abstract contract CampaignBase is ICampaign {
         status = newStatus;
         emit CampaignStatusChanged(oldStatus, newStatus, block.timestamp);
     }   
+
+    //служебные функции
+
+    /**
+     * @notice служебная функция перевода средств
+     * @dev реализация зависит от валюты, обязательно переопределять в наследниках
+     * @param recipient получатель
+     * @param amount сумма перевода
+     */
+    function _transferTo(address recipient, uint256 amount) internal virtual returns (bool);
 
 }

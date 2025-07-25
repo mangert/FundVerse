@@ -160,6 +160,36 @@ interface ICampaign {
 
     //геттеры    
     
+    /// @notice создатель, он же владелец
+    function creator() external view returns (address);
+
+    /// @notice 0x0 для ETH (для совместимости)
+    function token() external view returns (address);
+
+    /// @notice цель - wei / decimals   
+    function goal() external view returns (uint128);
+
+    /// @notice комиссия платформы в промилле
+    function platformFee() external view returns (uint128);
+
+    /// @notice срок
+    function deadline() external view returns (uint32);
+
+    /// @notice идентификатор
+    function Id() external view returns (uint32);
+
+    /// @notice Текущий собранный баланс
+    function raised() external view returns (uint128);
+
+    /// @notice статус кампании
+    function status() external view returns (Status);
+
+    /// @notice имя
+    function campaignName() external view returns (string memory);
+
+    /// @notice JSON-метаданные (описание + документы/IPFS)   
+    function campaignMeta() external view returns (string memory);
+    
     /**
      * @notice функция-геттер возвращает сводную информацию о кампании
      */
@@ -181,7 +211,7 @@ interface ICampaign {
      * @notice функция возвращает сумму перечисленных инвестором средств
      * @param investor адрес инвестора
      */
-    function getUserContribute(address investor) external view returns(uint256);
+    function getContribution(address investor) external view returns(uint256);
 
     /**
      * @notice функция возращает сумму "зависших" средств (непрошедшие рефанды, неуспешно заклейменные взносы, неуспешно выведенные фонды)

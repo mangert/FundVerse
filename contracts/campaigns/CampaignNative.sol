@@ -68,30 +68,11 @@ contract CampaignNative is ICampaign, CampaignBase {
         raised += uint128(contribution);
 
         emit CampaignContribution(contributor, contribution);
-    }
+    }    
 
-    /// @notice затребовать взнос с провалившейстя или отмененной кампании
-    function claimContribution() updateStatusIfNeeded external override {
-        
-        address recipient = msg.sender;
-        
-        require(status == Status.Failed || status == Status.Cancelled,
-            CampaingInvalidStatus(status, Status.Failed));
-        uint256 contiribution = donates[recipient];
-        
-        require(contiribution > 0, CampaingZeroWithdraw(recipient));
-        donates[recipient] = 0;
-        
-        if(_transferTo(payable(recipient), contiribution)){
-            emit CampaignContributionClaimed(recipient, contiribution);    
-        } else {
-            emit CampaignContributionDeffered(recipient, contiribution);
-        }
-    }
-
-    ///@notice затребовать "зависшие" средства
+    ///@notice затребовать "зависшие" средства    
     function claimPendingFunds() external override {
-        address payable recipient;
+        address recipient = payable(msg.sender);
         
         uint256 amount = pendingWithdrawals[recipient]; //смотрим, сколько у пользователя "зависло" средств
         require(amount > 0, CampaingZeroWithdraw(recipient)); //проверка, что невыведенные средства больше нуля
@@ -100,39 +81,7 @@ contract CampaignNative is ICampaign, CampaignBase {
 
         (bool success, ) = recipient.call{value: amount}("");
         require(success, CampaignPendingWithdrawFailed(recipient, amount, address(0)));
-    }
-
-    //функции для владельца
-
-    /// @notice Забрать средства фаундером (если условия выполнены)
-    function withdrawFunds() external updateStatusIfNeeded onlyCreator {
-        //сначала проверяем статус
-        require(status == Status.Successful, CampaingInvalidStatus(status, Status.Successful));
-        //проверям, есть ли фонды, которые можно перевести
-        uint256 fund = raised;
-        require(fund > 0, CampaingZeroWithdraw(msg.sender));
-        
-        uint256 fee = ((fund * 1000) * platformFee) / (1000_000);
-        uint256 withdrawnAmount = fund - fee;
-
-        //обнуляем баланс
-        raised = 0;
-        //переводим сначала комиссию
-        if(_transferTo(platformAddress, fee)){
-            emit CampaignFeePayed(platformAddress, fee);
-        }
-        else{
-            emit CampaignFeeDeffered(platformAddress, fee);
-        }
-
-        //теперь переводим себе
-        if(_transferTo(payable(creator), withdrawnAmount)){
-            emit CampaignFundsClaimed(creator, fund);
-        }
-        else{
-            emit CampaignFundsDeffered(creator, fund);
-        }
-    }    
+    }          
 
     //вспомогательные функции
     /**
@@ -140,8 +89,8 @@ contract CampaignNative is ICampaign, CampaignBase {
      * @dev используется для рефандов и переводов
      * @dev не использовать при клейме зависших средств!
      */
-    function _transferTo(address payable recipient, uint256 amount) internal returns (bool) {
-        (bool success, ) = recipient.call{value: amount}("");
+    function _transferTo(address recipient, uint256 amount) internal override returns (bool) {
+        (bool success, ) = payable(recipient).call{value: amount}("");
             if (!success) {
                 pendingWithdrawals[recipient] += amount;
                 emit CampaignTrasferFailed(msg.sender, amount, address(0));
