@@ -2,9 +2,8 @@
 pragma solidity ^0.8.30;
 
 /**
- * @title пока совсем черновик
- * @author 
- * @notice 
+ * @title интерфейс ICampaign для контрактов-кампаний 
+ * @notice содержит описания функций, событий, ошибок и типов контрактов-кампаний
  */
 interface ICampaign {
     
@@ -56,6 +55,48 @@ interface ICampaign {
      */
     event CampaignStatusChanged(Status oldStatus, Status newStatus, uint256 timeStamp);
 
+    /**
+     * @notice порождается, когда инвестор успешно получил с контракта средства
+     * @param recipient адрес получателя
+     * @param amount полученная сумма
+     */
+    event CampaignContributionClaimed(address recipient, uint256 amount);
+
+    /**
+     * @notice порождается, когда инвестор запросил с контракта средства, но перевод "завис" (перешел в pendingWithdraw)
+     * @param recipient адрес получателя
+     * @param amount запросшенная сумма
+     */
+    event CampaignContributionDeffered(address recipient, uint256 amount);
+
+    /**
+     * @notice порождается, когда фаундер успешно получил с контракта средства
+     * @param recipient адрес получателя
+     * @param amount полученная сумма
+     */
+    event CampaignFundsClaimed(address recipient, uint256 amount);
+
+    /**
+     * @notice порождается, когда фаудер запросил с контракта средства, но перевод "завис" (перешел в pendingWithdraw)
+     * @param recipient адрес получателя
+     * @param amount запросшенная сумма
+     */
+    event CampaignFundsDeffered(address recipient, uint256 amount);
+
+    /**
+     * @notice порождается, когда фаундер успешно отправил комиссию платформы
+     * @param recipient адрес получателя
+     * @param amount полученная сумма
+     */
+    event CampaignFeePayed(address recipient, uint256 amount);
+
+    /**
+     * @notice порождается, когда фаудер отправил платформе комиссию, но перевод "завис" (перешел в pendingWithdraw)
+     * @param recipient адрес получателя
+     * @param amount запросшенная сумма
+     */
+    event CampaignFeeDeffered(address recipient, uint256 amount);
+
     //ошибки
     /**
      * @notice индицирует попытку доступа к функциям кампании не владельцем
@@ -82,7 +123,6 @@ interface ICampaign {
      */
     error CampaignUnknownStatus(Status invalid);
 
-
     /**
      * @notice индицирует вызов некорректиной перегрузки функции
      * @dev использовать для отказа вызовов недействительных перегрузок в функциях
@@ -103,6 +143,20 @@ interface ICampaign {
      * @param investor адрес вносителя
      */
     error CampaingZeroDonation(address investor);    
+
+    /**
+     * @notice индицирует нулевую сумму вывода
+     * @param recipient адрес получателя
+     */
+    error CampaingZeroWithdraw(address recipient);    
+
+    /**
+     * @notice индицирует ошибку вывода "зависших" платежей     
+     * @param recipient адрес получателя
+     * @param amount сумма неудавшегося перевода
+     * @param token адрес токена, который переводился (для эфира address(0))
+     */
+    error CampaignPendingWithdrawFailed(address recipient, uint256 amount, address token);    
 
     //геттеры    
     
@@ -154,17 +208,26 @@ interface ICampaign {
      * @notice Внести средства (ETH)
      * @dev перегрузка для нативной валюты, в версии для токенов ERC20 всегда завершается ошибкой
      */
-    function contribute() external payable;
+    function contribute() external payable;    
     
-    /// @notice Затребовать взнос инвестором (если кампания провалилась)
+    /**
+     * @notice функция позволяте инвесторам вернуть взносы, если кампания провалилась или отмненена
+     * @dev при реализации необходимо предусмотреть проверку статуса
+     */
     function claimContribution()  external;
-
-    /// @notice Затребовать "зависшую" сумму (непрошедший рефанд, неполлученный взнос или все средства)
+    
+    /**
+     * @notice функция позволяет затребовать "зависшую" сумму (непрошедший рефанд, неполлученный взнос, фонд кампании, комиссию платформы)
+     */
     function claimPendingFunds()  external;
 
     //функции для владельца
     
-    /// @notice Забрать средства фаундером (если условия выполнены)
+    /**
+     * @notice функция вывода фаундером накопленных средств
+     * средства выводятся фаундером за вычетом комиссии платформы
+     * @dev перечисление комиссии платформе производится внутри функции
+     */
     function withdrawFunds() external;
 
     /// @notice установить новый статус

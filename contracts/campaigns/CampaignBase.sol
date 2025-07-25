@@ -9,8 +9,12 @@ import "../interfaces/ICampaign.sol";
 abstract contract CampaignBase is ICampaign {    
     
     //хранилище данных 
+    /// @notice адрес платформы краудфандинга (для получения комиссии)
+    address payable internal immutable platformAddress;
+    
     /// @notice создатель, он же владелец
     address public immutable creator;
+
     /// @notice 0x0 для ETH (для совместимости)
     address public immutable token; 
     
@@ -70,6 +74,30 @@ abstract contract CampaignBase is ICampaign {
     _;
     }
 
+    constructor(
+        address payable _platformAddress,        
+        address _creator,
+        string memory _campaignName,
+        uint32 _Id,
+        uint128 _goal,
+        uint32 _deadline,
+        string memory _campaignMeta,
+        uint128 _platformFee, 
+        address _token
+    ) {
+        platformAddress= _platformAddress;
+        creator = _creator;
+        campaignName = _campaignName;
+        Id = _Id;
+        goal = _goal;
+        deadline = _deadline;
+        campaignMeta = _campaignMeta;
+        platformFee = _platformFee;
+
+        status = Status.Live; //для ясности - можно убрать
+        token = _token; // address(0) — для ETH, иначе — адрес ERC20 токена
+    }
+
     //общие для обеих версий геттеры        
     
     /// @notice Получить сводку о кампании
@@ -125,7 +153,8 @@ abstract contract CampaignBase is ICampaign {
         require(statuses.length > index, CampaignUnknownStatus(_status));
         return statuses[index];
     } 
-    
+
+    //функция для владельца    
     /// @notice установить новый статус
     function setCampaignStatus(Status newStatus) external onlyCreator {
         Status oldStatus = status; //запоминаем текущий статус        
