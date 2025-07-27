@@ -17,7 +17,7 @@ abstract contract FactoryCore is PlatformStorage {
     event CampaingCreated(); //добавить аргументы
 
     //пока заглушка
-    function _createCampaing(bool eth) internal returns(ICampaign){ //аргуметны и модификаторы функции после разработки шаблона кампании
+    /*function _createCampaing(bool eth) internal returns(ICampaign){ //аргуметны и модификаторы функции после разработки шаблона кампании
         
         ICampaign newCampaign = campaings[counter++];
         if(eth) {
@@ -29,6 +29,6 @@ abstract contract FactoryCore is PlatformStorage {
 
         emit CampaingCreated();
 
-    }
+    }*/
     
 }

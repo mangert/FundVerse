@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
-
+/**
+ * @title черновик
+ * @author 
+ * @notice 
+ */
 
 abstract contract FeeLogic {
     // Платформа получает комиссию в промилле (например, 50 = 5.0%)

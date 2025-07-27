@@ -10,7 +10,7 @@ import "./CampaignBase.sol"; //общий код
  */
 contract CampaignNative is ICampaign, CampaignBase {
     constructor(
-        address payable _platformAddress,
+        address  _platformAddress,
         address _creator,
         string memory _campaignName,
         uint32 _Id,

@@ -1,0 +1,32 @@
+import { loadFixture, ethers, expect } from "./setup";
+import { network } from "hardhat";
+import { time } from "@nomicfoundation/hardhat-network-helpers";
+
+//хелперы для тестов контракта-кампании в версии для нативной валюты
+//функция для задания аргументов конструктора для нативной версии контракта
+export function defaultCampaignArgs(overrides = {}, platformAddr : string, creatorAddr : string ) : [
+    string, string, string, bigint, bigint, number, string, number ] {    
+    const defaults = {
+        platformAddress: platformAddr,
+        creator: creatorAddr,
+        campaignName: "My first project",
+        Id: 123n,
+        goal: 1000_000n,
+        deadline: Math.floor(Date.now() / 1000) + 60,
+        campaignMeta: "Description and URI",
+        platformFee: 50
+    };
+
+    const merged = { ...defaults, ...overrides };
+    
+    return [
+        merged.platformAddress,
+        merged.creator,
+        merged.campaignName,
+        merged.Id,
+        merged.goal,
+        merged.deadline,
+        merged.campaignMeta,
+        merged.platformFee        
+    ];   
+}

@@ -4,7 +4,7 @@ pragma solidity ^0.8.30;
 import "../interfaces/ICampaign.sol";
 /**
  * @title Абстрактный контракт для кампаний
- * @notice содержит общую часть (хранилище, типы, модификаторы) 
+ * @notice содержит общую часть (хранилище, типы, модификаторы, функции, которые не зависят от валюты) 
  */
 abstract contract CampaignBase is ICampaign {    
     
@@ -38,7 +38,7 @@ abstract contract CampaignBase is ICampaign {
     /// @notice JSON-метаданные (описание + документы/IPFS)   
     string public campaignMeta; 
 
-    mapping(address investor => uint256 value) donates; //хранилище для вкладов участников Как лучше назвать? Сделать паблик?
+    mapping(address investor => uint256 value) donates; //хранилище для вкладов участников
     mapping (address recipient => uint256 value) pendingWithdrawals; //хранилище для "зависших" сумм
 
     //модификаторы 
@@ -71,11 +71,11 @@ abstract contract CampaignBase is ICampaign {
             }
             emit CampaignStatusChanged(Status.Live, status, block.timestamp);
         }
-    _;
+        _;
     }
 
     constructor(
-        address payable _platformAddress,        
+        address _platformAddress,        
         address _creator,
         string memory _campaignName,
         uint32 _Id,
@@ -177,7 +177,7 @@ abstract contract CampaignBase is ICampaign {
     function withdrawFunds() external updateStatusIfNeeded onlyCreator {
         //сначала проверяем статус
         require(status == Status.Successful, CampaingInvalidStatus(status, Status.Successful));
-        //проверям, есть ли фонды, которые можно перевести
+        //проверяем, есть ли фонды, которые можно перевести
         uint256 fund = raised;
         require(fund > 0, CampaingZeroWithdraw(msg.sender));
         

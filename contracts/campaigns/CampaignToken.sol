@@ -9,20 +9,8 @@ import "./CampaignBase.sol";
  * @author 
  * @notice 
  */
-contract CampaignToken is ICampaign, CampaignBase {
+//contract CampaignToken is ICampaign, CampaignBase {
+contract CampaignToken  {    
     // Основные функции взаимодействия
 
-    /// @notice Внести средства (ETH или ERC20 — зависит от реализации)
-    function contribute(uint128 amount) external {}
-
-    function contribute() external payable {
-        revert CampaingIncorrertFunction();
     }
-
-    /// @notice Забрать средства фаундером (если условия выполнены)
-    function withdrawFunds() external {}
-
-    function claimContribution() external override {}
-
-    function claimPendingFunds() external override {}
-}
