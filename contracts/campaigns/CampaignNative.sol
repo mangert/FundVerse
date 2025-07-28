@@ -38,7 +38,7 @@ contract CampaignNative is ICampaign, CampaignBase {
     }
 
     /// @notice Внести средства (ETH - cчитаем в wei)
-    function contribute() external payable updateStatusIfNeeded isLive {
+    function contribute() external payable checkState { //здесь модификатор поправила
         
         address contributor = msg.sender;
 
@@ -66,6 +66,11 @@ contract CampaignNative is ICampaign, CampaignBase {
         //зачисляем взнос
         donates[contributor] += contribution;
         raised += uint128(contribution);
+        
+        if(raised >= goal) { //если после зачисления достигли цели
+            status = Status.Successful; //Аетуализируем статус
+            emit CampaignStatusChanged(Status.Live, status, block.timestamp);
+        }
 
         emit CampaignContribution(contributor, contribution);
     }    

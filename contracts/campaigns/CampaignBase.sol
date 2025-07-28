@@ -53,26 +53,11 @@ abstract contract CampaignBase is ICampaign {
     /**
      * @dev модификатор применяется к функциям, которые могут вызываться только на "живых" кампаниях
      */
-    modifier isLive() {
+    modifier checkState() {                        
         require(status == Status.Live, CampaingInvalidStatus(status, Status.Live));
+        require(block.timestamp < deadline, CampaingTimeExpired(deadline, block.timestamp));        
         _;
-    }
-
-    /**
-     * @notice актуализирует статус контракта
-     * @dev модификатор применяется к фунциям взаимодействия с контрактом до вызова других пользовательских модификаторов
-     */
-    modifier updateStatusIfNeeded() {
-        if (status == Status.Live && block.timestamp >= deadline) {
-            if (raised >= goal) {
-                status = Status.Successful;
-            } else {
-                status = Status.Failed;
-            }
-            emit CampaignStatusChanged(Status.Live, status, block.timestamp);
-        }
-        _;
-    }
+    }   
 
     constructor(
         address _platformAddress,        
@@ -153,10 +138,12 @@ abstract contract CampaignBase is ICampaign {
         require(statuses.length > index, CampaignUnknownStatus(_status));
         return statuses[index];
     } 
+
     //общие функции по выводу средств
     /// @notice затребовать взнос с провалившейстя или отмененной кампании
-    function claimContribution() updateStatusIfNeeded external override {
-        
+    function claimContribution()  external override {
+
+        checkDeadlineStatus(); //актуализируем статус по дедлайну, если необходимо      
         address recipient = msg.sender;
         
         require(status == Status.Failed || status == Status.Cancelled,
@@ -174,7 +161,8 @@ abstract contract CampaignBase is ICampaign {
     }
     /// @notice функция для владельца    
     /// @notice Забрать средства фаундером (если условия выполнены)
-    function withdrawFunds() external updateStatusIfNeeded onlyCreator {
+    function withdrawFunds() external onlyCreator {
+        
         //сначала проверяем статус
         require(status == Status.Successful, CampaingInvalidStatus(status, Status.Successful));
         //проверяем, есть ли фонды, которые можно перевести
@@ -236,6 +224,19 @@ abstract contract CampaignBase is ICampaign {
     }   
 
     //служебные функции
+     /**
+     * @notice функция автоматически актуализирует статус контракта при истекшем дедлайне
+     * @dev вызывается внутри функции вывода взносов, но может быть вызвана снаружи
+     */
+    function checkDeadlineStatus() public virtual {
+    
+        Status previous = status;
+        if (status == Status.Live && block.timestamp >= deadline) {
+            status = raised >= goal ? Status.Successful : Status.Failed;
+            emit CampaignStatusChanged(previous, status, block.timestamp);
+        }
+
+    }
 
     /**
      * @notice служебная функция перевода средств

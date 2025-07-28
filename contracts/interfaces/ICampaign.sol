@@ -112,6 +112,13 @@ interface ICampaign {
     error CampaingInvalidStatus(Status actual, Status needed);
 
     /**
+     * @notice индицирует обращение к функциям кампании после истечения дедлайна
+     * @param deadline срок действия сбора
+     * @param timeStamp время обращения
+     */
+    error CampaingTimeExpired(uint32 deadline, uint256 timeStamp);
+
+    /**
      * @notice индицирует ошибку изменения статуса
      * @param newStatus статус, который не удалось присвоить     
      */
@@ -260,7 +267,18 @@ interface ICampaign {
      */
     function withdrawFunds() external;
 
-    /// @notice установить новый статус
+    /**
+     * @notice функция автоматически актуализирует статус контракта на Failed при истекшем дедлайне
+     * @dev вызывается внутри функции вывода взносов, чтобы вывод не падал если дедлайн истек, а статус не переведен
+     * @dev допускается вызывать снаружи
+     */
+    function checkDeadlineStatus() external;
+
+    
+    /**
+     * @notice функция вручную устанавливает новый статус     
+     * @dev может быть вызвана только creator'ом, внутри проверяет, какие статусы можно менять     
+     */
     function setCampaignStatus(Status status) external;    
     
 }

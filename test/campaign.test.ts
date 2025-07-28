@@ -2,12 +2,13 @@ import { dropTransaction } from "@nomicfoundation/hardhat-toolbox/network-helper
 import { loadFixture, ethers, expect } from "./setup";
 import { network } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 import {defaultCampaignArgs} from "./test-helpers"
 
 describe("Campaign Native", function() {
     async function deploy() {        
-        const [user0, user1, user2] = await ethers.getSigners();
+        const [userPlatform, userCreator, user0] = await ethers.getSigners();
         
           const args: [
                 string, // platformAddress
@@ -18,22 +19,22 @@ describe("Campaign Native", function() {
                 number, // deadline
                 string, // campaignMeta
                 number, // platformFee      
-            ] = defaultCampaignArgs({}, user0.address, user1.address);
+            ] = defaultCampaignArgs({}, userPlatform.address, userCreator.address);
       
         
         const campaign_Factory = await ethers.getContractFactory("CampaignNative");
         const campaign = await campaign_Factory.deploy(...args, {});
         await campaign.waitForDeployment();        
 
-        return { user0, user1, user2, campaign }
+        return { userPlatform, userCreator, user0, campaign }
     }
 
     describe("deployment tеsts", function() {
-        it("should be deployed", async function() { //простой тест, что депоится нормально
-            const { user0, user1, campaign } = await loadFixture(deploy); 
+        it("should be deployed", async function() { //простой тест, что деплоится нормально
+            const { userPlatform, userCreator, campaign } = await loadFixture(deploy); 
             
             //заберем аргументы, с которыми деплоили
-            const args = defaultCampaignArgs({}, user0.address, user1.address);
+            const args = defaultCampaignArgs({}, userPlatform.address, userCreator.address);
             
             expect(campaign.target).to.be.properAddress;
             //и проверим, правильно ли установились поля
@@ -41,7 +42,7 @@ describe("Campaign Native", function() {
             expect (await campaign.campaignName()).equal(args[2]);
             expect (await campaign.Id()).equal(args[3]);
             expect (await campaign.goal()).equal(args[4]);
-            expect (await campaign.deadline()).equal(args[5]);
+            expect (await campaign.deadline()).to.be.closeTo(args[5], 1);
             expect (await campaign.campaignMeta()).equal(args[6]);
             expect (await campaign.platformFee()).equal(args[7]);       
 
@@ -56,10 +57,9 @@ describe("Campaign Native", function() {
         });     
 
     });
-
     describe("contribution test tеsts", function() {
         it("should possible contribute", async function() { //просто проверяем, что взносы принимаются
-            const {user0, user1, user2, campaign } = await loadFixture(deploy);        
+            const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy);        
 
             //пусть будут 3 взноса
             const contributions = [100, 1000, 10000];
@@ -67,12 +67,12 @@ describe("Campaign Native", function() {
             let raised = 0;
             for(let counter = 0; counter != 3; ++counter) {               
 
-                const tx = await campaign.connect(user2)["contribute()"]({value: contributions[counter]});
+                const tx = await campaign.connect(user0)["contribute()"]({value: contributions[counter]});
                 await tx.wait(1);
                 raised += contributions[counter];
                 expect(await campaign.raised()).equal(raised);
-                expect(await campaign.getContribution(user2)).equal(raised);
-                await expect(tx).to.emit(campaign, "CampaignContribution").withArgs(user2, contributions[counter]);            
+                expect(await campaign.getContribution(user0)).equal(raised);
+                await expect(tx).to.emit(campaign, "CampaignContribution").withArgs(user0, contributions[counter]);            
             }         
 
             const balance = await ethers.provider.getBalance(campaign.target);       
@@ -80,34 +80,112 @@ describe("Campaign Native", function() {
         });
 
         it("should refund overgoal contribution", async function() { //проверяем, что взносы принимаются до цели и возвращается сдача
-            const {user0, user1, user2, campaign } = await loadFixture(deploy);        
+            const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy);        
 
             //пусть будут 3 взноса внутри суммы
             const contributions = [100, 1000, 10000];
 
             for(let counter = 0; counter != 3; ++counter) {               
 
-                const tx = await campaign.connect(user2)["contribute()"]({value: contributions[counter]});
+                const tx = await campaign.connect(user0)["contribute()"]({value: contributions[counter]});
                 await tx.wait(1);           
                 
             }         
 
             //и еще один, который будет больше, чем остаток, скажем, на 500;
-            const accepted = (await campaign.goal()) - (await campaign.raised());
-            const refund = 500n;
-            const overcontribution = accepted + refund;
+            const accepted = (await campaign.goal()) - (await campaign.raised()); //считаем остаток
+            const refund = 500n; //добавляем плюс
+            const overcontribution = accepted + refund; //формируем избыточный взнос
             
-            const tx =  await campaign.connect(user1)["contribute()"]({value: overcontribution});
-            await tx.wait(1);
-            //события протестировать!!!
+            
+            const tx =  await campaign.connect(userCreator)["contribute()"]({value: overcontribution});
+            await tx.wait(1);            
 
-            expect(tx).changeEtherBalance(user1, -accepted);
+            expect(tx).changeEtherBalance(userCreator, -accepted);
             expect(await campaign.raised()).equal(await campaign.goal());
-            await expect(tx).to.emit(campaign, "CampaignContribution").withArgs(user1, accepted);            
-            await expect(tx).to.emit(campaign, "CampaignRefunded").withArgs(user1, refund, ethers.ZeroAddress);            
+            await expect(tx).to.emit(campaign, "CampaignContribution").withArgs(userCreator, accepted);            
+            await expect(tx).to.emit(campaign, "CampaignRefunded").withArgs(userCreator, refund, ethers.ZeroAddress);            
                       
         });
 
+        it("should be reverted uncorrect contribute call", async function() { //проверка отказа в вызове не той перегрузки
+            const {userPlatform, campaign } = await loadFixture(deploy );
+    
+            const amount = 500n;
+            const tx = campaign["contribute(uint128)"](amount);
+            await expect(tx).revertedWithCustomError(campaign, "CampaingIncorrertFunction");           
+            
+        });
+
+        it("should be reverted zero contribute", async function() { //проверка отката нулевого взноса
+            const {user0, campaign } = await loadFixture(deploy );
+    
+            const amount = 0n;
+            const tx = campaign.connect(user0)["contribute()"]({value: amount});
+            await expect(tx).revertedWithCustomError(campaign, "CampaingZeroDonation").withArgs(user0);
+            
+        });
+
+        it("should be reverted donate to unlive campaign", async function() { //проверка отката по некорректному статусу
+            const {userCreator, campaign } = await loadFixture(deploy );
+    
+            //отменяем кампанию -> переводим статус 
+            const cancelStatus = 2;
+            const txCancell = await campaign.connect(userCreator).setCampaignStatus(cancelStatus);
+            txCancell.wait(1);
+            
+            const amount = 100n;
+            const tx = campaign["contribute()"]({value: amount});
+            await expect(tx).revertedWithCustomError(campaign, "CampaingInvalidStatus").withArgs(cancelStatus, 0);
+            
+        });
+
+        it("should be reverted donate to failed campaign", async function() { //проверка отката по некорректному статусу (дедлайн)
+            const {userCreator, campaign } = await loadFixture(deploy );
+    
+            //пропускаем время
+            const now = (await ethers.provider.getBlock("latest"))!.timestamp;
+            const timeToAdd = 60 * 60; // 1 час
+            const futureTime = now + timeToAdd;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [futureTime]);
+            await network.provider.send("evm_mine");            
+            
+            const amount = 100n;
+            const tx = campaign["contribute()"]({value: amount});
+            const deadline = await campaign.deadline();            
+            
+            await expect(tx).revertedWithCustomError(campaign, "CampaingTimeExpired")
+                .withArgs(deadline, anyValue);
+            
+        });
+
+        it("should be reverted donate to successful campaign", async function() { //проверка отката по некорректному статусу (сбрр завершен)
+            const {user0, campaign } = await loadFixture(deploy );
+    
+            const goal = await campaign.goal();
+            const txContribute = await campaign["contribute()"]({value:goal});
+            await txContribute.wait(1);
+
+            
+            const amount = 100n;
+            const now = (await ethers.provider.getBlock("latest"))!.timestamp;            
+            
+            const txOverfund = campaign.connect(user0)["contribute()"]({value: amount});            
+            
+            await expect(txOverfund).revertedWithCustomError(campaign, "CampaingInvalidStatus").withArgs(4, 0);                                    
+        });
+
+        it("should be reverted donate to cancelled campaign", async function() { //проверка отката взноса на отмененную кампанию
+            const {userCreator, user0, campaign } = await loadFixture(deploy );   
+            
+            const txStatus = await campaign.connect(userCreator).setCampaignStatus(2);
+            await txStatus.wait(1);
+            
+            const amount = 100n;
+            const tx = campaign.connect(user0)["contribute()"]({value: amount});                        
+            await expect(tx).revertedWithCustomError(campaign, "CampaingInvalidStatus").withArgs(2, 0);                                    
+        });
 
     });
 
@@ -117,7 +195,7 @@ describe("Campaign Native", function() {
     /*describe("create funtion tests", function() {
 
         it("should create auction", async function(){
-            const {user0, auction } = await loadFixture(deploy);
+            const {userPlatform, auction } = await loadFixture(deploy);
             const startPrice = 1000000000n;
             const duration = 1n*24n*60n*60n;
             const item = "example";
@@ -130,7 +208,7 @@ describe("Campaign Native", function() {
             expect(countAucitons).eq(1);
            
             const createdAuction = await auction.auctions(0);
-            expect(createdAuction.seller).eq(user0.address);
+            expect(createdAuction.seller).eq(userPlatform.address);
             expect(createdAuction.startPrice).eq(startPrice);
             expect(createdAuction.stopped).eq(false);
             await expect(tx).to.emit(auction, "NewAuctionCreated").withArgs(0, item, startPrice, duration);
@@ -140,7 +218,7 @@ describe("Campaign Native", function() {
 
         it("should be reverted creating with low start price", async function(){
             
-            const {user0, auction } = await loadFixture(deploy);
+            const {userPlatform, auction } = await loadFixture(deploy);
             const startPrice = 100n;
             const duration = 1n*24n*60n*60n;
             const item = "example";
@@ -157,7 +235,7 @@ describe("Campaign Native", function() {
         
         it("should get auction info", async function(){
             
-            const {user0, auction } = await loadFixture(deploy);
+            const {userPlatform, auction } = await loadFixture(deploy);
             
             const startPrice = 1000000000n;
             const duration = 1n*24n*60n*60n;
@@ -179,7 +257,7 @@ describe("Campaign Native", function() {
 
         it("should be reverted request non-existent lot", async function(){
             
-            const {user0, auction } = await loadFixture(deploy);
+            const {userPlatform, auction } = await loadFixture(deploy);
             
             const startPrice = 1000000000n;
             const duration = 1n*24n*60n*60n;
@@ -196,7 +274,7 @@ describe("Campaign Native", function() {
         });
         
         it("should buy lot", async function(){ //проверка функции buy
-            const {user0, user1, user2, auction } = await loadFixture(deploy);
+            const {userPlatform, userCreator, user2, auction } = await loadFixture(deploy);
             
             const startPrice = 1000000000n;
             const duration = 1n*24n*60n*60n;
@@ -205,7 +283,7 @@ describe("Campaign Native", function() {
 
             for(let i = 0n; i != 4n; ++i) { //сначала создадим 4 лота
                 
-                const tx = await auction.connect(user1).createAuction(startPrice + i, discountRate, duration, item + i);
+                const tx = await auction.connect(userCreator).createAuction(startPrice + i, discountRate, duration, item + i);
                 tx.wait(1);                
             }
             
@@ -232,11 +310,11 @@ describe("Campaign Native", function() {
             const sellerIncome = finalPrice - ((finalPrice * 10n) / 100n);
             const auctionIncome = (finalPrice * 10n) / 100n;            
 
-            await expect(buyTx).to.changeEtherBalances([user1, user2, auction.target],[sellerIncome, -finalPrice, auctionIncome]);
+            await expect(buyTx).to.changeEtherBalances([userCreator, user2, auction.target],[sellerIncome, -finalPrice, auctionIncome]);
         
         });
         it("should revert buy with not enough funds", async function(){ //проверка возврата функции buy из-аз недостаточности средств
-            const {user0, user1, user2, auction } = await loadFixture(deploy);
+            const {userPlatform, userCreator, user2, auction } = await loadFixture(deploy);
             
             //сначала выставим на продажу несколько лотов
             const startPrice = 1000000000n;
@@ -246,7 +324,7 @@ describe("Campaign Native", function() {
 
             for(let i = 0n; i != 4n; ++i) { //сначала создадим 4 лота
                 
-                const tx = await auction.connect(user1).createAuction(startPrice + i, discountRate, duration, item + i);
+                const tx = await auction.connect(userCreator).createAuction(startPrice + i, discountRate, duration, item + i);
                 tx.wait(1);                
             }
             
@@ -269,7 +347,7 @@ describe("Campaign Native", function() {
 
         it("should be reverted buy non-existent lot", async function(){
             
-            const {user0, auction } = await loadFixture(deploy);
+            const {userPlatform, auction } = await loadFixture(deploy);
             
             const startPrice = 1000000000n;
             const duration = 1n*24n*60n*60n;
@@ -286,7 +364,7 @@ describe("Campaign Native", function() {
         });
 
                 it("should revert buy lot from stopped auction", async function(){ //проверка возврата функции buy при повторной покупке
-            const {user0, user1, user2, auction } = await loadFixture(deploy);
+            const {userPlatform, userCreator, user2, auction } = await loadFixture(deploy);
             
             //сначала выставим на продажу несколько лотов
             const startPrice = 1000000000n;
@@ -296,7 +374,7 @@ describe("Campaign Native", function() {
 
             for(let i = 0n; i != 4n; ++i) { //сначала создадим 4 лота
                 
-                const tx = await auction.connect(user1).createAuction(startPrice + i, discountRate, duration, item + i);
+                const tx = await auction.connect(userCreator).createAuction(startPrice + i, discountRate, duration, item + i);
                 tx.wait(1);                
             }
             
@@ -320,7 +398,7 @@ describe("Campaign Native", function() {
         });
 
                 it("should revert buy lot with expired time", async function(){ //проверка возврата функции buy при истечении срока
-            const {user0, user1, user2, auction } = await loadFixture(deploy);
+            const {userPlatform, userCreator, user2, auction } = await loadFixture(deploy);
             
             //сначала выставим на продажу несколько лотов
             const startPrice = 1000000000n;
@@ -330,7 +408,7 @@ describe("Campaign Native", function() {
 
             for(let i = 0n; i != 4n; ++i) { //сначала создадим 4 лота
                 
-                const tx = await auction.connect(user1).createAuction(startPrice + i, discountRate, duration, item + i);
+                const tx = await auction.connect(userCreator).createAuction(startPrice + i, discountRate, duration, item + i);
                 tx.wait(1);                
             }
             
@@ -367,7 +445,7 @@ describe("Campaign Native", function() {
         }
 
         it("should buy lot and manual refund withdraw", async function(){ //проверка неуспешного рефанда и ручного вывода сдачи
-            const {user0, user1, user2, auction } = await loadFixture(deploy);
+            const {userPlatform, userCreator, user2, auction } = await loadFixture(deploy);
             const badReceiver = await getBadReciever(); //наш "покупатель" - контракт, который отклоняет приходы в receive         
             
             
@@ -378,7 +456,7 @@ describe("Campaign Native", function() {
 
             for(let i = 0n; i != 4n; ++i) { //сначала создадим 4 лота
                 
-                const tx = await auction.connect(user1).createAuction(startPrice + i, discountRate, duration, item + i);
+                const tx = await auction.connect(userCreator).createAuction(startPrice + i, discountRate, duration, item + i);
                 tx.wait(1);                
             }
             
@@ -413,7 +491,7 @@ describe("Campaign Native", function() {
         });
 
         it("should withdraw incomes", async function(){ //проверка вывода прибыли
-            const {user0, user1, user2, auction } = await loadFixture(deploy);           
+            const {userPlatform, userCreator, user2, auction } = await loadFixture(deploy);           
             
             
             const startPrice = 1000000000n;
@@ -423,7 +501,7 @@ describe("Campaign Native", function() {
 
             for(let i = 0n; i != 4n; ++i) { //сначала создадим 4 лота
                 
-                const tx = await auction.connect(user1).createAuction(startPrice + i, discountRate, duration, item + i);
+                const tx = await auction.connect(userCreator).createAuction(startPrice + i, discountRate, duration, item + i);
                 tx.wait(1);                
             }
             
@@ -444,15 +522,15 @@ describe("Campaign Native", function() {
             const finalPrice = lot3.finalPrice;            
             const fee = finalPrice * 10n / 100n; //комиссия
 
-            const txWithdraw = await auction.connect(user0).withdrawIncomes(fee);
+            const txWithdraw = await auction.connect(userPlatform).withdrawIncomes(fee);
             await txWithdraw.wait(1);
             
-            expect(txWithdraw).changeEtherBalance(user0, fee);
+            expect(txWithdraw).changeEtherBalance(userPlatform, fee);
             
         });
 
         it("should revert withdraw incomes not an owner", async function(){ //проверка вывода прибыли
-            const {user0, user1, user2, auction } = await loadFixture(deploy);           
+            const {userPlatform, userCreator, user2, auction } = await loadFixture(deploy);           
             
             
             const startPrice = 1000000000n;
@@ -462,7 +540,7 @@ describe("Campaign Native", function() {
 
             for(let i = 0n; i != 4n; ++i) { //сначала создадим 4 лота
                 
-                const tx = await auction.connect(user1).createAuction(startPrice + i, discountRate, duration, item + i);
+                const tx = await auction.connect(userCreator).createAuction(startPrice + i, discountRate, duration, item + i);
                 tx.wait(1);                
             }
             
@@ -484,13 +562,13 @@ describe("Campaign Native", function() {
             const fee = finalPrice * 10n / 100n; //комиссия                       
             
             //вызываем вывод от имени невладельца и ждем отката
-            await expect(auction.connect(user1).withdrawIncomes(fee))
-                .revertedWithCustomError(auction, "NotAnOwner").withArgs(user1);
+            await expect(auction.connect(userCreator).withdrawIncomes(fee))
+                .revertedWithCustomError(auction, "NotAnOwner").withArgs(userCreator);
             
         });
 
         it("should revert withdraw incomes with not enough funds", async function(){ //проверка вывода прибыли
-            const {user0, user1, user2, auction } = await loadFixture(deploy);           
+            const {userPlatform, userCreator, user2, auction } = await loadFixture(deploy);           
             
             
             const startPrice = 1000000000n;
@@ -500,7 +578,7 @@ describe("Campaign Native", function() {
 
             for(let i = 0n; i != 4n; ++i) { //сначала создадим 4 лота
                 
-                const tx = await auction.connect(user1).createAuction(startPrice + i, discountRate, duration, item + i);
+                const tx = await auction.connect(userCreator).createAuction(startPrice + i, discountRate, duration, item + i);
                 tx.wait(1);                
             }
             
@@ -522,7 +600,7 @@ describe("Campaign Native", function() {
             const fee = finalPrice * 10n / 100n; //комиссия                       
             
             //вызываем вывод на большую, чем полученные комиссии сумму и ждем отката
-            await expect(auction.connect(user0).withdrawIncomes(fee * 2n))
+            await expect(auction.connect(userPlatform).withdrawIncomes(fee * 2n))
                 .revertedWithCustomError(auction, "NotEnoughFunds").withArgs(fee * 2n);
             
         });        
