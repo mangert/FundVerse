@@ -5,10 +5,11 @@ import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 import {defaultCampaignArgs} from "./test-helpers"
+import { bigint } from "hardhat/internal/core/params/argumentTypes";
 
 describe("Campaign Native", function() {
     async function deploy() {        
-        const [userPlatform, userCreator, user0] = await ethers.getSigners();
+        const [userPlatform, userCreator, user0, user1, user2] = await ethers.getSigners();
         
           const args: [
                 string, // platformAddress
@@ -26,7 +27,7 @@ describe("Campaign Native", function() {
         const campaign = await campaign_Factory.deploy(...args, {});
         await campaign.waitForDeployment();        
 
-        return { userPlatform, userCreator, user0, campaign }
+        return { userPlatform, userCreator, user0, user1, user2, campaign }
     }
 
     describe("deployment tеsts", function() {
@@ -57,8 +58,11 @@ describe("Campaign Native", function() {
         });     
 
     });
-    describe("contribution test tеsts", function() {
-        it("should possible contribute", async function() { //просто проверяем, что взносы принимаются
+    
+    //тесты на взносы в кампанию
+    describe("contribution tеsts", function() { 
+        //просто проверяем, что взносы принимаются
+        it("should possible contribute", async function() { 
             const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy);        
 
             //пусть будут 3 взноса
@@ -78,8 +82,34 @@ describe("Campaign Native", function() {
             const balance = await ethers.provider.getBalance(campaign.target);       
             expect(balance).equal(raised);               
         });
+        
+        //проверка корректности обработки взносов от нескольких участников
+        it("should possible multi contributes", async function() { 
+            const {userPlatform, userCreator, user0, user1, user2, campaign } = await loadFixture(deploy);        
 
-        it("should refund overgoal contribution", async function() { //проверяем, что взносы принимаются до цели и возвращается сдача
+            //пусть будут 3 взноса
+            const contributions = [100, 1000, 10000];
+            const users = [user0, user1, user2];
+
+            let raised = 0;
+            
+            for(let counter = 0; counter != 3; ++counter) {               
+
+                const tx = await campaign.connect(users[counter])["contribute()"]({value: contributions[counter]});
+                await tx.wait(1);
+                raised += contributions[counter];
+                expect(await campaign.raised()).equal(raised);                
+                expect(tx).changeEtherBalance(users[counter], -contributions[counter]);
+                expect(await campaign.getContribution(users[counter])).equal(contributions[counter]);
+                await expect(tx).to.emit(campaign, "CampaignContribution").withArgs(users[counter], contributions[counter]);            
+            }         
+
+            const balance = await ethers.provider.getBalance(campaign.target);       
+            expect(balance).equal(raised);               
+        });
+
+        //проверяем, что взносы принимаются до цели и возвращается сдача
+        it("should refund overgoal contribution", async function() { 
             const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy);        
 
             //пусть будут 3 взноса внутри суммы
@@ -88,27 +118,52 @@ describe("Campaign Native", function() {
             for(let counter = 0; counter != 3; ++counter) {               
 
                 const tx = await campaign.connect(user0)["contribute()"]({value: contributions[counter]});
-                await tx.wait(1);           
-                
+                await tx.wait(1);                           
             }         
 
             //и еще один, который будет больше, чем остаток, скажем, на 500;
             const accepted = (await campaign.goal()) - (await campaign.raised()); //считаем остаток
             const refund = 500n; //добавляем плюс
-            const overcontribution = accepted + refund; //формируем избыточный взнос
-            
+            const overcontribution = accepted + refund; //формируем избыточный взнос            
             
             const tx =  await campaign.connect(userCreator)["contribute()"]({value: overcontribution});
             await tx.wait(1);            
 
             expect(tx).changeEtherBalance(userCreator, -accepted);
             expect(await campaign.raised()).equal(await campaign.goal());
+            //проверяем события
+            // взнос принят
             await expect(tx).to.emit(campaign, "CampaignContribution").withArgs(userCreator, accepted);            
+            //рефанд отправлен
             await expect(tx).to.emit(campaign, "CampaignRefunded").withArgs(userCreator, refund, ethers.ZeroAddress);            
+            //цель достигнута (смена статуса на Success)
+            await expect(tx).to.emit(campaign, "CampaignStatusChanged").withArgs(0, 4, anyValue);
+            expect(await campaign.status()).equal(4);
+
                       
         });
+        //проверяем, что статус коректктно меняется при донате вровень с целью
+        it("should change status ater complete contribution", async function() { 
+            const {user0, campaign } = await loadFixture(deploy);        
 
-        it("should be reverted uncorrect contribute call", async function() { //проверка отказа в вызове не той перегрузки
+            //определяем сумму взноса как всю цель
+            const amount = await campaign.goal(); 
+            
+            const tx =  await campaign.connect(user0)["contribute()"]({value: amount});
+            await tx.wait(1);            
+
+            expect(tx).changeEtherBalance(user0, -amount);
+            expect(await campaign.raised()).equal(await campaign.goal());
+            
+            //проверяем события
+            // взнос принят
+            await expect(tx).to.emit(campaign, "CampaignContribution").withArgs(user0, amount);                                   
+            //цель достигнута (смена статуса на Success)
+            await expect(tx).to.emit(campaign, "CampaignStatusChanged").withArgs(0, 4, anyValue);
+            expect(await campaign.status()).equal(4);                      
+        });
+        //проверка отказа в вызове не той перегрузки
+        it("should be reverted uncorrect contribute call", async function() { 
             const {userPlatform, campaign } = await loadFixture(deploy );
     
             const amount = 500n;
@@ -116,8 +171,8 @@ describe("Campaign Native", function() {
             await expect(tx).revertedWithCustomError(campaign, "CampaingIncorrertFunction");           
             
         });
-
-        it("should be reverted zero contribute", async function() { //проверка отката нулевого взноса
+        //проверка отката нулевого взноса
+        it("should be reverted zero contribute", async function() { 
             const {user0, campaign } = await loadFixture(deploy );
     
             const amount = 0n;
@@ -126,7 +181,8 @@ describe("Campaign Native", function() {
             
         });
 
-        it("should be reverted donate to unlive campaign", async function() { //проверка отката по некорректному статусу
+        //проверка отката по некорректному статусу
+        it("should be reverted donate to unlive campaign", async function() { 
             const {userCreator, campaign } = await loadFixture(deploy );
     
             //отменяем кампанию -> переводим статус 
@@ -186,6 +242,387 @@ describe("Campaign Native", function() {
             const tx = campaign.connect(user0)["contribute()"]({value: amount});                        
             await expect(tx).revertedWithCustomError(campaign, "CampaingInvalidStatus").withArgs(2, 0);                                    
         });
+
+    });
+    
+    //тесты выводов клиенских средств
+    describe("contributions users' claim tests", function() {
+        //простой тест, что пользователь может вывести свои средства
+        //если кампания ушла в дедлайн и провалилась
+        it("should be possible claim contribute from failed", async function() { 
+            
+            const {user0, user1, campaign } = await loadFixture(deploy );
+    
+            const amount = 500n;
+            const txDonate0 = await campaign.connect(user0)["contribute()"]({value: amount});
+            await txDonate0.wait(1);
+            const txDonate1 = await campaign.connect(user1)["contribute()"]({value: amount * 2n});
+            await txDonate1.wait(1);
+            let balance = await campaign.raised();
+
+            //пропускаем время
+            const now = (await ethers.provider.getBlock("latest"))!.timestamp;
+            const timeToAdd = 60 * 60; // 1 час
+            const futureTime = now + timeToAdd;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [futureTime]);
+            await network.provider.send("evm_mine");            
+            
+            //user0  клеймит взнос            
+            const txWD0 = await campaign.connect(user0).claimContribution();
+            await txWD0.wait(1);
+            balance -= amount;
+            
+            await expect(txWD0).changeEtherBalance(user0, amount);            
+            await expect(txWD0).changeEtherBalance(campaign, -amount);
+            expect(await campaign.getContribution(user0)).equal(0);
+            expect(await campaign.status()).equal(3);
+            
+            //проверяем события
+            // взнос получен
+            await expect(txWD0).to.emit(campaign, "CampaignContributionClaimed").withArgs(user0, amount);                                               
+            //Фиксируем, что кампания провалилась (смена статуса на Failed)
+            await expect(txWD0).to.emit(campaign, "CampaignStatusChanged").withArgs(0, 3, anyValue);            
+
+            //user1  клеймит взнос
+            
+            const txWD1 = await campaign.connect(user1).claimContribution();
+            await txWD1.wait(1);
+            balance -= (2n * amount);
+            
+            await expect(txWD1).changeEtherBalance(user1, 2n * amount);            
+            await expect(txWD1).changeEtherBalance(campaign, -(2n * amount));
+            expect(await campaign.getContribution(user1)).equal(0);            
+            //проверяем, что статус сохранился
+            expect(await campaign.status()).equal(3);                      
+            
+            //проверяем события
+            // взнос получен
+            await expect(txWD1).to.emit(campaign, "CampaignContributionClaimed").withArgs(user1, amount * 2n);                                               
+            
+        });
+
+        //простой тест, что пользователь может вывести свои средства
+        //если кампания отменена
+        it("should be possible claim contribute from cancelled", async function() { 
+            
+            const {userCreator, user0, user1, campaign } = await loadFixture(deploy );
+    
+            const amount = 500n;
+            const txDonate0 = await campaign.connect(user0)["contribute()"]({value: amount});
+            await txDonate0.wait(1);
+            const txDonate1 = await campaign.connect(user1)["contribute()"]({value: amount * 2n});
+            await txDonate1.wait(1);
+            let balance = await campaign.raised();
+
+            //фаундер отменяет кампанию
+            const txCancel = await campaign.connect(userCreator).setCampaignStatus(2);
+            await txCancel.wait(1);
+            expect(await campaign.status()).equal(2);
+            expect(txCancel).to.emit(campaign, "CampaignStatusChanged").withArgs(0, 2, anyValue);
+
+            //user0  клеймит взнос            
+            const txWD0 = await campaign.connect(user0).claimContribution();
+            await txWD0.wait(1);
+            balance -= amount;
+            
+            await expect(txWD0).changeEtherBalance(user0, amount);            
+            await expect(txWD0).changeEtherBalance(campaign, -amount);
+            expect(await campaign.getContribution(user0)).equal(0);
+            expect(await campaign.status()).equal(2);
+            
+            //проверяем события
+            // взнос получен
+            await expect(txWD0).to.emit(campaign, "CampaignContributionClaimed").withArgs(user0, amount);                                                           
+
+            //user1  клеймит взнос            
+            const txWD1 = await campaign.connect(user1).claimContribution();
+            await txWD1.wait(1);
+            balance -= (2n * amount);
+            
+            await expect(txWD1).changeEtherBalance(user1, 2n * amount);            
+            await expect(txWD1).changeEtherBalance(campaign, -(2n * amount));
+            expect(await campaign.getContribution(user1)).equal(0);
+            //проверяем, что статус сохранился
+            expect(await campaign.status()).equal(2);
+            
+            //проверяем события
+            // взнос получен
+            await expect(txWD1).to.emit(campaign, "CampaignContributionClaimed").withArgs(user1, amount * 2n);
+        });
+
+        //проверяем, что пользователь может вывести свои средства
+        //если кампания приостановленная кампания ушла в дедлайн и провалилась
+        it("should be possible claim contribute from failed", async function() { 
+            
+            const {userCreator, user0, user1, campaign } = await loadFixture(deploy );
+    
+            const amount = 500n;
+            const txDonate0 = await campaign.connect(user0)["contribute()"]({value: amount});
+            await txDonate0.wait(1);
+            const txDonate1 = await campaign.connect(user1)["contribute()"]({value: amount * 2n});
+            await txDonate1.wait(1);
+            let balance = await campaign.raised();
+
+            //приостанавливаем кампанию
+            const txStop = await campaign.connect(userCreator).setCampaignStatus(1);
+
+            //проверяем, что сейчас пользователь не может вывести взнос
+            const txWDStopped = campaign.connect(user0).claimContribution();
+            await expect(txWDStopped).revertedWithCustomError(campaign, "CampaingInvalidStatus").withArgs(1, 3);
+            
+            //пропускаем время
+            const now = (await ethers.provider.getBlock("latest"))!.timestamp;
+            const timeToAdd = 60 * 60; // 1 час
+            const futureTime = now + timeToAdd;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [futureTime]);
+            await network.provider.send("evm_mine");            
+            
+            //user0  клеймит взнос            
+            const txWD0 = await campaign.connect(user0).claimContribution();
+            await txWD0.wait(1);
+            balance -= amount;
+            
+            await expect(txWD0).changeEtherBalance(user0, amount);            
+            await expect(txWD0).changeEtherBalance(campaign, -amount);
+            expect(await campaign.getContribution(user0)).equal(0);
+            expect(await campaign.status()).equal(3);
+            
+            //проверяем события
+            // взнос получен
+            await expect(txWD0).to.emit(campaign, "CampaignContributionClaimed").withArgs(user0, amount);                                               
+            //Фиксируем, что кампания провалилась (смена статуса на Failed)
+            await expect(txWD0).to.emit(campaign, "CampaignStatusChanged").withArgs(1, 3, anyValue);            
+
+            //user1  клеймит взнос
+            
+            const txWD1 = await campaign.connect(user1).claimContribution();
+            await txWD1.wait(1);
+            balance -= (2n * amount);
+            
+            await expect(txWD1).changeEtherBalance(user1, 2n * amount);            
+            await expect(txWD1).changeEtherBalance(campaign, -(2n * amount));
+            expect(await campaign.getContribution(user1)).equal(0);            
+            //проверяем, что статус сохранился
+            expect(await campaign.status()).equal(3);                      
+            
+            //проверяем события
+            // взнос получен
+            await expect(txWD1).to.emit(campaign, "CampaignContributionClaimed").withArgs(user1, amount * 2n);                                         
+            
+        });
+        
+        //отрицательные тесты
+        //проверяем, что невозможно вывести взнос из живой кампании
+        it("should be reverted claim contribute from Alive", async function() { 
+            
+            const {userCreator, user0, user1, campaign } = await loadFixture(deploy );
+    
+            const amount = 500n;
+            const txDonate0 = await campaign.connect(user0)["contribute()"]({value: amount});
+            await txDonate0.wait(1);                        
+            
+            expect(await campaign.status()).equal(0);
+            
+            //user0  клеймит взнос            
+            const txWD0 = campaign.connect(user0).claimContribution();
+            
+            await expect(txWD0).revertedWithCustomError(campaign, "CampaingInvalidStatus").withArgs(0, 3);            
+            expect(await campaign.getContribution(user0)).equal(amount);
+            expect(await campaign.status()).equal(0);
+        });
+
+        //проверяем, что невозможно вывести взнос из завершенной успешной кампании
+        it("should be reverted claim contribute from Successful", async function() { 
+            
+            const {userCreator, user0, user1, campaign } = await loadFixture(deploy );
+    
+            const amount = 500n;
+            const txDonate0 = await campaign.connect(user0)["contribute()"]({value: amount});
+            await txDonate0.wait(1);
+            
+            const restAmount = await campaign.goal() - amount;
+            
+            const txDonate1 = await campaign.connect(user1)["contribute()"]({value: restAmount});
+            expect(await campaign.status()).equal(4);
+            
+            //user0  клеймит взнос            
+            const txWD0 = campaign.connect(user0).claimContribution();
+            
+            await expect(txWD0).revertedWithCustomError(campaign, "CampaingInvalidStatus").withArgs(4, 3);            
+            expect(await campaign.getContribution(user0)).equal(amount);
+            expect(await campaign.status()).equal(4);
+        });
+
+
+        it("should be reverted claim contribute twice", async function() { 
+            
+            const {userCreator, user0, user1, campaign } = await loadFixture(deploy );
+    
+            const amount = 500n;
+            const txDonate0 = await campaign.connect(user0)["contribute()"]({value: amount});
+            await txDonate0.wait(1);
+            
+            let balance = await campaign.raised();
+            
+            //фаундер отменяет кампанию (чтобы время не мотать, так проще)
+            const txCancel = await campaign.connect(userCreator).setCampaignStatus(2);
+            expect(await campaign.status()).equal(2);
+            
+            //user0  клеймит взнос первый раз
+            const txWD0 = await campaign.connect(user0).claimContribution();
+            expect(await campaign.getContribution(user0)).equal(0);
+
+            //и вызывает функцию заново
+            const txWDR = campaign.connect(user0).claimContribution();            
+            await expect(txWDR).revertedWithCustomError(campaign, "CampaingZeroWithdraw").withArgs(user0.address);            
+            
+        });
+    });
+
+    describe("creator's withdraw tеsts", function() { //тесты вывода фондов фаундером
+        //вспомогательная фунция для расчета комиссии
+        async function getFee(campaign : any) : Promise<bigint> {
+            const fee : bigint  = ((await campaign.goal() * 1000n) * await campaign.platformFee()) / (1000_000n)
+            return fee;
+        }
+        //простой тест на вывод средств из успешной кампании
+        it("should possible withdraw funds", async function() { 
+            const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy );
+    
+            //переводим деньги до цели
+            const goal = await campaign.goal();
+            const txContribute = await campaign["contribute()"]({value:goal});
+            await txContribute.wait(1);
+            //на всякий случай проверим статус кампании - должен быть успешный
+            expect(await campaign.status()).equal(4);
+
+            //рассчитаем комиссию руками
+            const fee =  await getFee(campaign);
+            const fund = goal - fee;
+
+            //пробуем вывести
+            const txWD = await campaign.connect(userCreator).withdrawFunds();
+            await expect(txWD).changeEtherBalances(
+                [userPlatform, userCreator, campaign], 
+                [fee, fund, -goal]);
+            //проверяем события
+            await expect(txWD).to.emit(campaign, "CampaignFeePayed").withArgs(userPlatform, fee);
+            await expect(txWD).to.emit(campaign, "CampaignFundsClaimed").withArgs(userCreator, fund);
+            
+        });
+        //проверяем, что нельзя вывести два раза
+        it("should reverted double withdraw funds", async function() { 
+            const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy );
+    
+            //переводим деньги до цели
+            const goal = await campaign.goal();
+            const txContribute = await campaign["contribute()"]({value:goal});
+            await txContribute.wait(1);
+            //на всякий случай проверим статус кампании - должен быть успешный
+            expect(await campaign.status()).equal(4);
+            
+            //пробуем вывести
+            const txWD = await campaign.connect(userCreator).withdrawFunds();
+
+            //и еще раз
+            const txWD2 = campaign.connect(userCreator).withdrawFunds();
+
+            await expect(txWD2).revertedWithCustomError(campaign, "CampaingZeroWithdraw").withArgs(userCreator);            
+        });
+
+        //проверяем, что нельзя вывести из "живой" кампании
+        it("should reverted withdraw funds from alive", async function() { 
+            const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy);
+    
+            //переводим деньги до цели
+            const amount = 500n;
+            const txContribute = await campaign["contribute()"]({value:amount});
+            await txContribute.wait(1);
+            
+            
+            //пробуем вывести
+            const txWD =  campaign.connect(userCreator).withdrawFunds();
+
+            await expect(txWD).revertedWithCustomError(campaign, "CampaingInvalidStatus").withArgs(0, 4);            
+        });
+
+        //проверяем, что нельзя вывести из отмененной кампании
+        it("should reverted withdraw funds from cancelled", async function() { 
+            const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy);
+    
+            //переводим деньги до цели
+            const amount = 500n;
+            const txContribute = await campaign["contribute()"]({value:amount});
+            await txContribute.wait(1);
+            //отменяем кампанию
+            await campaign.connect(userCreator).setCampaignStatus(2);            
+            
+            //пробуем вывести
+            const txWD =  campaign.connect(userCreator).withdrawFunds();
+
+            await expect(txWD).revertedWithCustomError(campaign, "CampaingInvalidStatus").withArgs(2, 4);            
+        });
+
+        //проверяем, что нельзя вывести из остановленной кампании
+        it("should reverted withdraw funds from stopped", async function() { 
+            const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy);
+    
+            //переводим деньги до цели
+            const amount = 500n;
+            const txContribute = await campaign["contribute()"]({value:amount});
+            await txContribute.wait(1);
+            //останавливаем кампанию
+            await campaign.connect(userCreator).setCampaignStatus(1);            
+            
+            //пробуем вывести
+            const txWD =  campaign.connect(userCreator).withdrawFunds();
+
+            await expect(txWD).revertedWithCustomError(campaign, "CampaingInvalidStatus").withArgs(1, 4);            
+        });
+
+        //проверяем, что нельзя вывести из неуспешной кампании
+        it("should reverted withdraw funds from failed", async function() { 
+            const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy);
+    
+            //переводим деньги до цели
+            const amount = 500n;
+            const txContribute = await campaign["contribute()"]({value:amount});
+            await txContribute.wait(1);
+            
+            //пропускаем время
+            const now = (await ethers.provider.getBlock("latest"))!.timestamp;
+            const timeToAdd = 60 * 60; // 1 час
+            const futureTime = now + timeToAdd;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [futureTime]);
+            await network.provider.send("evm_mine");
+            
+            const changeStatusTX = (await campaign.checkDeadlineStatus()).wait(1);
+            await expect(changeStatusTX).to.emit(campaign, "CampaignStatusChanged").withArgs(0, 3, anyValue);            
+            //пробуем вывести
+            const txWD =  campaign.connect(userCreator).withdrawFunds();
+
+            await expect(txWD).revertedWithCustomError(campaign, "CampaingInvalidStatus").withArgs(3, 4);            
+        });
+
+        //проверяем, что не может вывести кто попало
+        it("should reverted withdraw funds without access", async function() { 
+            const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy );
+    
+            //переводим деньги до цели
+            const goal = await campaign.goal();
+            const txContribute = await campaign["contribute()"]({value:goal});
+            await txContribute.wait(1);
+            //на всякий случай проверим статус кампании - должен быть успешный
+            expect(await campaign.status()).equal(4);
+            
+            //пробуем вывести от имени левого юзера
+            const txWD = campaign.connect(user0).withdrawFunds();           
+
+            await expect(txWD).revertedWithCustomError(campaign, "CampaingUnauthorizedAccount").withArgs(user0);                       
+        });  
 
     });
 

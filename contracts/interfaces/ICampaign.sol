@@ -185,7 +185,11 @@ interface ICampaign {
     /// @notice идентификатор
     function Id() external view returns (uint32);
 
-    /// @notice Текущий собранный баланс
+    /// @notice Общая сумма средств, внесённых в кампанию за всё время.
+    /// @dev Значение не уменьшается при возврате вкладов или выводе средств фаундером.
+    /// Используется исключительно для определения достижения цели (`goal`) и смены статуса.
+    /// Актуальный баланс кампании можно получить через `address(this).balance` для эфира
+    /// или `token.balanceOf(address(this))` для токенов.
     function raised() external view returns (uint128);
 
     /// @notice статус кампании

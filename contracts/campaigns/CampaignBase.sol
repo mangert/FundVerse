@@ -28,7 +28,8 @@ abstract contract CampaignBase is ICampaign {
     /// @notice идентификатор
     uint32 public immutable Id; 
 
-    /// @notice Текущий собранный баланс
+    /// @notice Общая сумма средств, внесённых в кампанию за всё время.
+    /// @dev Значение не уменьшается при возврате вкладов или выводе средств фаундером.
     uint128 public raised; //собрано - wei / decimals
     
     /// @notice статус кампании
@@ -111,7 +112,7 @@ abstract contract CampaignBase is ICampaign {
                 deadline,
                 campaignMeta,
                 status
-            );        
+            );       
     }
     
     /// @notice узнать сумму взносов инвестора
@@ -140,7 +141,7 @@ abstract contract CampaignBase is ICampaign {
     } 
 
     //общие функции по выводу средств
-    /// @notice затребовать взнос с провалившейстя или отмененной кампании
+    /// @notice затребовать взнос с провалившейся или отмененной кампании
     function claimContribution()  external override {
 
         checkDeadlineStatus(); //актуализируем статус по дедлайну, если необходимо      
@@ -166,14 +167,12 @@ abstract contract CampaignBase is ICampaign {
         //сначала проверяем статус
         require(status == Status.Successful, CampaingInvalidStatus(status, Status.Successful));
         //проверяем, есть ли фонды, которые можно перевести
-        uint256 fund = raised;
+        uint256 fund = _balanceOf();
         require(fund > 0, CampaingZeroWithdraw(msg.sender));
         
         uint256 fee = ((fund * 1000) * platformFee) / (1000_000);
         uint256 withdrawnAmount = fund - fee;
 
-        //обнуляем баланс
-        raised = 0;
         //переводим сначала комиссию
         if(_transferTo(platformAddress, fee)){
             emit CampaignFeePayed(platformAddress, fee);
@@ -184,10 +183,10 @@ abstract contract CampaignBase is ICampaign {
 
         //теперь переводим себе
         if(_transferTo(creator, withdrawnAmount)){
-            emit CampaignFundsClaimed(creator, fund);
+            emit CampaignFundsClaimed(creator, withdrawnAmount);
         }
         else{
-            emit CampaignFundsDeffered(creator, fund);
+            emit CampaignFundsDeffered(creator, withdrawnAmount);
         }
     }
 
@@ -231,11 +230,12 @@ abstract contract CampaignBase is ICampaign {
     function checkDeadlineStatus() public virtual {
     
         Status previous = status;
-        if (status == Status.Live && block.timestamp >= deadline) {
-            status = raised >= goal ? Status.Successful : Status.Failed;
-            emit CampaignStatusChanged(previous, status, block.timestamp);
+        if ((status == Status.Live || status == Status.Stopped) &&            
+            block.timestamp >= deadline
+            ) {
+                status = raised >= goal ? Status.Successful : Status.Failed;
+                emit CampaignStatusChanged(previous, status, block.timestamp);
         }
-
     }
 
     /**
@@ -245,5 +245,12 @@ abstract contract CampaignBase is ICampaign {
      * @param amount сумма перевода
      */
     function _transferTo(address recipient, uint256 amount) internal virtual returns (bool);
+
+    /**
+     * @notice служебная функция для получения баланса контракта
+     * @dev реализация зависит от валюты, обязательно переопределять в наследниках
+     * @return возращает баланс сбора 
+     */
+    function _balanceOf() internal virtual view returns(uint256);
 
 }

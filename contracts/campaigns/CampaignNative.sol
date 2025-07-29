@@ -38,7 +38,7 @@ contract CampaignNative is ICampaign, CampaignBase {
     }
 
     /// @notice Внести средства (ETH - cчитаем в wei)
-    function contribute() external payable checkState { //здесь модификатор поправила
+    function contribute() external payable checkState {
         
         address contributor = msg.sender;
 
@@ -101,6 +101,12 @@ contract CampaignNative is ICampaign, CampaignBase {
                 emit CampaignTrasferFailed(msg.sender, amount, address(0));
             }
         return success;
+    }
+    /**
+     * @notice служебная функция для получения баланса     
+    */
+    function _balanceOf() internal override view returns(uint256) {
+        return address(this).balance;
     }
 
     receive() external payable {
