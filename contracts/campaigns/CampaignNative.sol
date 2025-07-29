@@ -101,13 +101,7 @@ contract CampaignNative is ICampaign, CampaignBase {
                 emit CampaignTrasferFailed(msg.sender, amount, address(0));
             }
         return success;
-    }
-    /**
-     * @notice служебная функция для получения баланса     
-    */
-    function _balanceOf() internal override view returns(uint256) {
-        return address(this).balance;
-    }
+    } 
 
     receive() external payable {
         revert CampaignIncorrectCall(msg.sender, msg.value, "");

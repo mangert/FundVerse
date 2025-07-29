@@ -152,10 +152,16 @@ interface ICampaign {
     error CampaingZeroDonation(address investor);    
 
     /**
-     * @notice индицирует нулевую сумму вывода
-     * @param recipient адрес получателя
+     * @notice индицирует нулевую сумму вывода 
+     * @param recipient адрес вносителя
      */
     error CampaingZeroWithdraw(address recipient);    
+    
+    /**
+     * @notice индицирует попытку повторного вывода средств фаундером
+     * @param recipient адрес получателя
+     */
+    error CampaingTwiceWithdraw(address recipient);    
 
     /**
      * @notice индицирует ошибку вывода "зависших" платежей     

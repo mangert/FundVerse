@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "./../campaigns/CampaignNative.sol";
-import "./../interfaces/ICampaign.sol";
+import "../campaigns/CampaignNative.sol";
+import "../interfaces/ICampaign.sol";
 
 /**
  * @title BadReceiver  
@@ -19,17 +19,17 @@ contract BadReceiver {
     function  getBalance() external view returns(uint256) { //возвращаем баланс
         return address(this).balance;
     }    
-    /*
+    
     /**
      * @notice функция для вывода зависшей сдачи с контракта-аукциона
-     * @param myContract - адрес контракта
-    
-    function callWithdrawRefund(address myContract) external payable {
+     * @param campaign - адрес контракта
+    */
+    function callClaimPendingFunds(address campaign) external payable {
         
-        (bool success, ) = myContract.call(abi.encodeCall(ICampaign.withdrawPending, ()));
+        (bool success, ) = campaign.call(abi.encodeCall(ICampaign.claimPendingFunds, ()));
         require(success, "Withdraw error");        
     }
-
+    /*
     /**
      * @notice функция для вывода дохода владельцем
      * @param auction - адрес контракта
@@ -40,18 +40,22 @@ contract BadReceiver {
         (bool success, ) = auction.call(abi.encodeCall(Auction.withdrawIncomes, (amount)));
         require(success, "Withdraw error");        
     }
-
-    /**
-     * @notice функция для вызова покупки в контракте-аукционе
-     * @param auction - адрес аукциона
-     * @param price - цена, за которую покупаем
-     * @param index - идентификатор покупаемого лота
+    */
     
-    function callBuy(address auction, uint256 price, uint256 index) external {
-        
-        (bool success, ) = auction.call{ value: price }(abi.encodeCall(Auction.buy,(index)));
-        require(success, "Buy error");        
-    }
+    /**
+     * @notice функция для вызова функции отправки взноса
+     * @param campaign - адрес кампании
+     * @param amount - сумма взноса
+    */    
+    function callContribute(address campaign, uint256 amount) external {
+
+        (bool success, ) = campaign.call{ value: amount }(
+            abi.encodeWithSignature("contribute()")
+            );
+        require(success, "Donation Error");
+    }      
+
+    /*
 
     /**
      * @notice функция установки возможности получения контрактом средств

@@ -1,11 +1,8 @@
-import { dropTransaction } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 import { loadFixture, ethers, expect } from "./setup";
 import { network } from "hardhat";
-import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-
 import {defaultCampaignArgs} from "./test-helpers"
-import { bigint } from "hardhat/internal/core/params/argumentTypes";
+
 
 describe("Campaign Native", function() {
     async function deploy() {        
@@ -482,11 +479,7 @@ describe("Campaign Native", function() {
     });
 
     describe("creator's withdraw tеsts", function() { //тесты вывода фондов фаундером
-        //вспомогательная фунция для расчета комиссии
-        async function getFee(campaign : any) : Promise<bigint> {
-            const fee : bigint  = ((await campaign.goal() * 1000n) * await campaign.platformFee()) / (1000_000n)
-            return fee;
-        }
+        
         //простой тест на вывод средств из успешной кампании
         it("should possible withdraw funds", async function() { 
             const {userPlatform, userCreator, user0, campaign } = await loadFixture(deploy );
@@ -499,7 +492,7 @@ describe("Campaign Native", function() {
             expect(await campaign.status()).equal(4);
 
             //рассчитаем комиссию руками
-            const fee =  await getFee(campaign);
+            const fee : bigint  = ((await campaign.goal() * 1000n) * await campaign.platformFee()) / (1000_000n);
             const fund = goal - fee;
 
             //пробуем вывести
@@ -529,7 +522,7 @@ describe("Campaign Native", function() {
             //и еще раз
             const txWD2 = campaign.connect(userCreator).withdrawFunds();
 
-            await expect(txWD2).revertedWithCustomError(campaign, "CampaingZeroWithdraw").withArgs(userCreator);            
+            await expect(txWD2).revertedWithCustomError(campaign, "CampaingTwiceWithdraw").withArgs(userCreator);            
         });
 
         //проверяем, что нельзя вывести из "живой" кампании
@@ -623,6 +616,95 @@ describe("Campaign Native", function() {
 
             await expect(txWD).revertedWithCustomError(campaign, "CampaingUnauthorizedAccount").withArgs(user0);                       
         });  
+
+    });
+    
+    //тестируем зависание и вывод "зависших" средств
+    describe("pending withdraw tеsts", function() {
+        //вспомогательная функция создания "сбоящего" получателя средств
+        async function getBadReciever() { 
+
+            const badReceiverFactory = await ethers.getContractFactory("BadReceiver");
+            const badReceiver = await badReceiverFactory.deploy();            
+            await badReceiver.waitForDeployment();
+
+            const [sender] = await ethers.getSigners();            
+
+            //пускай на контракте будут средства - 1 эфир
+            const tx = await badReceiver.connect(sender).getTransfer({value: ethers.parseEther("1.0")})                         
+
+            return badReceiver;
+        }
+        //проверяем, накапливаются ли рефанды в pending withdraw и можно ли их потом вывести
+        //то есть проверяем contribute + withdrawPending
+        it("should be possible withraw pending refunds", async function() { 
+            const {user0, campaign } = await loadFixture(deploy); 
+            
+            //наш "жертвователь" - контракт, который отклоняет приходы в receive         
+            const badReceiver = await getBadReciever(); 
+            
+            //сначала просто задонатим, чтобы не 0 был
+            const amount0 = 500n; 
+            const txContribute = await campaign["contribute()"]({value:amount0});          
+            
+            //теперь будем переводить деньги от "плохого" контаркта
+            const contribution = await campaign.goal(); //не вычитаем уже накопленное
+            const refund = amount0; //поэтому сдача будет равна первоначальному взносу
+            const txDonate0 = await badReceiver.callContribute(campaign, contribution);
+            await txDonate0.wait();
+
+            expect(await campaign.getContribution(badReceiver)).equal(contribution - refund);
+            expect(await campaign.getPendingFunds(badReceiver)).equal(amount0);
+            await expect(txDonate0).to.emit(campaign, "CampaignContribution").withArgs(badReceiver, contribution - refund);
+            await expect(txDonate0).to.emit(campaign, "CampaignTrasferFailed").withArgs(badReceiver, refund, ethers.ZeroAddress);
+            
+            const txWD0 = badReceiver.callClaimPendingFunds(campaign);
+            await expect(txWD0).to.be.reverted;
+            
+            //как пробросить ошибку из вызываемой функции? Возможно, никак
+            /*await expect(txWD0).revertedWithCustomError(campaign, "CampaignPendingWithdrawFailed")
+                .withArgs(badReceiver, refund, ethers.ZeroAddress);            */
+
+            //переключаем флаг, чтобы можно было получать средства
+            await badReceiver.setRevertFlag(true);
+            //сделать ли событие успешного клейма?
+            const txWD1 = await badReceiver.callClaimPendingFunds(campaign);                            
+            await expect(await campaign.getPendingFunds(badReceiver)).equal(0);
+        });
+    
+        it("should revert setting status without access", async function() {
+            
+            
+        });     
+
+    });         
+    //разные тесты
+    describe("other functions tеsts", function() {
+        //проверяем геттеры
+        it("should get correct info", async function() { 
+            const { campaign } = await loadFixture(deploy); 
+            
+            const summary = await campaign.getSummary();
+
+            expect(summary[0]).to.equal(await campaign.creator());
+            expect(summary[1]).to.equal(await campaign.campaignName());
+            expect(summary[2]).to.equal(await campaign.Id());
+            expect(summary[3]).to.equal(await campaign.token());
+            expect(summary[4]).to.equal(await campaign.goal());
+            expect(summary[5]).to.equal(await campaign.raised());
+            expect(summary[6]).to.equal(await campaign.deadline());
+            expect(summary[7]).to.equal(await campaign.campaignMeta());
+            expect(summary[8]).to.equal(await campaign.status());
+
+        });
+    
+        it("should revert setting status without access", async function() {
+            const {user0, campaign } = await loadFixture(deploy );
+    
+            const txChangeStatus = campaign.connect(user0).setCampaignStatus(2);
+            await expect(txChangeStatus).revertedWithCustomError(campaign, "CampaingUnauthorizedAccount").withArgs(user0);
+            
+        });     
 
     });
 

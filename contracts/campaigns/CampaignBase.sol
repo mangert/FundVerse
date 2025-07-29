@@ -34,6 +34,9 @@ abstract contract CampaignBase is ICampaign {
     
     /// @notice статус кампании
     Status public status; 
+
+    /// @notice внутренний флаг, что фаундер еще не выводил средства
+    bool internal founderWithdrawn;
     /// @notice имя
     string public campaignName;
     /// @notice JSON-метаданные (описание + документы/IPFS)   
@@ -167,8 +170,10 @@ abstract contract CampaignBase is ICampaign {
         //сначала проверяем статус
         require(status == Status.Successful, CampaingInvalidStatus(status, Status.Successful));
         //проверяем, есть ли фонды, которые можно перевести
-        uint256 fund = _balanceOf();
-        require(fund > 0, CampaingZeroWithdraw(msg.sender));
+        uint256 fund = raised;
+        //теперь проверим, не повторный ли это вывод
+        require(!founderWithdrawn, CampaingTwiceWithdraw(msg.sender));
+        founderWithdrawn = true;
         
         uint256 fee = ((fund * 1000) * platformFee) / (1000_000);
         uint256 withdrawnAmount = fund - fee;
@@ -244,13 +249,6 @@ abstract contract CampaignBase is ICampaign {
      * @param recipient получатель
      * @param amount сумма перевода
      */
-    function _transferTo(address recipient, uint256 amount) internal virtual returns (bool);
-
-    /**
-     * @notice служебная функция для получения баланса контракта
-     * @dev реализация зависит от валюты, обязательно переопределять в наследниках
-     * @return возращает баланс сбора 
-     */
-    function _balanceOf() internal virtual view returns(uint256);
+    function _transferTo(address recipient, uint256 amount) internal virtual returns (bool);  
 
 }
