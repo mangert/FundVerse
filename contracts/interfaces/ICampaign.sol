@@ -60,42 +60,50 @@ interface ICampaign {
      * @param recipient адрес получателя
      * @param amount полученная сумма
      */
-    event CampaignContributionClaimed(address recipient, uint256 amount);
+    event CampaignContributionClaimed(address indexed recipient, uint256 amount);
 
     /**
      * @notice порождается, когда инвестор запросил с контракта средства, но перевод "завис" (перешел в pendingWithdraw)
      * @param recipient адрес получателя
      * @param amount запросшенная сумма
      */
-    event CampaignContributionDeffered(address recipient, uint256 amount);
+    event CampaignContributionDeffered(address indexed recipient, uint256 amount);
 
     /**
      * @notice порождается, когда фаундер успешно получил с контракта средства
      * @param recipient адрес получателя
      * @param amount полученная сумма
      */
-    event CampaignFundsClaimed(address recipient, uint256 amount);
+    event CampaignFundsClaimed(address indexed recipient, uint256 amount);
 
     /**
      * @notice порождается, когда фаудер запросил с контракта средства, но перевод "завис" (перешел в pendingWithdraw)
      * @param recipient адрес получателя
      * @param amount запросшенная сумма
      */
-    event CampaignFundsDeffered(address recipient, uint256 amount);
+    event CampaignFundsDeffered(address indexed recipient, uint256 amount);
 
     /**
      * @notice порождается, когда фаундер успешно отправил комиссию платформы
      * @param recipient адрес получателя
      * @param amount полученная сумма
      */
-    event CampaignFeePayed(address recipient, uint256 amount);
+    event CampaignFeePayed(address indexed recipient, uint256 amount);
 
     /**
      * @notice порождается, когда фаудер отправил платформе комиссию, но перевод "завис" (перешел в pendingWithdraw)
      * @param recipient адрес получателя
      * @param amount запросшенная сумма
      */
-    event CampaignFeeDeffered(address recipient, uint256 amount);
+    event CampaignFeeDeffered(address indexed recipient, uint256 amount);
+
+    /**
+     * @notice порождается, когда пользователь успешно забрал "зависшие" средства
+     * @param recipient адрес получателя
+     * @param amount забранная сумма
+     */
+    event PendingFundsClaimed(address indexed recipient, uint256 amount);
+
 
     //ошибки
     /**

@@ -30,3 +30,19 @@ export function defaultCampaignArgs(overrides = {}, platformAddr : string, creat
         merged.platformFee        
     ];   
 }
+
+//хелперы для тестов контракта-кампании в обеих версиях
+//вспомогательная функция создания "сбоящего" получателя средств
+export async function getBadReciever() { 
+
+    const badReceiverFactory = await ethers.getContractFactory("BadReceiver");
+    const badReceiver = await badReceiverFactory.deploy();            
+    await badReceiver.waitForDeployment();
+
+    const [sender] = await ethers.getSigners();            
+
+    //пускай на контракте будут средства - 1 эфир
+    const tx = await badReceiver.connect(sender).getTransfer({value: ethers.parseEther("1.0")})                         
+
+    return badReceiver;
+}

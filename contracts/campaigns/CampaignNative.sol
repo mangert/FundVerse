@@ -84,6 +84,8 @@ contract CampaignNative is ICampaign, CampaignBase {
 
         pendingWithdrawals[recipient] = 0; //обнуляем баланс
 
+        emit PendingFundsClaimed(recipient, amount);
+
         (bool success, ) = recipient.call{value: amount}("");
         require(success, CampaignPendingWithdrawFailed(recipient, amount, address(0)));
     }          

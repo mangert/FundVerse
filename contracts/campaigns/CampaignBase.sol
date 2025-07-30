@@ -42,8 +42,8 @@ abstract contract CampaignBase is ICampaign {
     /// @notice JSON-метаданные (описание + документы/IPFS)   
     string public campaignMeta; 
 
-    mapping(address investor => uint256 value) donates; //хранилище для вкладов участников
-    mapping (address recipient => uint256 value) pendingWithdrawals; //хранилище для "зависших" сумм
+    mapping(address investor => uint256 value) internal donates; //хранилище для вкладов участников
+    mapping (address recipient => uint256 value) internal pendingWithdrawals; //хранилище для "зависших" сумм
 
     //модификаторы 
     /**
