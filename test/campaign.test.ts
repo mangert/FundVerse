@@ -37,7 +37,7 @@ describe("Campaign Native", function() {
             //и проверим, правильно ли установились поля
             expect (await campaign.creator()).equal(args[1]);
             expect (await campaign.campaignName()).equal(args[2]);
-            expect (await campaign.Id()).equal(args[3]);
+            expect (await campaign.id()).equal(args[3]);
             expect (await campaign.goal()).equal(args[4]);
             expect (await campaign.deadline()).to.be.closeTo(args[5], 1);
             expect (await campaign.campaignMeta()).equal(args[6]);
@@ -767,7 +767,7 @@ describe("Campaign Native", function() {
 
             expect(summary[0]).to.equal(await campaign.creator());
             expect(summary[1]).to.equal(await campaign.campaignName());
-            expect(summary[2]).to.equal(await campaign.Id());
+            expect(summary[2]).to.equal(await campaign.id());
             expect(summary[3]).to.equal(await campaign.token());
             expect(summary[4]).to.equal(await campaign.goal());
             expect(summary[5]).to.equal(await campaign.raised());

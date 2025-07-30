@@ -2,11 +2,13 @@
 pragma solidity ^0.8.30;
 
 import "../interfaces/ICampaign.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
 /**
  * @title Абстрактный контракт для кампаний
  * @notice содержит общую часть (хранилище, типы, модификаторы, функции, которые не зависят от валюты) 
  */
-abstract contract CampaignBase is ICampaign {    
+abstract contract CampaignBase is ICampaign, ReentrancyGuard {    
     
     //хранилище данных 
     /// @notice адрес платформы краудфандинга (для получения комиссии)
@@ -26,7 +28,7 @@ abstract contract CampaignBase is ICampaign {
     /// @notice срок
     uint32 public immutable deadline;
     /// @notice идентификатор
-    uint32 public immutable Id; 
+    uint32 public immutable id; 
 
     /// @notice Общая сумма средств, внесённых в кампанию за всё время.
     /// @dev Значение не уменьшается при возврате вкладов или выводе средств фаундером.
@@ -59,7 +61,7 @@ abstract contract CampaignBase is ICampaign {
      */
     modifier checkState() {                        
         require(status == Status.Live, CampaingInvalidStatus(status, Status.Live));
-        require(block.timestamp < deadline, CampaingTimeExpired(deadline, block.timestamp));        
+        require(block.timestamp < deadline, CampaingTimeExpired(deadline, block.timestamp)); // timestamp manipulation not critical here       
         _;
     }   
 
@@ -67,7 +69,7 @@ abstract contract CampaignBase is ICampaign {
         address _platformAddress,        
         address _creator,
         string memory _campaignName,
-        uint32 _Id,
+        uint32 _id,
         uint128 _goal,
         uint32 _deadline,
         string memory _campaignMeta,
@@ -77,7 +79,7 @@ abstract contract CampaignBase is ICampaign {
         platformAddress= _platformAddress;
         creator = _creator;
         campaignName = _campaignName;
-        Id = _Id;
+        id = _id;
         goal = _goal;
         deadline = _deadline;
         campaignMeta = _campaignMeta;
@@ -97,7 +99,7 @@ abstract contract CampaignBase is ICampaign {
         returns (
             address _creator,
             string memory _campaignName,
-            uint32 _Id,
+            uint32 _id,
             address _token, // 0x0 для ETH
             uint128 _goal,
             uint128 _raised,
@@ -108,7 +110,7 @@ abstract contract CampaignBase is ICampaign {
             return(
                 creator, 
                 campaignName, 
-                Id,
+                id,
                 token, // 0x0 для ETH
                 goal,
                 raised,
@@ -129,7 +131,7 @@ abstract contract CampaignBase is ICampaign {
     }
     
     /// @notice техническая функция - расшифровывает значение статуса словами
-    function getStatusName(Status _status) external pure virtual returns(string memory) {
+    function getStatusName(Status numStatus) external pure virtual returns(string memory) {
         
         string [5] memory  statuses = [
             "Live",
@@ -138,14 +140,14 @@ abstract contract CampaignBase is ICampaign {
             "Failed",       
             "Successful"    
         ];
-        uint8 index = uint8(_status);
-        require(statuses.length > index, CampaignUnknownStatus(_status));
+        uint8 index = uint8(numStatus);
+        require(statuses.length > index, CampaignUnknownStatus(numStatus));
         return statuses[index];
     } 
 
     //общие функции по выводу средств
     /// @notice затребовать взнос с провалившейся или отмененной кампании
-    function claimContribution()  external override {
+    function claimContribution()  external nonReentrant override {
 
         checkDeadlineStatus(); //актуализируем статус по дедлайну, если необходимо      
         address recipient = msg.sender;
@@ -165,7 +167,7 @@ abstract contract CampaignBase is ICampaign {
     }
     /// @notice функция для владельца    
     /// @notice Забрать средства фаундером (если условия выполнены)
-    function withdrawFunds() external onlyCreator {
+    function withdrawFunds() external nonReentrant onlyCreator {
         
         //сначала проверяем статус
         require(status == Status.Successful, CampaingInvalidStatus(status, Status.Successful));
@@ -207,24 +209,24 @@ abstract contract CampaignBase is ICampaign {
         );
 
         //переменная для сохранения валидности смены статус
-        bool valid;
+        bool valid; 
 
         //цепочка проверяет, можем ли мы установить запрашиваемый статус в зависимости от текущего состояния контракта
         //и сохраняет результат в переменную valid
         if (newStatus == Status.Successful) {
             valid = (raised >= goal); // полностью собранные кампании можем объявлять успешными досрочно
         } else if (newStatus == Status.Cancelled || newStatus == Status.Stopped) {
-            valid = (block.timestamp < deadline && raised < goal);
+            valid = (block.timestamp < deadline && raised < goal); // timestamp manipulation not critical here
         } else if (newStatus == Status.Failed) {
-            valid = (block.timestamp >= deadline && raised < goal);
+            valid = (block.timestamp >= deadline && raised < goal); // timestamp manipulation not critical here
         } else if (newStatus == Status.Live) {
-            valid = (block.timestamp < deadline && raised < goal);
+            valid = (block.timestamp < deadline && raised < goal);// timestamp manipulation not critical here
         }
 
         require(valid, CampaingInvalidChandgedStatus(newStatus));
         
         status = newStatus;
-        emit CampaignStatusChanged(oldStatus, newStatus, block.timestamp);
+        emit CampaignStatusChanged(oldStatus, newStatus, block.timestamp); 
     }   
 
     //служебные функции
@@ -236,10 +238,10 @@ abstract contract CampaignBase is ICampaign {
     
         Status previous = status;
         if ((status == Status.Live || status == Status.Stopped) &&            
-            block.timestamp >= deadline
+            block.timestamp >= deadline // timestamp manipulation not critical here
             ) {
                 status = raised >= goal ? Status.Successful : Status.Failed;
-                emit CampaignStatusChanged(previous, status, block.timestamp);
+                emit CampaignStatusChanged(previous, status, block.timestamp); 
         }
     }
 

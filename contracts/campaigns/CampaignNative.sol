@@ -13,7 +13,7 @@ contract CampaignNative is ICampaign, CampaignBase {
         address  _platformAddress,
         address _creator,
         string memory _campaignName,
-        uint32 _Id,
+        uint32 _id,
         uint128 _goal,
         uint32 _deadline,
         string memory _campaignMeta,
@@ -22,7 +22,7 @@ contract CampaignNative is ICampaign, CampaignBase {
         _platformAddress,
         _creator,
         _campaignName,
-        _Id,
+        _id,
         _goal,
         _deadline,
         _campaignMeta,
@@ -33,12 +33,12 @@ contract CampaignNative is ICampaign, CampaignBase {
     // Основные функции взаимодействия
 
     /// @notice Внести средства - неиспользуемая перегрузка
-    function contribute(uint128 amount) external pure {
+    function contribute(uint128 _amount) external pure {
         revert CampaingIncorrertFunction();
     }
 
-    /// @notice Внести средства (ETH - cчитаем в wei)
-    function contribute() external payable checkState {
+   /// @notice Внести средства (ETH - cчитаем в wei)
+    function contribute() external payable nonReentrant checkState {
         
         address contributor = msg.sender;
 
@@ -57,26 +57,28 @@ contract CampaignNative is ICampaign, CampaignBase {
             refund = 0;
             contribution = msg.value;
         }
-        //если есть, что возвращать
-        if (refund > 0) {            
-           if(_transferTo(payable(contributor), refund)) {
-            emit CampaignRefunded(contributor, refund, address(0));
-           }
-        }
+        
         //зачисляем взнос
         donates[contributor] += contribution;
         raised += uint128(contribution);
         
         if(raised >= goal) { //если после зачисления достигли цели
             status = Status.Successful; //Аетуализируем статус
-            emit CampaignStatusChanged(Status.Live, status, block.timestamp);
+            emit CampaignStatusChanged(Status.Live, status, block.timestamp); // timestamp manipulation not critical here
+        }
+
+        //если есть, что возвращать
+        if (refund > 0) {            
+           if(_transferTo(payable(contributor), refund)) {
+            emit CampaignRefunded(contributor, refund, address(0));
+           }
         }
 
         emit CampaignContribution(contributor, contribution);
-    }    
+    }     
 
     ///@notice затребовать "зависшие" средства    
-    function claimPendingFunds() external override {
+    function claimPendingFunds() external override nonReentrant {
         address recipient = payable(msg.sender);
         
         uint256 amount = pendingWithdrawals[recipient]; //смотрим, сколько у пользователя "зависло" средств

@@ -197,7 +197,7 @@ interface ICampaign {
     function deadline() external view returns (uint32);
 
     /// @notice идентификатор
-    function Id() external view returns (uint32);
+    function id() external view returns (uint32);
 
     /// @notice Общая сумма средств, внесённых в кампанию за всё время.
     /// @dev Значение не уменьшается при возврате вкладов или выводе средств фаундером.
@@ -224,7 +224,7 @@ interface ICampaign {
         returns (
             address _creator,
             string memory _campaignName,
-            uint32 _Id,
+            uint32 _id,
             address _token, // 0x0 для ETH
             uint128 _goal,
             uint128 _raised,
@@ -246,9 +246,9 @@ interface ICampaign {
 
     /**
      * @notice техническая функция - расшифровка статуса "словами"
-     * @param status статус, который надо "расшифровать"
+     * @param numStatus статус, который надо "расшифровать"
      */ 
-    function getStatusName(Status status) external pure returns(string memory);    
+    function getStatusName(Status numStatus) external pure returns(string memory);    
 
     // Основные функции взаимодействия
 
@@ -297,6 +297,6 @@ interface ICampaign {
      * @notice функция вручную устанавливает новый статус     
      * @dev может быть вызвана только creator'ом, внутри проверяет, какие статусы можно менять     
      */
-    function setCampaignStatus(Status status) external;    
+    function setCampaignStatus(Status newStatus) external;    
     
 }
