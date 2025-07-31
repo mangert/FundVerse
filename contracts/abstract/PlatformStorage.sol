@@ -10,6 +10,6 @@ import "../interfaces/ICampaign.sol";
 abstract contract PlatformStorage is ICampaign{
    
     //подумать, храним ли счетчик. Или сделать мэппинг по владельцам? Подумать
-    mapping(uint32 id => ICampaign) campaings; //паблик? Или приватный?
+    mapping(uint32 id => ICampaign) Campaigns; //паблик? Или приватный?
     uint32 counter;
 }

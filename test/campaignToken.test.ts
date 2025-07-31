@@ -3,7 +3,7 @@ import { network } from "hardhat";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import {defaultCampaignArgs, getBadReciever} from "./test-helpers"
 
-describe("Campaign Native", function() {
+describe("Campaign Token", function() {
     async function deploy() {        
         const [userPlatform, userCreator, user0, user1, user2] = await ethers.getSigners();
         
@@ -15,23 +15,24 @@ describe("Campaign Native", function() {
                 bigint, // goal
                 number, // deadline
                 string, // campaignMeta
-                number, // platformFee      
+                number, // platformFee                      
             ] = defaultCampaignArgs({}, userPlatform.address, userCreator.address);
       
-        
-        const campaign_Factory = await ethers.getContractFactory("CampaignNative");
-        const campaign = await campaign_Factory.deploy(...args, {});
+        const tokenERC20 = "0xdAC17F958D2ee523a2206206994597C13D831ec7"; //???
+        const campaign_Factory = await ethers.getContractFactory("CampaignToken");
+        const campaign = await campaign_Factory.deploy(...args, tokenERC20, {});
         await campaign.waitForDeployment();        
 
-        return { userPlatform, userCreator, user0, user1, user2, campaign }
+        return { userPlatform, userCreator, user0, user1, user2, campaign, tokenERC20 }
     }
 
     describe("deployment tеsts", function() {
         it("should be deployed", async function() { //простой тест, что деплоится нормально
-            const { userPlatform, userCreator, campaign } = await loadFixture(deploy); 
+            const { userPlatform, userCreator, campaign, tokenERC20} = await loadFixture(deploy); 
             
             //заберем аргументы, с которыми деплоили
             const args = defaultCampaignArgs({}, userPlatform.address, userCreator.address);
+            
             
             expect(campaign.target).to.be.properAddress;
             //и проверим, правильно ли установились поля
@@ -42,6 +43,7 @@ describe("Campaign Native", function() {
             expect (await campaign.deadline()).to.be.closeTo(args[5], 1);
             expect (await campaign.campaignMeta()).equal(args[6]);
             expect (await campaign.platformFee()).equal(args[7]);       
+            expect (await campaign.token()).equal(tokenERC20);       
 
         });
     
@@ -52,7 +54,7 @@ describe("Campaign Native", function() {
             expect(balance).eq(0);            
         });     
     });
-    
+    /*
     //тесты на взносы в кампанию
     describe("contribution tеsts", function() { 
         //просто проверяем, что взносы принимаются
@@ -65,7 +67,7 @@ describe("Campaign Native", function() {
             let raised = 0;
             for(let counter = 0; counter != 3; ++counter) {               
 
-                const tx = await campaign.connect(user0)["contribute()"]({value: contributions[counter]});
+                const tx = await campaign.connect(user0)["contribute(uint128)"](contributions[counter]);
                 await tx.wait(1);
                 raised += contributions[counter];
                 expect(await campaign.raised()).equal(raised);
@@ -73,8 +75,8 @@ describe("Campaign Native", function() {
                 await expect(tx).to.emit(campaign, "CampaignContribution").withArgs(user0, contributions[counter]);            
             }         
 
-            const balance = await ethers.provider.getBalance(campaign.target);       
-            expect(balance).equal(raised);               
+            //const balance = await ethers.provider.getBalance(campaign.target);       
+            //expect(balance).equal(raised);               
         });
         
         //проверка корректности обработки взносов от нескольких участников
@@ -786,5 +788,5 @@ describe("Campaign Native", function() {
         });     
 
     });
- 
+ */
 });

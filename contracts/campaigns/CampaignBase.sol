@@ -52,7 +52,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
      * @dev модификатор применяется к функциям, которые может вызвать только фаундер
      */
     modifier onlyCreator() {
-        require(msg.sender == creator, CampaingUnauthorizedAccount(msg.sender)); 
+        require(msg.sender == creator, CampaignUnauthorizedAccount(msg.sender)); 
         _;
     }
 
@@ -60,8 +60,9 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
      * @dev модификатор применяется к функциям, которые могут вызываться только на "живых" кампаниях
      */
     modifier checkState() {                        
-        require(status == Status.Live, CampaingInvalidStatus(status, Status.Live));
-        require(block.timestamp < deadline, CampaingTimeExpired(deadline, block.timestamp)); // timestamp manipulation not critical here       
+        require(status == Status.Live, CampaignInvalidStatus(status, Status.Live));
+        // slither-disable-next-line timestamp
+        require(block.timestamp < deadline, CampaignTimeExpired(deadline, block.timestamp));
         _;
     }   
 
@@ -105,7 +106,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
             uint128 _raised,
             uint32 _deadline,
             string memory _campaignMeta,
-            Status _status            
+            Status _campaignStatus            
         ){
             return(
                 creator, 
@@ -153,10 +154,10 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         address recipient = msg.sender;
         
         require(status == Status.Failed || status == Status.Cancelled,
-            CampaingInvalidStatus(status, Status.Failed));
+            CampaignInvalidStatus(status, Status.Failed));
         uint256 contiribution = donates[recipient];
         
-        require(contiribution > 0, CampaingZeroWithdraw(recipient));
+        require(contiribution > 0, CampaignZeroWithdraw(recipient));
         donates[recipient] = 0;
         
         if(_transferTo(recipient, contiribution)){
@@ -170,11 +171,11 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     function withdrawFunds() external nonReentrant onlyCreator {
         
         //сначала проверяем статус
-        require(status == Status.Successful, CampaingInvalidStatus(status, Status.Successful));
+        require(status == Status.Successful, CampaignInvalidStatus(status, Status.Successful));
         //проверяем, есть ли фонды, которые можно перевести
         uint256 fund = raised;
         //теперь проверим, не повторный ли это вывод
-        require(!founderWithdrawn, CampaingTwiceWithdraw(msg.sender));
+        require(!founderWithdrawn, CampaignTwiceWithdraw(msg.sender));
         founderWithdrawn = true;
         
         uint256 fee = ((fund * 1000) * platformFee) / (1000_000);
@@ -205,25 +206,30 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         require(
             oldStatus < Status.Cancelled && //статус менять можем только у живых и приостановленных кампаний
             oldStatus != newStatus, //проверяем, что новый и старый статусы не совпадают
-            CampaingInvalidChandgedStatus(newStatus)
+            CampaignInvalidChandgedStatus(newStatus)
         );
 
-        //переменная для сохранения валидности смены статус
-        bool valid; 
+        //переменная для сохранения валидности смены статуса        
+        // slither-disable-next-line uninitialized-local
+        bool valid;
 
         //цепочка проверяет, можем ли мы установить запрашиваемый статус в зависимости от текущего состояния контракта
         //и сохраняет результат в переменную valid
+        // timestamp manipulation not critical here
         if (newStatus == Status.Successful) {
             valid = (raised >= goal); // полностью собранные кампании можем объявлять успешными досрочно
         } else if (newStatus == Status.Cancelled || newStatus == Status.Stopped) {
-            valid = (block.timestamp < deadline && raised < goal); // timestamp manipulation not critical here
+            // slither-disable-next-line timestamp
+            valid = (block.timestamp < deadline && raised < goal); 
         } else if (newStatus == Status.Failed) {
-            valid = (block.timestamp >= deadline && raised < goal); // timestamp manipulation not critical here
+            // slither-disable-next-line timestamp
+            valid = (block.timestamp >= deadline && raised < goal);
         } else if (newStatus == Status.Live) {
-            valid = (block.timestamp < deadline && raised < goal);// timestamp manipulation not critical here
+            // slither-disable-next-line timestamp
+            valid = (block.timestamp < deadline && raised < goal);
         }
 
-        require(valid, CampaingInvalidChandgedStatus(newStatus));
+        require(valid, CampaignInvalidChandgedStatus(newStatus));
         
         status = newStatus;
         emit CampaignStatusChanged(oldStatus, newStatus, block.timestamp); 
@@ -237,14 +243,14 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     function checkDeadlineStatus() public virtual {
     
         Status previous = status;
-        if ((status == Status.Live || status == Status.Stopped) &&            
-            block.timestamp >= deadline // timestamp manipulation not critical here
+        // slither-disable-next-line timestamp
+        if ((status == Status.Live || status == Status.Stopped) &&                        
+            block.timestamp >= deadline
             ) {
                 status = raised >= goal ? Status.Successful : Status.Failed;
                 emit CampaignStatusChanged(previous, status, block.timestamp); 
         }
     }
-
     /**
      * @notice служебная функция перевода средств
      * @dev реализация зависит от валюты, обязательно переопределять в наследниках

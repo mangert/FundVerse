@@ -33,8 +33,8 @@ contract CampaignNative is ICampaign, CampaignBase {
     // Основные функции взаимодействия
 
     /// @notice Внести средства - неиспользуемая перегрузка
-    function contribute(uint128 _amount) external pure {
-        revert CampaingIncorrertFunction();
+    function contribute(uint128) external pure {
+        revert CampaignIncorrertFunction();
     }
 
    /// @notice Внести средства (ETH - cчитаем в wei)
@@ -42,7 +42,7 @@ contract CampaignNative is ICampaign, CampaignBase {
         
         address contributor = msg.sender;
 
-        require(msg.value > 0, CampaingZeroDonation(contributor)); //проверяем, что не ноль
+        require(msg.value > 0, CampaignZeroDonation(contributor)); //проверяем, что не ноль
 
         uint128 accepted = goal - raised; //проверяем, сколько осталось до цели
 
@@ -64,7 +64,7 @@ contract CampaignNative is ICampaign, CampaignBase {
         
         if(raised >= goal) { //если после зачисления достигли цели
             status = Status.Successful; //Аетуализируем статус
-            emit CampaignStatusChanged(Status.Live, status, block.timestamp); // timestamp manipulation not critical here
+            emit CampaignStatusChanged(Status.Live, status, block.timestamp);
         }
 
         //если есть, что возвращать
@@ -82,7 +82,7 @@ contract CampaignNative is ICampaign, CampaignBase {
         address recipient = payable(msg.sender);
         
         uint256 amount = pendingWithdrawals[recipient]; //смотрим, сколько у пользователя "зависло" средств
-        require(amount > 0, CampaingZeroWithdraw(recipient)); //проверка, что невыведенные средства больше нуля
+        require(amount > 0, CampaignZeroWithdraw(recipient)); //проверка, что невыведенные средства больше нуля
 
         pendingWithdrawals[recipient] = 0; //обнуляем баланс
 
@@ -97,12 +97,15 @@ contract CampaignNative is ICampaign, CampaignBase {
      * @notice служебная функция перевода средств
      * @dev используется для рефандов и переводов
      * @dev не использовать при клейме зависших средств!
+     * @dev Внешний вызов безопасен — состояние не меняется до него.
+     * Запись в pendingWithdrawals происходит ТОЛЬКО при неудаче отправки.
+     * Вызов обёрнут в external функцию с модификатором nonReentrant. 
      */
     function _transferTo(address recipient, uint256 amount) internal override returns (bool) {
         (bool success, ) = payable(recipient).call{value: amount}("");
             if (!success) {
                 pendingWithdrawals[recipient] += amount;
-                emit CampaignTrasferFailed(msg.sender, amount, address(0));
+                emit CampaignTransferFailed(msg.sender, amount, address(0));
             }
         return success;
     } 

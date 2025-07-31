@@ -33,19 +33,18 @@ contract CampaignToken is ICampaign, CampaignBase {
     ) {}    
 
     // Основные функции взаимодействия
-
-    /// @notice Внести средства - неиспользуемая перегрузка
-    function contribute(uint128 _amount) external {
+    
+    /// @notice Делает взнос в кампанию указанным количеством токенов.
+    /// @dev Зачисляется только та часть `_amount`, которая не превышает оставшуюся сумму до цели.
+    ///      Остаток средств (`_amount - accepted`) не списывается с пользователя, но логируется событием CampaignRefunded.
+    ///      Пользователь должен предварительно вызвать `approve` на сумму `_amount`.
+    /// @param _amount Объем средств, который пользователь хочет внести в кампанию (в токенах).
+    function contribute(uint128 _amount) external nonReentrant checkState {
         
         address contributor = msg.sender;
 
-        require(_amount > 0, CampaingZeroDonation(contributor)); //проверяем, что не ноль        
-        //проверить, кто у нас тут msg.sender
-        (bool success, ) = token.call(
-            abi.encodeWithSignature("transferFrom(address,address,uint256)", msg.sender, address(this), _amount)
-        );
-        require(success, "Failed"); //todo - ошибку сделать
-
+        require(_amount > 0, CampaignZeroDonation(contributor)); //проверяем, что не ноль
+        
         uint128 accepted = goal - raised; //проверяем, сколько осталось до цели
 
         uint256 refund; //переменная для возвратов
@@ -59,29 +58,34 @@ contract CampaignToken is ICampaign, CampaignBase {
             refund = 0;
             contribution = _amount;
         }
+
+        //получаем токены
+        (bool success, bytes memory returndata) = token.call(
+            abi.encodeWithSelector(IERC20.transferFrom.selector, msg.sender, address(this), contribution)
+        );
+        require(success && (returndata.length == 0 || abi.decode(returndata, (bool))) 
+            ,CampaignTokenReceiptFailed(contributor, _amount));
         
         //зачисляем взнос
         donates[contributor] += contribution;
         raised += uint128(contribution);
         
         if(raised >= goal) { //если после зачисления достигли цели
-            status = Status.Successful; //Аетуализируем статус
+            status = Status.Successful; //Актуализируем статус
             emit CampaignStatusChanged(Status.Live, status, block.timestamp); // timestamp manipulation not critical here
-        }
-
+        }        
+        
         //если есть, что возвращать
-        if (refund > 0) {            
-           if(_transferTo(payable(contributor), refund)) {
-            emit CampaignRefunded(contributor, refund, address(0));
-           }
+        if (refund > 0) {                       
+            emit CampaignRefunded(contributor, refund, token);
         }
 
         emit CampaignContribution(contributor, contribution);
     }
 
-   /// @notice Внести средства (ETH - cчитаем в wei)
-    function contribute() external payable nonReentrant checkState {
-        revert CampaingIncorrertFunction();        
+   /// @notice Внести средства (неиспользуемая перегрузка)
+    function contribute() external payable {
+        revert CampaignIncorrertFunction();        
     }     
 
     ///@notice затребовать "зависшие" средства    
@@ -89,37 +93,39 @@ contract CampaignToken is ICampaign, CampaignBase {
         address recipient = msg.sender;
         
         uint256 amount = pendingWithdrawals[recipient]; //смотрим, сколько у пользователя "зависло" средств
-        require(amount > 0, CampaingZeroWithdraw(recipient)); //проверка, что невыведенные средства больше нуля
+        require(amount > 0, CampaignZeroWithdraw(recipient)); //проверка, что невыведенные средства больше нуля
 
         pendingWithdrawals[recipient] = 0; //обнуляем баланс
 
         emit PendingFundsClaimed(recipient, amount);               
 
-        //проверить, кто у нас тут msg.sender
-        IERC20(token).approve(address(this), amount);
-        (bool success, ) = token.call(
-            abi.encodeWithSignature("transferFrom(address,address,uint256)", address(this), recipient, amount)
+        (bool success, bytes memory returndata) = token.call(
+            abi.encodeWithSelector(IERC20.transfer.selector, recipient, amount)
         );
-        require(success, CampaignPendingWithdrawFailed(recipient, amount, token));
+        require(success && (returndata.length == 0 || abi.decode(returndata, (bool))),
+            CampaignPendingWithdrawFailed(recipient, amount, token)
+        );
     }
     
     /**
      * @notice служебная функция перевода средств
      * @dev используется для рефандов и переводов
      * @dev не использовать при клейме зависших средств!
+     * @dev Внешний вызов безопасен — состояние не меняется до него.
+     * Запись в pendingWithdrawals происходит ТОЛЬКО при неудаче отправки.
+     * Вызов обёрнут в external функцию с модификатором nonReentrant. 
      */
-    function _transferTo(address recipient, uint256 amount) internal override returns (bool) {       
+    function _transferTo(address recipient, uint256 amount) internal override returns (bool) {               
         
-        //проверить, кто у нас тут msg.sender
-        IERC20(token).approve(address(this), amount);
-        (bool success, ) = token.call(
-            abi.encodeWithSignature("transferFrom(address,address,uint256)", address(this), recipient, amount)
-        );        
-        if (!success) {
+        (bool success, bytes memory returndata) = token.call(
+            abi.encodeWithSelector(IERC20.transfer.selector, recipient, amount)
+        );
+        bool result = success && (returndata.length == 0 || abi.decode(returndata, (bool)));
+        if (!result) {
             pendingWithdrawals[recipient] += amount;
-            emit CampaignTrasferFailed(msg.sender, amount, address(0));
+            emit CampaignTransferFailed(msg.sender, amount, token);
         }
-        return success;
+        return result;
     } 
 
     receive() external payable {

@@ -45,7 +45,7 @@ interface ICampaign {
      * @param amount сумма неудавшегося перевода
      * @param token адрес токена, который переводился (для эфира address(0))
      */
-    event CampaignTrasferFailed(address indexed recipient, uint256 amount, address token);    
+    event CampaignTransferFailed(address indexed recipient, uint256 amount, address token);    
 
     /**
      * @notice порождается при изменении статуса
@@ -110,27 +110,27 @@ interface ICampaign {
      * @notice индицирует попытку доступа к функциям кампании не владельцем
      * @param account адрес, с которого вызывалась функция
      */
-    error CampaingUnauthorizedAccount(address account);
+    error CampaignUnauthorizedAccount(address account);
 
     /**
      * @notice индицирует вызов функции при некорректном статусе кампании
      * @param actual фактический статус
      * @param needed требуемый статус
      */
-    error CampaingInvalidStatus(Status actual, Status needed);
+    error CampaignInvalidStatus(Status actual, Status needed);
 
     /**
      * @notice индицирует обращение к функциям кампании после истечения дедлайна
      * @param deadline срок действия сбора
      * @param timeStamp время обращения
      */
-    error CampaingTimeExpired(uint32 deadline, uint256 timeStamp);
+    error CampaignTimeExpired(uint32 deadline, uint256 timeStamp);
 
     /**
      * @notice индицирует ошибку изменения статуса
      * @param newStatus статус, который не удалось присвоить     
      */
-    error CampaingInvalidChandgedStatus(Status newStatus);
+    error CampaignInvalidChandgedStatus(Status newStatus);
 
     /**
      * @notice Ошибка при попытке расшифровать недопустимый статус
@@ -142,7 +142,7 @@ interface ICampaign {
      * @notice индицирует вызов некорректиной перегрузки функции
      * @dev использовать для отказа вызовов недействительных перегрузок в функциях
      */
-    error CampaingIncorrertFunction();
+    error CampaignIncorrertFunction();
 
     /**
      * @notice индицирует вызов несуществующей фукнции или попытку прямой отправки денег на контракт
@@ -157,19 +157,19 @@ interface ICampaign {
      * @notice индицирует нулевую сумму взноса    
      * @param investor адрес вносителя
      */
-    error CampaingZeroDonation(address investor);    
+    error CampaignZeroDonation(address investor);    
 
     /**
      * @notice индицирует нулевую сумму вывода 
      * @param recipient адрес вносителя
      */
-    error CampaingZeroWithdraw(address recipient);    
+    error CampaignZeroWithdraw(address recipient);    
     
     /**
      * @notice индицирует попытку повторного вывода средств фаундером
      * @param recipient адрес получателя
      */
-    error CampaingTwiceWithdraw(address recipient);    
+    error CampaignTwiceWithdraw(address recipient);    
 
     /**
      * @notice индицирует ошибку вывода "зависших" платежей     
@@ -178,6 +178,14 @@ interface ICampaign {
      * @param token адрес токена, который переводился (для эфира address(0))
      */
     error CampaignPendingWithdrawFailed(address recipient, uint256 amount, address token);    
+
+    /**
+     * @notice индицирует ошибку перевода взноса в кампанию
+     * @dev amount представляет всю сумму, которую пытался перевести инвестор, включая сдачу
+     * @param investor адрес инвестора
+     * @param amount сумма неудавшегося взноса (полностью)
+     */
+    error CampaignTokenReceiptFailed(address investor, uint256 amount);
 
     //геттеры    
     
@@ -254,6 +262,9 @@ interface ICampaign {
 
     /**
      * @notice Внести средства (ERC20)
+     * @dev Зачисляется только та часть `_amount`, которая не превышает оставшуюся сумму до цели.
+     *      Остаток средств (`_amount - accepted`) не списывается с пользователя, но логируется событием CampaignRefunded.
+     *      Пользователь должен предварительно вызвать `approve` на сумму `_amount`.  
      * @dev перегрузка для токенов ERC20, в версии для "нативной валюты" всегда завершается ошибкой
      * @param amount вносимая сумма
      */

@@ -14,12 +14,12 @@ import "../campaigns/CampaignToken.sol";
 abstract contract FactoryCore is PlatformStorage {  
     
     
-    event CampaingCreated(); //добавить аргументы
+    event CampaignCreated(); //добавить аргументы
 
     //пока заглушка
-    /*function _createCampaing(bool eth) internal returns(ICampaign){ //аргуметны и модификаторы функции после разработки шаблона кампании
+    /*function _createCampaign(bool eth) internal returns(ICampaign){ //аргуметны и модификаторы функции после разработки шаблона кампании
         
-        ICampaign newCampaign = campaings[counter++];
+        ICampaign newCampaign = Campaigns[counter++];
         if(eth) {
             newCampaign = new CampaignNative(); //добавить аргументы
         }
@@ -27,7 +27,7 @@ abstract contract FactoryCore is PlatformStorage {
             newCampaign = new CampaignNative(); //добавить аргументы
         }
 
-        emit CampaingCreated();
+        emit CampaignCreated();
 
     }*/
     
