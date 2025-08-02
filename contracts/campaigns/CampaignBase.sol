@@ -259,4 +259,13 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
      */
     function _transferTo(address recipient, uint256 amount) internal virtual returns (bool);  
 
+    
+    receive() external payable {
+        revert CampaignIncorrectCall(msg.sender, msg.value, "");
+    }
+
+    fallback() external payable {
+        revert CampaignIncorrectCall(msg.sender, msg.value, msg.data);
+    } 
+
 }

@@ -126,14 +126,6 @@ contract CampaignToken is ICampaign, CampaignBase {
             emit CampaignTransferFailed(msg.sender, amount, token);
         }
         return result;
-    } 
-
-    receive() external payable {
-        revert CampaignIncorrectCall(msg.sender, msg.value, "");
-    }
-
-    fallback() external payable {
-        revert CampaignIncorrectCall(msg.sender, msg.value, msg.data);
-    } 
+    }     
 
 }

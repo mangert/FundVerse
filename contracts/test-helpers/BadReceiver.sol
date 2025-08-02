@@ -17,7 +17,7 @@ contract BadReceiver {
 
     function  getBalance() external view returns(uint256) { //возвращаем баланс
         return address(this).balance;
-    }    
+    }        
     
     /**
      * @notice функция для вывода зависшей сдачи с контракта-аукциона

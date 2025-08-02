@@ -109,12 +109,4 @@ contract CampaignNative is ICampaign, CampaignBase {
             }
         return success;
     } 
-
-    receive() external payable {
-        revert CampaignIncorrectCall(msg.sender, msg.value, "");
-    }
-
-    fallback() external payable {
-        revert CampaignIncorrectCall(msg.sender, msg.value, msg.data);
-    }    
 }
