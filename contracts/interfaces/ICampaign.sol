@@ -218,7 +218,7 @@ interface ICampaign {
     function status() external view returns (Status);
 
     /// @notice имя
-    function campaignName() external view returns (string memory);
+    //function campaignName() external view returns (string memory);
 
     /// @notice JSON-метаданные (описание + документы/IPFS)   
     function campaignMeta() external view returns (string memory);
@@ -231,7 +231,7 @@ interface ICampaign {
         view        
         returns (
             address _creator,
-            string memory _campaignName,
+            //string memory _campaignName,
             uint32 _id,
             address _token, // 0x0 для ETH
             uint128 _goal,

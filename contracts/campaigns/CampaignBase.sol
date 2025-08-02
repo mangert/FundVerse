@@ -22,11 +22,13 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     
     /// @notice цель - wei / decimals   
     uint128 public immutable goal; 
+    
     /// @notice комиссия платформы в промилле
     uint128 public immutable platformFee; 
     
     /// @notice срок
     uint32 public immutable deadline;
+    
     /// @notice идентификатор
     uint32 public immutable id; 
 
@@ -39,8 +41,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
 
     /// @notice внутренний флаг, что фаундер еще не выводил средства
     bool internal founderWithdrawn;
-    /// @notice имя
-    string public campaignName;
+   
     /// @notice JSON-метаданные (описание + документы/IPFS)   
     string public campaignMeta; 
 
@@ -69,7 +70,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     constructor(
         address _platformAddress,        
         address _creator,
-        string memory _campaignName,
+        //string memory _campaignName,
         uint32 _id,
         uint128 _goal,
         uint32 _deadline,
@@ -79,7 +80,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     ) {
         platformAddress= _platformAddress;
         creator = _creator;
-        campaignName = _campaignName;
+        //campaignName = _campaignName;
         id = _id;
         goal = _goal;
         deadline = _deadline;
@@ -99,7 +100,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         virtual
         returns (
             address _creator,
-            string memory _campaignName,
+            //string memory _campaignName,
             uint32 _id,
             address _token, // 0x0 для ETH
             uint128 _goal,
@@ -110,7 +111,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         ){
             return(
                 creator, 
-                campaignName, 
+                //campaignName, 
                 id,
                 token, // 0x0 для ETH
                 goal,

@@ -15,7 +15,6 @@ describe("Campaign Token", function() {
           const args: [
                 string, // platformAddress
                 string, // creator
-                string, // campaignName
                 bigint, // Id
                 bigint, // goal
                 number, // deadline
@@ -40,13 +39,12 @@ describe("Campaign Token", function() {
             
             expect(campaign.target).to.be.properAddress;
             //и проверим, правильно ли установились поля
-            expect (await campaign.creator()).equal(args[1]);
-            expect (await campaign.campaignName()).equal(args[2]);
-            expect (await campaign.id()).equal(args[3]);
-            expect (await campaign.goal()).equal(args[4]);
-            expect (await campaign.deadline()).to.be.closeTo(args[5], 1);
-            expect (await campaign.campaignMeta()).equal(args[6]);
-            expect (await campaign.platformFee()).equal(args[7]);       
+            expect (await campaign.creator()).equal(args[1]);            
+            expect (await campaign.id()).equal(args[2]);
+            expect (await campaign.goal()).equal(args[3]);
+            expect (await campaign.deadline()).to.be.closeTo(args[4], 1);
+            expect (await campaign.campaignMeta()).equal(args[5]);
+            expect (await campaign.platformFee()).equal(args[6]);       
             expect (await campaign.token()).equal(tokenERC20);       
 
         });
@@ -814,15 +812,14 @@ describe("Campaign Token", function() {
             
             const summary = await campaign.getSummary();
 
-            expect(summary[0]).to.equal(await campaign.creator());
-            expect(summary[1]).to.equal(await campaign.campaignName());
-            expect(summary[2]).to.equal(await campaign.id());
-            expect(summary[3]).to.equal(await campaign.token());
-            expect(summary[4]).to.equal(await campaign.goal());
-            expect(summary[5]).to.equal(await campaign.raised());
-            expect(summary[6]).to.equal(await campaign.deadline());
-            expect(summary[7]).to.equal(await campaign.campaignMeta());
-            expect(summary[8]).to.equal(await campaign.status());
+            expect(summary[0]).to.equal(await campaign.creator());   
+            expect(summary[1]).to.equal(await campaign.id());
+            expect(summary[2]).to.equal(await campaign.token());
+            expect(summary[3]).to.equal(await campaign.goal());
+            expect(summary[4]).to.equal(await campaign.raised());
+            expect(summary[5]).to.equal(await campaign.deadline());
+            expect(summary[6]).to.equal(await campaign.campaignMeta());
+            expect(summary[7]).to.equal(await campaign.status());
 
         });
     

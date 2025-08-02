@@ -13,7 +13,7 @@ contract CampaignToken is ICampaign, CampaignBase {
         constructor(        
         address  _platformAddress,
         address _creator,
-        string memory _campaignName,
+        //string memory _campaignName,
         uint32 _id,
         uint128 _goal,
         uint32 _deadline,
@@ -23,7 +23,7 @@ contract CampaignToken is ICampaign, CampaignBase {
     ) CampaignBase (
         _platformAddress,
         _creator,
-        _campaignName,
+        //_campaignName,
         _id,
         _goal,
         _deadline,
