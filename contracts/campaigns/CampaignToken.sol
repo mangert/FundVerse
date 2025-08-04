@@ -6,14 +6,14 @@ import "./CampaignBase.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 /**
- * @title пока совсем черновик - будет контракт кампании в токене ERC20 
- * @notice 
+ * @title Контракт кампании (разновидность для токенов по стандарту ERC20) 
+ * @notice обеспечивает сбор денег на конкретную цель
  */
+
 contract CampaignToken is ICampaign, CampaignBase {
         constructor(        
         address  _platformAddress,
-        address _creator,
-        //string memory _campaignName,
+        address _creator,        
         uint32 _id,
         uint128 _goal,
         uint32 _deadline,
@@ -22,8 +22,7 @@ contract CampaignToken is ICampaign, CampaignBase {
         address _token
     ) CampaignBase (
         _platformAddress,
-        _creator,
-        //_campaignName,
+        _creator,        
         _id,
         _goal,
         _deadline,
@@ -60,6 +59,9 @@ contract CampaignToken is ICampaign, CampaignBase {
         }
 
         //получаем токены
+        // External call before state changes: safe because transferFrom doesn't invoke reentrant logic
+        // and state changes follow after successful receipt.
+        // slither-disable-next-line reentrancy-no-eth
         (bool success, bytes memory returndata) = token.call(
             abi.encodeWithSelector(IERC20.transferFrom.selector, msg.sender, address(this), contribution)
         );

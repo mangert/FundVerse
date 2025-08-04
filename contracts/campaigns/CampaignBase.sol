@@ -69,8 +69,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
 
     constructor(
         address _platformAddress,        
-        address _creator,
-        //string memory _campaignName,
+        address _creator,        
         uint32 _id,
         uint128 _goal,
         uint32 _deadline,
@@ -79,8 +78,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         address _token
     ) {
         platformAddress= _platformAddress;
-        creator = _creator;
-        //campaignName = _campaignName;
+        creator = _creator;        
         id = _id;
         goal = _goal;
         deadline = _deadline;
@@ -99,8 +97,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         view
         virtual
         returns (
-            address _creator,
-            //string memory _campaignName,
+            address _creator,            
             uint32 _id,
             address _token, // 0x0 для ETH
             uint128 _goal,
@@ -110,8 +107,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
             Status _campaignStatus            
         ){
             return(
-                creator, 
-                //campaignName, 
+                creator,                 
                 id,
                 token, // 0x0 для ETH
                 goal,
@@ -259,7 +255,6 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
      * @param amount сумма перевода
      */
     function _transferTo(address recipient, uint256 amount) internal virtual returns (bool);  
-
     
     receive() external payable {
         revert CampaignIncorrectCall(msg.sender, msg.value, "");

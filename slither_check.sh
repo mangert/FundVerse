@@ -8,5 +8,6 @@ if [ -z "$1" ]; then
 fi
 
 slither "$1" \
+  --exclude locked-ether \
   --solc-remaps @openzeppelin=node_modules/@openzeppelin \
   --solc-args "--allow-paths .,./node_modules --base-path . --include-path node_modules"

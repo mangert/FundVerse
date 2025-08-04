@@ -22,9 +22,9 @@ abstract contract FeeLogic {
         _feeRecipient = recipient;
     }
 
-    function platformFee() public view returns (uint256) {
+    /*function platformFee() public view returns (uint256) {
         return _platformFee;
-    }
+    }*/
 
     function feeRecipient() public view returns (address) {
         return _feeRecipient;

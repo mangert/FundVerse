@@ -709,8 +709,7 @@ describe("Campaign Native", function() {
             //передеплоим контракт с "плохим получателем" как фаундером и платформой
             const args: [
                 string, // platformAddress
-                string, // creator
-                string, // campaignName
+                string, // creator                
                 bigint, // Id
                 bigint, // goal
                 number, // deadline

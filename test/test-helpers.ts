@@ -8,8 +8,7 @@ export function defaultCampaignArgs(overrides = {}, platformAddr : string, creat
     string, string, /*string,*/ bigint, bigint, number, string, number ] {    
     const defaults = {
         platformAddress: platformAddr,
-        creator: creatorAddr,
-        //campaignName: "My first project",
+        creator: creatorAddr,        
         Id: 123n,
         goal: 1000_000n,
         deadline: Math.floor(Date.now() / 1000) + 60,
@@ -21,8 +20,7 @@ export function defaultCampaignArgs(overrides = {}, platformAddr : string, creat
     
     return [
         merged.platformAddress,
-        merged.creator,
-        //merged.campaignName,
+        merged.creator,        
         merged.Id,
         merged.goal,
         merged.deadline,
