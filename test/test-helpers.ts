@@ -1,6 +1,7 @@
 import { loadFixture, ethers, expect } from "./setup";
 import { network } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
+import { token } from "../typechain-types/@openzeppelin/contracts";
 
 //хелперы для тестов контракта-кампании в версии для нативной валюты
 //функция для задания аргументов конструктора для нативной версии контракта
@@ -43,4 +44,25 @@ export async function getBadReciever() {
     const tx = await badReceiver.connect(sender).getTransfer({value: ethers.parseEther("1.0")})                         
 
     return badReceiver;
+}
+
+export function defaultCreateCampaignArgs(overrides = {}) : [
+    bigint, bigint, string, bigint, string ] {    
+    const defaults = {        
+        goal: 1000_000n,
+        deadline: BigInt(Math.floor(Date.now() / 1000)) + 60n,
+        campaignMeta: "Description and URI",
+        platformFee: 50n,
+        token: ethers.ZeroAddress
+    };
+
+    const merged = { ...defaults, ...overrides };
+    
+    return [
+        merged.goal,        
+        merged.deadline,
+        merged.campaignMeta,
+        merged.platformFee, 
+        merged.token        
+    ];   
 }
