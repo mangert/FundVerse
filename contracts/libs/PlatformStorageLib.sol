@@ -27,6 +27,10 @@ library PlatformStorageLib {
         mapping(address founder => uint32 timelock) timelocks;
         uint32 delay;
 
+        //другие общие установки
+        // минимальная продолжительность (кампании с нулевым периодом сбора не имеют смысла)
+        uint32 minLifespan; 
+        
         //хранилища для Enumerable
         /*mapping(address owner => mapping(uint256 index => uint256)) private _ownedTokens;    
         mapping(uint256 tokenId => uint256) private _ownedTokensIndex;
@@ -40,9 +44,7 @@ library PlatformStorageLib {
         //данные для комиссии
         uint16 baseFee;  
 
-        //другие общие установки
-        // минимальный дедлайн (кампании с нулевым дедлайном не имеют смысла)
-        uint32 minDeadline; 
+        
         
     }
 

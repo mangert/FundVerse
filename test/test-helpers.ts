@@ -47,10 +47,10 @@ export async function getBadReciever() {
 }
 
 export function defaultCreateCampaignArgs(overrides = {}) : [
-    bigint, bigint, string, bigint, string ] {    
+    bigint, bigint, string, string ] {    
     const defaults = {        
         goal: 1000_000n,
-        deadline: BigInt(Math.floor(Date.now() / 1000)) + 60n,
+        deadline: BigInt(Math.floor(Date.now() / 1000)) + (60n * 60n * 25n),
         campaignMeta: "Description and URI",
         platformFee: 50n,
         token: ethers.ZeroAddress
@@ -61,8 +61,7 @@ export function defaultCreateCampaignArgs(overrides = {}) : [
     return [
         merged.goal,        
         merged.deadline,
-        merged.campaignMeta,
-        merged.platformFee, 
+        merged.campaignMeta, 
         merged.token        
     ];   
 }

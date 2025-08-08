@@ -130,9 +130,7 @@ describe("Campaign Native", function() {
             await expect(tx).to.emit(campaign, "CampaignRefunded").withArgs(userCreator, refund, ethers.ZeroAddress);            
             //цель достигнута (смена статуса на Success)
             await expect(tx).to.emit(campaign, "CampaignStatusChanged").withArgs(0, 4, anyValue);
-            expect(await campaign.status()).equal(4);
-
-                      
+            expect(await campaign.status()).equal(4);                      
         });
         
         //проверяем, что статус коректктно меняется при донате вровень с целью
@@ -216,14 +214,10 @@ describe("Campaign Native", function() {
     
             const goal = await campaign.goal();
             const txContribute = await campaign["contribute()"]({value:goal});
-            await txContribute.wait(1);
-
+            await txContribute.wait(1);            
             
-            const amount = 100n;
-            const now = (await ethers.provider.getBlock("latest"))!.timestamp;            
-            
-            const txOverfund = campaign.connect(user0)["contribute()"]({value: amount});            
-            
+            const amount = 100n;            
+            const txOverfund = campaign.connect(user0)["contribute()"]({value: amount});                        
             await expect(txOverfund).revertedWithCustomError(campaign, "CampaignInvalidStatus").withArgs(4, 0);                                    
         });
 

@@ -53,9 +53,8 @@ contract Platform is
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         //устанавливаем стандартную продолжительность таймлока        
         s.delay = 60 * 60 * 24 * 2; //двое суток
-        //устанавливаем минимальный дедлайн для кампаний
-        s.minDeadline = 60 * 60 * 24;
-        
+        //устанавливаем минимальную продолжительность для кампаний
+        s.minLifespan = 60 * 60 * 24;        
     }
 
     /// @notice функция создает новую кампанию
@@ -74,7 +73,8 @@ contract Platform is
             
             PlatformStorageLib.Layout storage s = PlatformStorageLib.layout(); //ссылка на хранилище
             
-            require(_deadline < s.minDeadline, FundVerseErrorDeadlineLessMinimun()); //проверяем, что дедлайн не слишком маленький
+            require(_deadline > (s.minLifespan + block.timestamp)
+                , FundVerseErrorDeadlineLessMinimun()); //проверяем, что дедлайн не слишком маленький
             address founder = msg.sender;
             require(!_isLocked(founder), FundVerseErrorTimeLocked(s.timelocks[founder]));
 
@@ -99,12 +99,10 @@ contract Platform is
     /// @notice функция по установке минимального срока действия кампаний
     /// @notice позволяет устанавливать минимальный срок действия кампаний взамен установленного ранее
     /// @notice действует глобально для всех кампаний, создаваемых после установки нового значения    
-    function setMinDeadline(uint32 _minDeadline) external onlyRole(CONFIGURATOR_ROLE) {
+    function setMinDeadline(uint32 _lifespan) external onlyRole(CONFIGURATOR_ROLE) {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
-        s.minDeadline = _minDeadline;
-    }
-
-    
+        s.minLifespan = _lifespan;
+    }    
     
 
     function _authorizeUpgrade(address newImplementation)
