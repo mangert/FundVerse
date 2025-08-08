@@ -9,9 +9,14 @@ describe("Platform main functionality tests", function() {
     async function deploy() {        
         const [ownerPlatform, userCreator, user0, user1] = await ethers.getSigners();               
         
+        //депплоим фабрику
+        const factory_Factory = await ethers.getContractFactory("FactoryCore");
+        const factory = await factory_Factory.deploy();
+        factory.waitForDeployment();
+        const factoryAddr = await factory.getAddress();        
         //деплоим контракт платформы через прокси        
         const platform_Fabric = await ethers.getContractFactory("Platform");        
-        const platform = await upgrades.deployProxy(platform_Fabric, {kind: "uups", });
+        const platform = await upgrades.deployProxy(platform_Fabric, [factoryAddr], {kind: "uups", });
         await platform.waitForDeployment();
 
         //это токены
@@ -19,7 +24,7 @@ describe("Platform main functionality tests", function() {
         const tokenERC20 = await token_Factory.deploy();
         const tokenERC20Addr = await tokenERC20.getAddress();        
         
-        return {ownerPlatform, userCreator, user0, user1, platform, tokenERC20, tokenERC20Addr};       
+        return {ownerPlatform, userCreator, user0, user1, platform, tokenERC20, tokenERC20Addr, factory};       
     }
 
     describe("deployment tеsts", function() { //примитивный тест на деплой - просто проверить, что общая часть работает
@@ -35,7 +40,7 @@ describe("Platform main functionality tests", function() {
     describe("create capmpaign tеsts", function() {
         // проверяем, что можно создать кампанию в нативной валюте
         it("should create native campaign", async function() {
-            const {ownerPlatform, user0, user1, platform} = await loadFixture(deploy);            
+            const {ownerPlatform, user0, user1, platform, factory} = await loadFixture(deploy);            
             //формируем стандарный набор аргументов кампании
             const args = defaultCreateCampaignArgs();
             //создаем кампанию
@@ -46,6 +51,7 @@ describe("Platform main functionality tests", function() {
             await expect(txCreate).to.emit(platform, "FundVerseCampaignCreated")
                 .withArgs(campaignAddress, user0, ethers.ZeroAddress, args[0]);       
             
+            
             expect(await platform.getTotalCampaigns()).equal(1);
             expect(campaignAddress).equal(await platform.getCampaignOfFounderByIndex(user0, 0));
             expect(await platform.getCampaignsCountByFounder(user0)).equal(1);
@@ -55,7 +61,7 @@ describe("Platform main functionality tests", function() {
         });
         // проверяем, что можно создать кампанию в токенах
         it("should create token campaign", async function() {
-            const {ownerPlatform, user0, user1, platform, tokenERC20, tokenERC20Addr} = await loadFixture(deploy);            
+            const {ownerPlatform, user0, user1, platform, tokenERC20Addr, factory} = await loadFixture(deploy);            
             //формируем стандарный набор аргументов кампании
             const args = defaultCreateCampaignArgs({token: tokenERC20Addr});
             
@@ -122,12 +128,10 @@ describe("Platform main functionality tests", function() {
             const txCreate = await platform.connect(user0).createCompaign(...args0);
             
             //смотрим, что получилось
+            const timelock = await platform.getFounderTimelock(user0);
             const campaignAddress = await platform.getCampaignByIndex(0);            
             await expect(txCreate).to.emit(platform, "FundVerseCampaignCreated")
-                .withArgs(campaignAddress, user0, ethers.ZeroAddress, args0[0]);
-            //const lock = await platform.getFounderTimelock(user0);
-            //console.log((await ethers.provider.getBlock("latest"))!.timestamp + 60 * 60 * 48);
-            //console.log(lock);
+                .withArgs(campaignAddress, user0, ethers.ZeroAddress, args0[0]);            
             await expect(txCreate).to.emit(platform, "FundVerseSetFounderTimelock")
                 .withArgs(user0, anyValue);
 
@@ -136,7 +140,16 @@ describe("Platform main functionality tests", function() {
             const txCreate1 = platform.connect(user0).createCompaign(...args1);
             await expect(txCreate1).revertedWithCustomError(platform, "FundVerseErrorTimeLocked")
                 .withArgs(anyValue);            
-            
+
+            //а теперь пропустим время и попробуем еще раз - должно получиться
+            const now = (await ethers.provider.getBlock("latest"))!.timestamp;
+            const timeToAdd = 60 * 60 * 48 + 60; // двое суток плюс минута
+            const futureTime = now + timeToAdd;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [futureTime]);
+            await network.provider.send("evm_mine");                
+            const txCreate2 = await platform.connect(user0).createCompaign(...args1);
+            expect(await platform.getCampaignsCountByFounder(user0)).equal(2);            
         });
     });
 });

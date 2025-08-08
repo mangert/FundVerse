@@ -46,10 +46,8 @@ abstract contract Timelock {
 
     //геттеры
     /// @notice Получить информацию о таймлоке пользователя
-    /*function getFounderTimelock(address founder) external view returns (uint32) {
+    function getFounderTimelock(address founder) external view returns (uint32) {
         return PlatformStorageLib.layout().timelocks[founder];
-    }*/
-
-
+    }
 }
 

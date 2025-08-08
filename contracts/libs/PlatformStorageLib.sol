@@ -11,6 +11,9 @@ library PlatformStorageLib {
     bytes32 internal constant STORAGE_SLOT = keccak256("fundverse.platform.storage");
 
     struct Layout {
+        
+         // Адрес фабрики
+        address factory;
         //хранилище кампаний
         //все созданные кампании в разрезе фаундеров
         mapping(address founder => 

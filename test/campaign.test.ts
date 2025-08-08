@@ -15,8 +15,7 @@ describe("Campaign Native", function() {
                 number, // deadline
                 string, // campaignMeta
                 number, // platformFee      
-            ] = defaultCampaignArgs({}, userPlatform.address, userCreator.address);
-      
+            ] = defaultCampaignArgs({}, userPlatform.address, userCreator.address);      
         
         const campaign_Factory = await ethers.getContractFactory("CampaignNative");
         const campaign = await campaign_Factory.deploy(...args, {});

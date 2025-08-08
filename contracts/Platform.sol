@@ -6,6 +6,8 @@ import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/I
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import { ICampaign } from "./interfaces/ICampaign.sol"; //интерфейс кампании
+import {IFactoryCore} from "./interfaces/IFactoryCore.sol"; //интерфейс фабрики
+
 import { FactoryCore } from "./abstract/FactoryCore.sol"; //модуль создания кампаний
 import { Timelock } from "./abstract/Timelock.sol"; //модуль проверки таймлоков;
 import { FeeLogic } from "./abstract/FeeLogic.sol";
@@ -22,15 +24,31 @@ contract Platform is
     Initializable, 
     AccessControlUpgradeable, 
     UUPSUpgradeable,    
-    FactoryCore,
     Timelock {         
 
     /// @notice ошибка индицирует попытку создания кампании со слишком коротким сроком
     error FundVerseErrorDeadlineLessMinimun();    
 
+    /// @notice ошибка индицирует провал операции создания кампании
+    error FundVerseCreateFailed();
+
     /// @notice ошибка индицирует попытку создания кампании c нулевой целью
     error FundVerseErrorZeroGoal();    
+
+    /// @notice событие порождается при создании новой кампании
+    /// @param NewCampaignAddress адрес контратка созданной кампании
+    /// @param founder адрес фаундера
+    /// @param token адрес токена валюты кампании (для ETH - address(0))
+    /// @param goal целевая сумма сбора     
+    event FundVerseCampaignCreated(
+        ICampaign indexed NewCampaignAddress
+        , address indexed founder
+        , address indexed token
+        , uint256 goal
+        );     
     
+    //роли
+
     /// @notice роль, позволяющая обновить контракт
     bytes32 public constant UPGRADER_ROLE = keccak256(bytes("UPGRADER"));   
     
@@ -39,7 +57,7 @@ contract Platform is
 
 
     /// @notice инициализатор - вместо конструктора
-    function initialize() public initializer {       
+    function initialize(address _factory) public initializer {       
         
         address owner = msg.sender;
         __AccessControl_init();
@@ -51,6 +69,7 @@ contract Platform is
         _grantRole(CONFIGURATOR_ROLE, owner);
         
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
+        s.factory = _factory;
         //устанавливаем стандартную продолжительность таймлока        
         s.delay = 60 * 60 * 24 * 2; //двое суток
         //устанавливаем минимальную продолжительность для кампаний
@@ -61,8 +80,7 @@ contract Platform is
     /// @param _goal целевая сумма сбора
     /// @param _deadline срок действия кампании
     /// @param _campaignMeta данные кампании (имя, описание, ссылка на документы)    
-    /// @param _token валюта сбора (address(0) для нативной валюты)    
-
+    /// @param _token валюта сбора (address(0) для нативной валюты)        
     function createCompaign(
             uint128 _goal,
             uint32 _deadline,
@@ -75,15 +93,62 @@ contract Platform is
             
             require(_deadline > (s.minLifespan + block.timestamp)
                 , FundVerseErrorDeadlineLessMinimun()); //проверяем, что дедлайн не слишком маленький
+            
             address founder = msg.sender;
             require(!_isLocked(founder), FundVerseErrorTimeLocked(s.timelocks[founder]));
 
             //TODO - залоги
-            uint128 _platformFee = 0; //TODO - функция из FeeLogic
-            _createCampaign(_goal, _deadline, _campaignMeta, _platformFee, _token);
-            
-            _setLockTime(founder); //устанавливаем новый таймлок
+            uint128 _platformFee = 0; //TODO - функция из FeeLogic            
+            ICampaign newCampaign = IFactoryCore(s.factory).createCampaign(
+                founder, 
+                s.totalCounter, 
+                _goal, 
+                _deadline, 
+                _campaignMeta, 
+                _platformFee, 
+                _token
+                );    
+            //проверим на всякий случай, что то-то вернулось
+            require(address(newCampaign).code.length != 0, FundVerseCreateFailed());
 
+            _registerCampaign(founder, newCampaign); //записываем данные в хранилище
+            _setLockTime(founder); //устанавливаем новый таймлок
+            
+            emit FundVerseCampaignCreated(newCampaign, founder, _token, _goal);       
+
+    }
+
+    //геттеры
+    /// @notice Получить общее количество всех кампаний на платформе
+    function getTotalCampaigns() external view returns (uint32) {
+        return PlatformStorageLib.layout().totalCounter;
+    }
+
+    /// @notice Получить кампанию по глобальному индексу
+    function getCampaignByIndex(uint32 index) external view returns (address) {
+        return address(PlatformStorageLib.layout().campaignIndex[index]);
+    }
+
+    /// @notice Получить количество кампаний, созданных конкретным фаундером
+    function getCampaignsCountByFounder(address founder) external view returns (uint32) {
+        return PlatformStorageLib.layout().campaignsCountByFounder[founder];
+    }
+
+    /// @notice Получить кампанию фаундера по его локальному индексу
+    function getCampaignOfFounderByIndex(address founder, uint32 index) external view returns (address) {
+        return address(PlatformStorageLib.layout().campaignsByFounder[founder][index]);
+    }
+
+    //служебные функции
+    /// @notice Регистрируем кампанию в хранилище
+    function _registerCampaign(address founder, ICampaign newCampaign) internal {
+        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
+
+        uint32 index = s.totalCounter;
+        s.totalCounter++;
+
+        s.campaignIndex[index] = newCampaign;
+        s.campaignsByFounder[founder][s.campaignsCountByFounder[founder]++] = newCampaign;
     }
 
     //функции настройки параметров платформы
