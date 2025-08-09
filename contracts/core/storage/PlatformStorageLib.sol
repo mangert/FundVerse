@@ -34,14 +34,14 @@ library PlatformStorageLib {
         // минимальная продолжительность (кампании с нулевым периодом сбора не имеют смысла)
         uint32 minLifespan; 
         
-        //хранилища для Enumerable
-        /*mapping(address owner => mapping(uint256 index => uint256)) private _ownedTokens;    
-        mapping(uint256 tokenId => uint256) private _ownedTokensIndex;
-        uint256[] private _allTokens;
-        mapping(uint256 tokenId => uint256) private _allTokensIndex;
+        //хранилища справочника токенов
+        //мэппинг для информации о поддерживаемых токенах
         mapping (address token => bool allowed) allowedTokens;
-        mapping (uint32 tokenIndex => address token) tokenIndex;
-        uint32 tokenCounter;*/
+        //индексы в массиве токенов
+        mapping (address token => uint256 index) tokenIndexes;
+        mapping (uint256 index => address token) tokenByIndexes;
+        //массив тикеров токенов
+        bytes6[] tokenTickers;
         
 
         //данные для комиссии

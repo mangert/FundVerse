@@ -9,8 +9,10 @@ import { ICampaign } from "../interfaces/ICampaign.sol"; //интерфейс к
 import {IFactoryCore} from "../interfaces/IFactoryCore.sol"; //интерфейс фабрики
 
 import { FactoryCore } from "../modules/FactoryCore.sol"; //модуль создания кампаний
-import { Timelock } from "../features/Timelock.sol"; //модуль проверки таймлоков;
-import { FeeLogic } from "../features/FeeLogic.sol";
+
+import { Timelock } from "../features/Timelock.sol"; //функционал проверки таймлоков;
+import { FeeLogic } from "../features/FeeLogic.sol"; //функционал установки комиссий
+import { TokenAllowList } from "../features/TokenAllowList.sol"; //функционал поддержки токенов
 
 import {PlatformStorageLib} from "./storage/PlatformStorageLib.sol"; //хранилище данных
 
@@ -24,7 +26,8 @@ contract Platform is
     Initializable, 
     AccessControlUpgradeable, 
     UUPSUpgradeable,    
-    Timelock {         
+    Timelock,
+    TokenAllowList {         
 
     /// @notice ошибка индицирует попытку создания кампании со слишком коротким сроком
     error FundVerseErrorDeadlineLessMinimun();    
@@ -33,7 +36,11 @@ contract Platform is
     error FundVerseCreateFailed();
 
     /// @notice ошибка индицирует попытку создания кампании c нулевой целью
-    error FundVerseErrorZeroGoal();    
+    error FundVerseErrorZeroGoal();
+    
+    /// @notice ошибка индицирует попытку создания кампании в неподдерживаемой валюте
+    /// @param token переданный адрес неподдерживаемого токена
+    error FundVerseUnSupportedToken(address token);
 
     /// @notice событие порождается при создании новой кампании
     /// @param NewCampaignAddress адрес контратка созданной кампании
@@ -46,6 +53,11 @@ contract Platform is
         , address indexed token
         , uint256 goal
         );     
+    
+    /// @notice событие порождается при добавлении нового токена в список поддерживаемых    
+    /// @param token адрес нового токена валюты кампании (для ETH - address(0))    
+    event FundVerseNewTokenAdded(address token);
+
     
     //роли
 
@@ -88,8 +100,9 @@ contract Platform is
             address _token
         ) external {            
             require(_goal > 0, FundVerseErrorZeroGoal()); //проверяем, что цель не нулевая
+            require(isAllowedToken(_token), FundVerseUnSupportedToken(_token));
             
-            PlatformStorageLib.Layout storage s = PlatformStorageLib.layout(); //ссылка на хранилище
+            PlatformStorageLib.Layout storage s = PlatformStorageLib.layout(); //ссылка на хранилище            
             
             require(_deadline > (s.minLifespan + block.timestamp)
                 , FundVerseErrorDeadlineLessMinimun()); //проверяем, что дедлайн не слишком маленький
@@ -168,6 +181,12 @@ contract Platform is
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.minLifespan = _lifespan;
     }    
+
+    function addTokenToAllowed (address token, bytes6 ticker) external onlyRole(CONFIGURATOR_ROLE) {
+
+        _addTokenToAllowed(token, ticker);
+        emit FundVerseNewTokenAdded(token);
+    }
     
 
     function _authorizeUpgrade(address newImplementation)
