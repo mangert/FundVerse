@@ -32,16 +32,10 @@ library PlatformStorageLib {
 
         //другие общие установки
         // минимальная продолжительность (кампании с нулевым периодом сбора не имеют смысла)
-        uint32 minLifespan; 
+        uint32 minLifespan;         
         
-        //хранилища справочника токенов
         //мэппинг для информации о поддерживаемых токенах
-        mapping (address token => bool allowed) allowedTokens;
-        //индексы в массиве токенов
-        mapping (address token => uint256 index) tokenIndexes;
-        mapping (uint256 index => address token) tokenByIndexes;
-        //массив тикеров токенов
-        bytes6[] tokenTickers;
+        mapping (address token => bool allowed) allowedTokens;        
         
 
         //данные для комиссии

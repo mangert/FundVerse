@@ -19,7 +19,7 @@ abstract contract  TokenAllowList {
 
     /// @notice ошибка показывает, что удаление токена не произошло, потому что и так не поддерживается
     /// @param token адрес токена, который пытались удалить    
-    error FundVerseDeletingTokenNotSupported(address token);
+    error FundVerseRemovingTokenNotSupported(address token);
 
     /// @notice функция проверяет, входит ли токен в список поддерживаемых
     function isAllowedToken(address token) internal view returns (bool)
@@ -31,49 +31,30 @@ abstract contract  TokenAllowList {
     //служебные функции
     /// @notice функция добавляет токен в список поддерживаемых платформой
     /// @dev на уровне платформы обернуть в роль
-    function _addTokenToAllowed (address token, bytes6 ticker) internal {       
+    /// @dev нативную валюту добавить нельзя
+    /// @param token адрес добавляемого токена    
+    function _addTokenToAllowed (address token) internal {       
         
         //повторно не добавляем        
-        if(isAllowedToken(token)) {
+        if(token == address(0) || isAllowedToken(token)) {
             revert FundVerseAddingTokenAlreadySupported(token);
         }        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
-        s.allowedTokens[token] = true;        
-        uint256 index = s.tokenTickers.length;
-        s.tokenTickers.push(ticker);
-        s.tokenIndexes[token] = index;       
-        s.tokenByIndexes[index] = token;
+        s.allowedTokens[token] = true;                
     }
 
     /// @notice функция убирает токен из поддерживаемых платформой
     /// @dev на уровне платформы обернуть в роль
+    /// @dev нативную валюту убрать нельзя
+    /// @param token адрес убираемого токена    
     function _removeTokenFromAllowed (address token) internal {        
         
         //если нет, не убираем        
-        if(!isAllowedToken(token)) {
-            revert FundVerseDeletingTokenNotSupported(token);
+        if(token == address(0) || !isAllowedToken(token)) {
+            revert FundVerseRemovingTokenNotSupported(token);
         }        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
-        s.allowedTokens[token] = false; //сначала меняем в основном мэппинге на false
+        delete s.allowedTokens[token];
         
-        //меняем местами последний и удаляемый в массиве тикеров        
-        uint256 lastTokenIndex = s.tokenTickers.length - 1; //зампоминаем индекс последнего элемента
-        address lastToken = s.tokenByIndexes[lastTokenIndex]; //смотрим, какой это был токен
-
-        uint256 tokenIndex = s.tokenIndexes[token]; //индекс удаляемого токена
-        
-        //ставим последний токен на место удаляемого и обрезаем массив
-        s.tokenTickers[tokenIndex] = s.tokenTickers[lastTokenIndex];
-        s.tokenTickers.pop();
-
-        //присваиваем токену, который поставили на место удаляемого, индекс удаляемого
-        //и убираем удаляемый из мэппинга
-        s.tokenIndexes[lastToken] = tokenIndex;
-        delete s.tokenIndexes[token];
-
-        //присваиваем индексу, который удаляем, значение адреса последнего токена
-        //и удаляем последний индекс токена из мэппинга
-        s.tokenByIndexes[tokenIndex] = lastToken;
-        delete s.tokenByIndexes[lastTokenIndex];        
     }    
 }

@@ -12,7 +12,7 @@ import { FactoryCore } from "../modules/FactoryCore.sol"; //модуль соз�
 
 import { Timelock } from "../features/Timelock.sol"; //функционал проверки таймлоков;
 import { FeeLogic } from "../features/FeeLogic.sol"; //функционал установки комиссий
-import { TokenAllowList } from "../features/TokenAllowList.sol"; //функционал поддержки токенов
+import { TokenAllowList} from "../features/TokenAllowList.sol"; //функционал поддержки токенов
 
 import {PlatformStorageLib} from "./storage/PlatformStorageLib.sol"; //хранилище данных
 
@@ -40,7 +40,7 @@ contract Platform is
     
     /// @notice ошибка индицирует попытку создания кампании в неподдерживаемой валюте
     /// @param token переданный адрес неподдерживаемого токена
-    error FundVerseUnSupportedToken(address token);
+    error FundVerseUnsupportedToken(address token);
 
     /// @notice событие порождается при создании новой кампании
     /// @param NewCampaignAddress адрес контратка созданной кампании
@@ -55,8 +55,12 @@ contract Platform is
         );     
     
     /// @notice событие порождается при добавлении нового токена в список поддерживаемых    
-    /// @param token адрес нового токена валюты кампании (для ETH - address(0))    
+    /// @param token адрес нового токена валюты кампании
     event FundVerseNewTokenAdded(address token);
+
+    /// @notice событие порождается при удалении токена из списока поддерживаемых    
+    /// @param token адрес удаляемого токена валюты кампании
+    event FundVerseTokenRemoved(address token);
 
     
     //роли
@@ -100,7 +104,7 @@ contract Platform is
             address _token
         ) external {            
             require(_goal > 0, FundVerseErrorZeroGoal()); //проверяем, что цель не нулевая
-            require(isAllowedToken(_token), FundVerseUnSupportedToken(_token));
+            require(isAllowedToken(_token), FundVerseUnsupportedToken(_token));
             
             PlatformStorageLib.Layout storage s = PlatformStorageLib.layout(); //ссылка на хранилище            
             
@@ -182,11 +186,22 @@ contract Platform is
         s.minLifespan = _lifespan;
     }    
 
-    function addTokenToAllowed (address token, bytes6 ticker) external onlyRole(CONFIGURATOR_ROLE) {
+    /// @notice функция добавляет токен в список поддерживаемых платформой
+    /// @dev нативную валюту добавить нельзя
+    /// @param token адрес добавляемого токена    
+    function addTokenToAllowed (address token) external onlyRole(CONFIGURATOR_ROLE) {
 
-        _addTokenToAllowed(token, ticker);
+        _addTokenToAllowed(token);
         emit FundVerseNewTokenAdded(token);
     }
+
+    /// @notice функция убирает токен из поддерживаемых платформой    
+    /// @dev нативную валюту убрать нельзя
+    /// @param token адрес убираемого токена    
+    function removeTokenFromAllowed (address token) external onlyRole(CONFIGURATOR_ROLE) {
+        _removeTokenFromAllowed(token);
+        emit FundVerseTokenRemoved(token);    
+    }               
     
 
     function _authorizeUpgrade(address newImplementation)
