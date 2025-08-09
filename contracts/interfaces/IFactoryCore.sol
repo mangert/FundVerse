@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ICampaign} from "../interfaces/ICampaign.sol";
-import  {CampaignNative} from "../campaigns/CampaignNative.sol";
-import {CampaignToken} from "../campaigns/CampaignToken.sol";
+import {ICampaign} from "./ICampaign.sol";
 
 /// @title интерфейс модуля создания кампаний 
 /// @notice содержит функционал создания кампаний

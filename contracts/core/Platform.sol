@@ -5,14 +5,14 @@ import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/ac
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import { ICampaign } from "./interfaces/ICampaign.sol"; //интерфейс кампании
-import {IFactoryCore} from "./interfaces/IFactoryCore.sol"; //интерфейс фабрики
+import { ICampaign } from "../interfaces/ICampaign.sol"; //интерфейс кампании
+import {IFactoryCore} from "../interfaces/IFactoryCore.sol"; //интерфейс фабрики
 
-import { FactoryCore } from "./abstract/FactoryCore.sol"; //модуль создания кампаний
-import { Timelock } from "./abstract/Timelock.sol"; //модуль проверки таймлоков;
-import { FeeLogic } from "./abstract/FeeLogic.sol";
+import { FactoryCore } from "../modules/FactoryCore.sol"; //модуль создания кампаний
+import { Timelock } from "../features/Timelock.sol"; //модуль проверки таймлоков;
+import { FeeLogic } from "../features/FeeLogic.sol";
 
-import {PlatformStorageLib} from "./libs/PlatformStorageLib.sol"; //хранилище данных
+import {PlatformStorageLib} from "./storage/PlatformStorageLib.sol"; //хранилище данных
 
 using PlatformStorageLib for PlatformStorageLib.Layout;
 

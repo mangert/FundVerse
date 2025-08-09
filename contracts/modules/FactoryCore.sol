@@ -2,8 +2,8 @@
 pragma solidity ^0.8.30;
 
 import {ICampaign} from "../interfaces/ICampaign.sol";
-import  {CampaignNative} from "../campaigns/CampaignNative.sol";
-import {CampaignToken} from "../campaigns/CampaignToken.sol";
+import  {CampaignNative} from "./campaigns/CampaignNative.sol";
+import {CampaignToken} from "./campaigns/CampaignToken.sol";
 import {IFactoryCore} from "../interfaces/IFactoryCore.sol";
 
 /// @title Модуль создания кампаний 

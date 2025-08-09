@@ -133,22 +133,27 @@ describe("Platform main functionality tests", function() {
             await expect(txCreate).to.emit(platform, "FundVerseCampaignCreated")
                 .withArgs(campaignAddress, user0, ethers.ZeroAddress, args0[0]);            
             await expect(txCreate).to.emit(platform, "FundVerseSetFounderTimelock")
-                .withArgs(user0, anyValue);
+                .withArgs(user0, timelock);
 
             //а теперь пробуем создать новую кампанию (стандартный таймлок - двое суток)
             const args1 = defaultCreateCampaignArgs({token: tokenERC20Addr});
             const txCreate1 = platform.connect(user0).createCompaign(...args1);
+            //ожидаем, что ревертнется, так как таймлок еще не закончился
             await expect(txCreate1).revertedWithCustomError(platform, "FundVerseErrorTimeLocked")
-                .withArgs(anyValue);            
+                .withArgs(timelock);            
 
             //а теперь пропустим время и попробуем еще раз - должно получиться
             const now = (await ethers.provider.getBlock("latest"))!.timestamp;
             const timeToAdd = 60 * 60 * 48 + 60; // двое суток плюс минута
             const futureTime = now + timeToAdd;
-
             await network.provider.send("evm_setNextBlockTimestamp", [futureTime]);
-            await network.provider.send("evm_mine");                
-            const txCreate2 = await platform.connect(user0).createCompaign(...args1);
+            await network.provider.send("evm_mine");
+            
+            //обновляем аргументы - дедлайн устанавливаем с учетом прокрученного времения
+            const args2 = defaultCreateCampaignArgs({deadline: futureTime + 60 * 60 * 48 });
+            //создаем кампанию
+            const txCreate2 = await platform.connect(user0).createCompaign(...args2);
+            //и проверяем, что у нашего user0 теперь две кампании
             expect(await platform.getCampaignsCountByFounder(user0)).equal(2);            
         });
     });

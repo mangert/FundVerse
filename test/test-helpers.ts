@@ -51,8 +51,7 @@ export function defaultCreateCampaignArgs(overrides = {}) : [
     const defaults = {        
         goal: 1000_000n,
         deadline: BigInt(Math.floor(Date.now() / 1000)) + (60n * 60n * 25n),
-        campaignMeta: "Description and URI",
-        platformFee: 50n,
+        campaignMeta: "Description and URI",        
         token: ethers.ZeroAddress
     };
 

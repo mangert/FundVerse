@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {PlatformStorageLib} from "../libs/PlatformStorageLib.sol";
+import {PlatformStorageLib} from "../core/storage/PlatformStorageLib.sol";
 
 using PlatformStorageLib for PlatformStorageLib.Layout;
 

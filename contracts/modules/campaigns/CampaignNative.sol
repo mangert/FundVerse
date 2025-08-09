@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "../interfaces/ICampaign.sol"; //интерфейс
+import "../../interfaces/ICampaign.sol"; //интерфейс
 import "./CampaignBase.sol"; //общий код
 
 /**
