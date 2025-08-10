@@ -52,6 +52,19 @@ interface IPlatformCommon {
     /// @notice ошибка при попытке вернуть залог раньше времени
     error FundVerseDepositNotYetReturnable();
 
+    /// @notice ошибка возникает при недостатке баланса для вывода         
+    ///  @param amount сумма вывода
+    /// @param available сумма располагаемая  
+    /// @param token валюта вывода (для нативной валюты address(0))
+    error FundVerseInsufficientFunds(uint256 amount, uint256 available, address token);
+
+    /// @notice ошибка возникает при планируемой сумме вывода равной нулю (если нечего выводить или такой вывод запрошен)
+    error FundVerseZeroWithdrawnAmount();
+
+    /// @notice ошибка возникает при попытке рекурсивного вызова функции вывода средств
+    error FundVerseReentrancyDetected();
+
+
     //события
 
     /// @notice событие порождается при изменении настроек платформы
@@ -100,5 +113,11 @@ interface IPlatformCommon {
     /// @param amount сумма залога
     /// @param campaign адрес кампании, обеспечиваемой залогом
     event FundVerseDepositReturned(address indexed founder, uint256 amount, address indexed campaign);    
+
+    /// @notice событие при выводе средств с контракта
+    /// @param amount сумма вывода
+    /// @param recipient адрес вывода
+    /// @param token валюта вывода (для нативной валюты address(0))
+    event FundVerseWithdrawn(uint256 amount, address indexed recipient, address indexed token);
 
 }

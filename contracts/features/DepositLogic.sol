@@ -37,7 +37,7 @@ abstract contract DepositLogic is IPlatformCommon {
         require(_isCampaignFinished(campaign), FundVerseDepositNotYetReturnable());                   
 
         uint256 amount = s.depositsByCompaigns[address(campaign)];
-        require(amount > 0, "Deposit already returned");        
+        require(amount > 0, FundVerseZeroWithdrawnAmount());
 
         // обнуляем, чтобы не вернуть дважды
         s.depositsByCompaigns[address(campaign)] = 0;

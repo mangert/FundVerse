@@ -4,12 +4,11 @@ pragma solidity ^0.8.30;
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 import { ICampaign } from "../interfaces/ICampaign.sol"; //интерфейс кампании
 import {IFactoryCore} from "../interfaces/IFactoryCore.sol"; //интерфейс фабрики
 import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol"; //события и ошибки
-
-import { FactoryCore } from "../modules/FactoryCore.sol"; //модуль создания кампаний
 
 import { Timelock } from "../features/Timelock.sol"; //функционал проверки таймлоков;
 import { FeeLogic } from "../features/FeeLogic.sol"; //функционал установки комиссий
@@ -39,7 +38,21 @@ contract Platform is
     
     /// @notice роль, позволяющая устанавливать параметры платформы
     bytes32 public constant CONFIGURATOR_ROLE = keccak256("CONFIGURATOR");
+    
+    /// @notice роль, позволяющая забирать с контракта средства
+    bytes32 public constant TREASURE_ROLE = keccak256("TREASURE");
 
+    /// @notice флаг для nonReentrancy
+    bool private _inWithdrawal;
+
+    /// @notice модификатор для функций вывода
+    modifier NonReentrancy() {
+        require(!_inWithdrawal, FundVerseReentrancyDetected());
+        _inWithdrawal = true;
+        _;
+        _inWithdrawal = false;        
+    }
+    
 
     /// @notice инициализатор - вместо конструктора
     function initialize(address _factory) public initializer {       
@@ -52,6 +65,7 @@ contract Platform is
         _grantRole(DEFAULT_ADMIN_ROLE, owner);
         _grantRole(UPGRADER_ROLE, owner);
         _grantRole(CONFIGURATOR_ROLE, owner);
+        _grantRole(TREASURE_ROLE, owner);
         
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.factory = _factory;
@@ -178,8 +192,46 @@ contract Platform is
     /// @param token адрес убираемого токена    
     function removeTokenFromAllowed (address token) external onlyRole(CONFIGURATOR_ROLE) {
         _removeTokenFromAllowed(token);        
-    }               
-    
+    }
+
+    //функции вывода средств
+    /// @notice функция позволяет вывести средства в нативной валюте
+    /// @param amount сумма вывода
+    /// @param recipient адрес вывода
+    function withdrawIncomes(address payable recipient, uint256 amount) 
+        external onlyRole(TREASURE_ROLE) NonReentrancy {
+        
+        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
+        //можем выводить весь баланс за минусом залогов фаундеров
+        uint256 availableValue = address(this).balance - s.totalDeposit;
+        
+        //рассчитываем доступные средства
+        require(amount <= availableValue,  FundVerseInsufficientFunds(amount, availableValue, address(0)));
+
+        (bool success, ) = recipient.call{value: amount}("");
+        require(success, FundVerseTransferFailed(recipient, amount, address(0)));
+        
+        emit FundVerseWithdrawn(amount, recipient, address(0));
+    }   
+    /// @notice функция позволяет вывести средства в токенах
+    /// @param amount сумма вывода
+    /// @param recipient адрес вывода
+    /// @param token валюта вывода 
+    function withdrawIncomes(address payable recipient, uint256 amount, address token) 
+        external onlyRole(TREASURE_ROLE) NonReentrancy {        
+        
+        // смотрим доступные средства
+        uint256 availableValue = IERC20(token).balanceOf(address(this));
+        require(amount <= availableValue,  FundVerseInsufficientFunds(amount, availableValue, token));
+
+        (bool success, bytes memory returndata) = token.call(
+            abi.encodeWithSelector(IERC20.transfer.selector, recipient, amount)
+        );
+        bool result = success && (returndata.length == 0 || abi.decode(returndata, (bool)));
+        require(result, FundVerseTransferFailed(recipient, amount, token));
+        
+        emit FundVerseWithdrawn(amount, recipient, token);
+    }                   
 
     function _authorizeUpgrade(address newImplementation)
         internal
