@@ -7,19 +7,12 @@ pragma solidity ^0.8.30;
  * @dev для нативной валюты предусмотрено значение address(0)
  */
 
+import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
 import {PlatformStorageLib} from "../core/storage/PlatformStorageLib.sol"; //хранилище данных
 
 using PlatformStorageLib for PlatformStorageLib.Layout;
 
-abstract contract  TokenAllowList {
-
-    /// @notice ошибка показывает, что добавление токена не произошло, потому что такой уже есть
-    /// @param token адрес токена, который пытались добавить    
-    error FundVerseAddingTokenAlreadySupported(address token);
-
-    /// @notice ошибка показывает, что удаление токена не произошло, потому что и так не поддерживается
-    /// @param token адрес токена, который пытались удалить    
-    error FundVerseRemovingTokenNotSupported(address token);
+abstract contract TokenAllowList is IPlatformCommon {
 
     /// @notice функция проверяет, входит ли токен в список поддерживаемых
     function isAllowedToken(address token) internal view returns (bool)
@@ -41,6 +34,7 @@ abstract contract  TokenAllowList {
         }        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.allowedTokens[token] = true;                
+        emit FundVerseNewTokenAdded(token);
     }
 
     /// @notice функция убирает токен из поддерживаемых платформой
@@ -55,6 +49,7 @@ abstract contract  TokenAllowList {
         }        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         delete s.allowedTokens[token];
+        emit FundVerseTokenRemoved(token);
         
     }    
 }

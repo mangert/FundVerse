@@ -7,12 +7,14 @@ import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils
 
 import { ICampaign } from "../interfaces/ICampaign.sol"; //интерфейс кампании
 import {IFactoryCore} from "../interfaces/IFactoryCore.sol"; //интерфейс фабрики
+import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol"; //события и ошибки
 
 import { FactoryCore } from "../modules/FactoryCore.sol"; //модуль создания кампаний
 
 import { Timelock } from "../features/Timelock.sol"; //функционал проверки таймлоков;
 import { FeeLogic } from "../features/FeeLogic.sol"; //функционал установки комиссий
 import { TokenAllowList} from "../features/TokenAllowList.sol"; //функционал поддержки токенов
+import { DepositLogic} from "../features/DepositLogic.sol"; //функционал залогов
 
 import {PlatformStorageLib} from "./storage/PlatformStorageLib.sol"; //хранилище данных
 
@@ -26,45 +28,12 @@ contract Platform is
     Initializable, 
     AccessControlUpgradeable, 
     UUPSUpgradeable,    
+    IPlatformCommon,
     Timelock,
-    TokenAllowList {         
-
-    /// @notice ошибка индицирует попытку создания кампании со слишком коротким сроком
-    error FundVerseErrorDeadlineLessMinimun();    
-
-    /// @notice ошибка индицирует провал операции создания кампании
-    error FundVerseCreateFailed();
-
-    /// @notice ошибка индицирует попытку создания кампании c нулевой целью
-    error FundVerseErrorZeroGoal();
-    
-    /// @notice ошибка индицирует попытку создания кампании в неподдерживаемой валюте
-    /// @param token переданный адрес неподдерживаемого токена
-    error FundVerseUnsupportedToken(address token);
-
-    /// @notice событие порождается при создании новой кампании
-    /// @param NewCampaignAddress адрес контратка созданной кампании
-    /// @param founder адрес фаундера
-    /// @param token адрес токена валюты кампании (для ETH - address(0))
-    /// @param goal целевая сумма сбора     
-    event FundVerseCampaignCreated(
-        ICampaign indexed NewCampaignAddress
-        , address indexed founder
-        , address indexed token
-        , uint256 goal
-        );     
-    
-    /// @notice событие порождается при добавлении нового токена в список поддерживаемых    
-    /// @param token адрес нового токена валюты кампании
-    event FundVerseNewTokenAdded(address token);
-
-    /// @notice событие порождается при удалении токена из списока поддерживаемых    
-    /// @param token адрес удаляемого токена валюты кампании
-    event FundVerseTokenRemoved(address token);
-
+    TokenAllowList,
+    DepositLogic {                
     
     //роли
-
     /// @notice роль, позволяющая обновить контракт
     bytes32 public constant UPGRADER_ROLE = keccak256(bytes("UPGRADER"));   
     
@@ -79,7 +48,7 @@ contract Platform is
         __AccessControl_init();
         __UUPSUpgradeable_init();
 
-        //устанвливаем роли
+        //устанавливаем роли
         _grantRole(DEFAULT_ADMIN_ROLE, owner);
         _grantRole(UPGRADER_ROLE, owner);
         _grantRole(CONFIGURATOR_ROLE, owner);
@@ -102,19 +71,20 @@ contract Platform is
             uint32 _deadline,
             string calldata _campaignMeta,            
             address _token
-        ) external {            
+        ) external payable {            
             require(_goal > 0, FundVerseErrorZeroGoal()); //проверяем, что цель не нулевая
-            require(isAllowedToken(_token), FundVerseUnsupportedToken(_token));
-            
+            require(isAllowedToken(_token), FundVerseUnsupportedToken(_token)); //проверяем, что валюта кампании поддерживается
+                        
             PlatformStorageLib.Layout storage s = PlatformStorageLib.layout(); //ссылка на хранилище            
-            
+
+            uint256 deposit = msg.value;
+            require(deposit >= s.requiredDeposit, FundVerseInsufficientDeposit(deposit, s.requiredDeposit));
             require(_deadline > (s.minLifespan + block.timestamp)
                 , FundVerseErrorDeadlineLessMinimun()); //проверяем, что дедлайн не слишком маленький
             
             address founder = msg.sender;
-            require(!_isLocked(founder), FundVerseErrorTimeLocked(s.timelocks[founder]));
-
-            //TODO - залоги
+            require(!_isLocked(founder), FundVerseErrorTimeLocked(s.timelocks[founder]));            
+            
             uint128 _platformFee = 0; //TODO - функция из FeeLogic            
             ICampaign newCampaign = IFactoryCore(s.factory).createCampaign(
                 founder, 
@@ -127,6 +97,10 @@ contract Platform is
                 );    
             //проверим на всякий случай, что то-то вернулось
             require(address(newCampaign).code.length != 0, FundVerseCreateFailed());
+
+            if(deposit > 0) { //если вдруг у нас платформа не требует залога, не будем нули регистрировать
+                _lockDeposit(founder, deposit, newCampaign); //регистрируем залог
+            }          
 
             _registerCampaign(founder, newCampaign); //записываем данные в хранилище
             _setLockTime(founder); //устанавливаем новый таймлок
@@ -174,8 +148,14 @@ contract Platform is
     /// @notice позволяет устанавливать длительность лока взамен установленного ранее
     /// @notice действует глобально для всех пользователей, создающих кампании после установки нового значения    
     function setDelay(uint32 newDelay) external onlyRole(CONFIGURATOR_ROLE) {
-        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
-        s.delay = newDelay;
+        _setDelay(newDelay);
+    }
+    
+    /// @notice функция по установке суммы залога    
+    /// @notice действует глобально для всех пользователей, создающих кампании после установки нового значения
+    /// @notice depositAmount новое значение суммы залога    
+    function setRequiredDeposit(uint256 depositAmount) external onlyRole(CONFIGURATOR_ROLE) {
+        _setRequiredDeposit(depositAmount);
     }
 
     /// @notice функция по установке минимального срока действия кампаний
@@ -190,17 +170,14 @@ contract Platform is
     /// @dev нативную валюту добавить нельзя
     /// @param token адрес добавляемого токена    
     function addTokenToAllowed (address token) external onlyRole(CONFIGURATOR_ROLE) {
-
-        _addTokenToAllowed(token);
-        emit FundVerseNewTokenAdded(token);
+        _addTokenToAllowed(token);        
     }
 
     /// @notice функция убирает токен из поддерживаемых платформой    
     /// @dev нативную валюту убрать нельзя
     /// @param token адрес убираемого токена    
     function removeTokenFromAllowed (address token) external onlyRole(CONFIGURATOR_ROLE) {
-        _removeTokenFromAllowed(token);
-        emit FundVerseTokenRemoved(token);    
+        _removeTokenFromAllowed(token);        
     }               
     
 

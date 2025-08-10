@@ -26,6 +26,15 @@ library PlatformStorageLib {
         //общий счетчик кампаний
         uint32 totalCounter;
 
+        //переменные для залогов
+        //требуемая сумма залога
+        uint256 requiredDeposit;
+        //общая сумма накопленных депозитов
+        uint256 totalDeposit;
+        //хранилище депозитов в разрезе кампаний
+        mapping(address campaign => uint256 deposited) depositsByCompaigns;
+
+        
         //хранилище timelock
         mapping(address founder => uint32 timelock) timelocks;
         uint32 delay;

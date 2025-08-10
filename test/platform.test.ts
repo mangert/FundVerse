@@ -255,11 +255,25 @@ describe("Platform main functionality tests", function() {
 
     describe("platform configuration tests", function() {
         
+        //проверяем, что можно изменить параметр таймлока
         it("should change default timelock delay", async function() {
             const {ownerPlatform, platform } = await loadFixture(deploy);            
-            //Сделать событие и геттер для настроек!!!
-            const tx = await platform.connect(ownerPlatform).setDelay(60 * 60 * 24);
+            const newDelay = 60 * 60 * 24;
+            const tx = await platform.connect(ownerPlatform).setDelay(newDelay);
             tx.wait(1);            
+            await expect(tx).to.emit(platform, "FundVersePlatformParameterUpdated")
+                .withArgs("delay", newDelay, ownerPlatform);
+            expect(await platform.getDelay()).equal(newDelay);            
+        });
+
+        //проверяем, что кто попало не может изменить параметр таймлока
+        it("should revert unauthorized change default timelock delay", async function() {
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);            
+            const newDelay = 60 * 60 * 24;
+            const tx = platform.connect(user0).setDelay(newDelay);
+            
+            await expect(tx).revertedWithCustomError(platform, "AccessControlUnauthorizedAccount");
+            expect(await platform.getDelay()).not.equal(newDelay);            
         });
 
        
