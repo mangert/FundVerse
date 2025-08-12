@@ -91,8 +91,10 @@ contract Platform is
                         
             PlatformStorageLib.Layout storage s = PlatformStorageLib.layout(); //ссылка на хранилище            
 
+            //проверяем, что залог перечислен
             uint256 deposit = msg.value;
             require(deposit >= s.requiredDeposit, FundVerseInsufficientDeposit(deposit, s.requiredDeposit));
+            
             require(_deadline > (s.minLifespan + block.timestamp)
                 , FundVerseErrorDeadlineLessMinimun()); //проверяем, что дедлайн не слишком маленький
             
@@ -175,9 +177,10 @@ contract Platform is
     /// @notice функция по установке минимального срока действия кампаний
     /// @notice позволяет устанавливать минимальный срок действия кампаний взамен установленного ранее
     /// @notice действует глобально для всех кампаний, создаваемых после установки нового значения    
-    function setMinDeadline(uint32 _lifespan) external onlyRole(CONFIGURATOR_ROLE) {
+    function setMinLifespan(uint32 _lifespan) external onlyRole(CONFIGURATOR_ROLE) {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.minLifespan = _lifespan;
+        emit FundVersePlatformParameterUpdated("minLifespan", _lifespan, msg.sender);
     }    
 
     /// @notice функция добавляет токен в список поддерживаемых платформой
@@ -233,9 +236,21 @@ contract Platform is
         emit FundVerseWithdrawn(amount, recipient, token);
     }                   
 
+    /// @notice пустой receive — для автоматического приёма комиссий и любых входящих переводов
+    receive() external payable {}
+
+
+    /// @notice функция аварийного получения зависших средств из кампании
+    /// @dev используется только в случае сбоев/кривых токенов, когда комиссия или средства не пришли
+    /// @param campaign адрес кампании, из которой нужно вытащить зависшие средства    
+    function claimCampaignPending(address campaign) external onlyRole(TREASURE_ROLE) {
+        ICampaign(campaign).claimPendingFunds();
+        emit FundVerseCampaignPendingClaimed(campaign);
+    }
+    
+
     function _authorizeUpgrade(address newImplementation)
         internal
         override
         onlyRole(UPGRADER_ROLE){}
-
 }

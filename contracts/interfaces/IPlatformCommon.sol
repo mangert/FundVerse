@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import {ICampaign} from "./ICampaign.sol";
 
-/// @title интерфейс IPlatformCommon - событие и ошибки платформы
+/// @title интерфейс IPlatformCommon - события и ошибки платформы
 /// @notice содержит объявления событий и ошибок, кидаемых платформой
 interface IPlatformCommon {    
     
@@ -119,5 +119,9 @@ interface IPlatformCommon {
     /// @param recipient адрес вывода
     /// @param token валюта вывода (для нативной валюты address(0))
     event FundVerseWithdrawn(uint256 amount, address indexed recipient, address indexed token);
+
+    /// @notice событие для фиксации того, что платформа вытянула зависшие средства из кампании
+    /// @param campaign адрес кампании, из которой тянули средства
+    event FundVerseCampaignPendingClaimed(address indexed campaign);
 
 }

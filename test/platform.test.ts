@@ -180,6 +180,31 @@ describe("Platform main functionality tests", function() {
            await expect(txCreateToken).revertedWithCustomError(platform, "FundVerseUnsupportedToken")
             .withArgs(tokenERC20);
         });
+
+        //проверка реверта создания кампаний если установленный залог не перечислен
+        it("should revert campaign whithout deposit", async function() {
+            const {ownerPlatform, user0, platform } = await loadFixture(deploy); 
+            
+            //установим размер залога
+            const deposit = 1000n;
+            const txSetDeposit = platform.connect(ownerPlatform).setRequiredDeposit(deposit);
+            (await txSetDeposit).wait(1);
+
+            //формируем стандарный набор аргументов кампании
+            const args = defaultCreateCampaignArgs();
+            //сделаем транзакцию по созданию кампании, но залог перечислять не будем
+            const txCreate = platform.connect(user0).createCompaign(...args);
+            //и ожидаем, что отвалится
+            await expect(txCreate).revertedWithCustomError(platform, "FundVerseInsufficientDeposit")
+                .withArgs(0, deposit);
+            
+            //сделаем транзакцию по созданию с перечислением залога (должна пройти)            
+            const txCreateDep = await platform.connect(user0).createCompaign(...args, {value : deposit});
+            expect(await platform.getCampaignsCountByFounder(user0)).equal(1);     
+            expect(txCreateDep).to.emit(platform, "FundVerseDepositLocked")
+                .withArgs(user0, deposit, await platform.getCampaignByIndex(0));
+            
+        });
     });
     describe("add and remove token tests", function() {
         // проверяем, что можно добавить новый токен
@@ -253,6 +278,7 @@ describe("Platform main functionality tests", function() {
 
     });    
 
+    //тесты конфигурирования платформы
     describe("platform configuration tests", function() {
         
         //проверяем, что можно изменить параметр таймлока
@@ -276,7 +302,123 @@ describe("Platform main functionality tests", function() {
             expect(await platform.getDelay()).not.equal(newDelay);            
         });
 
+        //проверяем, что можно устанавливать размеры залогов
+        it("should set require deposit", async function() {
+            const {ownerPlatform, platform } = await loadFixture(deploy);            
+            //установим размер залога
+            const deposit = 1000n;
+            const txSetDeposit = await platform.connect(ownerPlatform).setRequiredDeposit(deposit);
+            (await txSetDeposit).wait(1);
+            //проверяем, что получилось
+            expect(txSetDeposit).to.emit(platform, "FundVersePlatformParameterUpdated")
+                .withArgs("depositAmount", deposit, ownerPlatform);
+        });
+
+        //проверяем, что кто попало не может изменить параметр таймлока
+        it("should revert unauthorized change default timelock delay", async function() {
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);            
+            //установим размер залога
+            const deposit = 1000n;
+            const txSetDeposit = platform.connect(user0).setRequiredDeposit(deposit);            
+            //проверяем, что получилось
+            await expect(txSetDeposit).revertedWithCustomError(platform, "AccessControlUnauthorizedAccount");            
+        
+        });
+
+        //проверяем, что можно устанавливать минимальный дедлайн
+        it("should set minimal lifespan", async function() {
+            const {ownerPlatform, platform } = await loadFixture(deploy);            
+
+            const lifespan = 60 * 60;
+            const txSetLifespan = await platform.connect(ownerPlatform).setMinLifespan(lifespan);
+            
+            expect(txSetLifespan).to.emit(platform, "FundVersePlatformParameterUpdated")
+                .withArgs("minLifespan", lifespan, ownerPlatform);            
+        });
+
+        //проверяем, что кто попало не может менять минимальный дедлайн
+        it("should revert unauthorized change default timelock delay", async function() {
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);            
+            const lifespan = 60 * 60;
+            const txSetLifespan = platform.connect(user0).setMinLifespan(lifespan);            
+            //проверяем, что получилось
+            await expect(txSetLifespan).revertedWithCustomError(platform, "AccessControlUnauthorizedAccount");            
+        
+        });
        
+    });    
+
+    //тесты выводов средств с платформы
+    describe("platform withdraw", function() {
+        
+        //проверяем, что владелец может вывести с контракта эфиры
+        it("should withraw incomes in native", async function() {
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);           
+            
+            
+            //кинем на наш контракт как-бы прибыль
+            //для этого создадим отправителя
+            const sender_Factory = await ethers.getContractFactory("ETHSender");
+            const sender = await sender_Factory.deploy();
+            sender.waitForDeployment();
+            const incomes = 1000n;
+            await sender.sendTo(platform.target, {value : incomes});
+            
+            //вот этот кусок будем в провально тесте использовать. Осюда удалить!!!
+            //создадим штуки 3 кампании, чтобы накопился залог            
+            /*const count = 3n;            
+            const args = defaultCreateCampaignArgs();
+            //установим размер залога
+            const deposit = 1000n;
+            const txSetDeposit = await platform.connect(ownerPlatform).setRequiredDeposit(deposit);
+            (await txSetDeposit).wait(1);                                   
+            
+            //сбросим таймлок, чтобы не мешался
+            const txSetTimelock = (await platform.connect(ownerPlatform).setDelay(0)).wait(1);
+            for(let i = 0; i != 3; ++i){
+                const tx = await platform.connect(user0).createCompaign(...args, {value : deposit});
+                await tx.wait(1);
+            }
+            const totalDep = deposit * count;*/
+            //попробуем вывести 
+
+            const txWD = await platform.connect(ownerPlatform)["withdrawIncomes(address,uint256)"]
+            (user0, incomes);
+            await txWD.wait(1);
+
+            expect(txWD).to.emit(platform, "FundVerseWithdrawn").withArgs(incomes, user0, ethers.ZeroAddress);
+            expect(txWD).changeEtherBalances
+                (                    
+                    [user0, platform],
+                    [incomes, -incomes]
+                );
+
+            
+        });
+
+        it("should withraw incomes in token", async function() {
+            const {user0, ownerPlatform, platform, tokenERC20, tokenERC20Addr } = await loadFixture(deploy);            
+            
+            const incomes = 1000000n;
+            //наминтим на адрес платформы токенов и представим, что это пришли комиссии
+            const txMint = await tokenERC20.mint(platform.getAddress(), incomes);
+
+            //попробуем вывести на адрес скажем user0.
+
+            const txWD = await platform.connect(ownerPlatform)["withdrawIncomes(address,uint256,address)"]
+            (user0, incomes, tokenERC20Addr);
+            await txWD.wait(1);
+
+            expect(txWD).to.emit(platform, "FundVerseWithdrawn").withArgs(incomes, user0, tokenERC20Addr);
+            expect(txWD).changeTokenBalances
+                (
+                    tokenERC20,
+                    [user0, platform],
+                    [incomes, -incomes]
+                );
+        });
+
+            
     });    
 
 });
