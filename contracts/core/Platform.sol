@@ -19,10 +19,8 @@ import {PlatformStorageLib} from "./storage/PlatformStorageLib.sol"; //хран�
 
 using PlatformStorageLib for PlatformStorageLib.Layout;
 
-/**
- * @title Главный контракт краудфандинговой платформы  
- * @notice обеспечивает функционирование самой платформы
- */
+///@title Главный контракт краудфандинговой платформы  
+///@notice обеспечивает функционирование самой платформы
 contract Platform is 
     Initializable, 
     AccessControlUpgradeable, 
@@ -154,8 +152,9 @@ contract Platform is
         uint32 index = s.totalCounter;
         s.totalCounter++;
 
-        s.campaignIndex[index] = newCampaign;
-        s.campaignsByFounder[founder][s.campaignsCountByFounder[founder]++] = newCampaign;
+        s.campaignIndex[index] = address(newCampaign);
+        s.campaignsByFounder[founder][s.campaignsCountByFounder[founder]++] = address(newCampaign);        
+        s.registeredCampaigns[address(newCampaign)] = true;
     }
 
     //функции настройки параметров платформы
@@ -239,15 +238,19 @@ contract Platform is
     /// @notice пустой receive — для автоматического приёма комиссий и любых входящих переводов
     receive() external payable {}
 
-
     /// @notice функция аварийного получения зависших средств из кампании
     /// @dev используется только в случае сбоев/кривых токенов, когда комиссия или средства не пришли
     /// @param campaign адрес кампании, из которой нужно вытащить зависшие средства    
-    function claimCampaignPending(address campaign) external onlyRole(TREASURE_ROLE) {
+    function claimCampaignPending(address campaign) external onlyRole(TREASURE_ROLE) {        
+        
+        //проверим, что это "наша" кампания, а не левый вредоносный контракт
+        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
+        require(s.registeredCampaigns[campaign], FundVersNotRegisteredCampaign(campaign));
+        
         ICampaign(campaign).claimPendingFunds();
+        
         emit FundVerseCampaignPendingClaimed(campaign);
-    }
-    
+    }    
 
     function _authorizeUpgrade(address newImplementation)
         internal

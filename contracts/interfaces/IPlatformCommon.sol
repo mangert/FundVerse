@@ -64,9 +64,12 @@ interface IPlatformCommon {
     /// @notice ошибка возникает при попытке рекурсивного вызова функции вывода средств
     error FundVerseReentrancyDetected();
 
+    /// @notice ошибка возникает при вызове функций кампании у контракта, который не был создан платформой
+    /// @dev campaign адрес контракта, к которому обращаемся
+    error FundVersNotRegisteredCampaign(address campaign);
+
 
     //события
-
     /// @notice событие порождается при изменении настроек платформы
     /// @param parameter изменяемый параметр    
     /// @param newValue новое значение

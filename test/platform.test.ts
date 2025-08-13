@@ -349,12 +349,10 @@ describe("Platform main functionality tests", function() {
     });    
 
     //тесты выводов средств с платформы
-    describe("platform withdraw", function() {
-        
+    describe("platform withdraw", function() {        
         //проверяем, что владелец может вывести с контракта эфиры
         it("should withraw incomes in native", async function() {
-            const {user0, ownerPlatform, platform } = await loadFixture(deploy);           
-            
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);                      
             
             //кинем на наш контракт как-бы прибыль
             //для этого создадим отправителя
@@ -362,11 +360,33 @@ describe("Platform main functionality tests", function() {
             const sender = await sender_Factory.deploy();
             sender.waitForDeployment();
             const incomes = 1000n;
-            await sender.sendTo(platform.target, {value : incomes});
+            await sender.sendTo(platform.target, {value : incomes});            
+
+            const txWD = await platform.connect(ownerPlatform)["withdrawIncomes(address,uint256)"]
+            (user0, incomes);
+            await txWD.wait(1);
+
+            expect(txWD).to.emit(platform, "FundVerseWithdrawn").withArgs(incomes, user0, ethers.ZeroAddress);
+            expect(txWD).changeEtherBalances
+                (                    
+                    [user0, platform],
+                    [incomes, -incomes]
+                );            
+        });
+
+        it("should revert withraw more than incomes in native", async function() {
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);                      
             
-            //вот этот кусок будем в провально тесте использовать. Осюда удалить!!!
+            //кинем на наш контракт как-бы прибыль
+            //для этого создадим отправителя
+            const sender_Factory = await ethers.getContractFactory("ETHSender");
+            const sender = await sender_Factory.deploy();
+            sender.waitForDeployment();
+            const incomes = 1000n;
+            await sender.sendTo(platform.target, {value : incomes});            
+            
             //создадим штуки 3 кампании, чтобы накопился залог            
-            /*const count = 3n;            
+            const count = 3n;            
             const args = defaultCreateCampaignArgs();
             //установим размер залога
             const deposit = 1000n;
@@ -379,21 +399,15 @@ describe("Platform main functionality tests", function() {
                 const tx = await platform.connect(user0).createCompaign(...args, {value : deposit});
                 await tx.wait(1);
             }
-            const totalDep = deposit * count;*/
-            //попробуем вывести 
+            const totalDep = deposit * count;            
 
-            const txWD = await platform.connect(ownerPlatform)["withdrawIncomes(address,uint256)"]
-            (user0, incomes);
-            await txWD.wait(1);
-
-            expect(txWD).to.emit(platform, "FundVerseWithdrawn").withArgs(incomes, user0, ethers.ZeroAddress);
-            expect(txWD).changeEtherBalances
-                (                    
-                    [user0, platform],
-                    [incomes, -incomes]
-                );
-
+            //пробуем вывести вообще все
+            const txWD = platform.connect(ownerPlatform)["withdrawIncomes(address,uint256)"]
+            (user0, incomes + totalDep);
             
+            //и ожидаем, что отвалится
+            await expect(txWD).revertedWithCustomError(platform, "FundVerseInsufficientFunds")
+                .withArgs(incomes + totalDep, incomes, ethers.ZeroAddress);            
         });
 
         it("should withraw incomes in token", async function() {
@@ -416,8 +430,7 @@ describe("Platform main functionality tests", function() {
                     [user0, platform],
                     [incomes, -incomes]
                 );
-        });
-
+        });      
             
     });    
 

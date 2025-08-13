@@ -17,12 +17,14 @@ library PlatformStorageLib {
         //хранилище кампаний
         //все созданные кампании в разрезе фаундеров
         mapping(address founder => 
-            mapping(uint32 id => ICampaign)
+            mapping(uint32 id => address)
         ) campaignsByFounder;
         //счетчик кампаний по фаундерам
         mapping (address founder => uint32 campaignCounter) campaignsCountByFounder;    
         //индекс кампаний
-        mapping (uint32 index => ICampaign campaign) campaignIndex;    
+        mapping (uint32 index => address campaign) campaignIndex;    
+        //список зарегистрированных кампаний
+        mapping (address campaign => bool) registeredCampaigns;            
         //общий счетчик кампаний
         uint32 totalCounter;
 
@@ -33,7 +35,6 @@ library PlatformStorageLib {
         uint256 totalDeposit;
         //хранилище депозитов в разрезе кампаний
         mapping(address campaign => uint256 deposited) depositsByCompaigns;
-
         
         //хранилище timelock
         mapping(address founder => uint32 timelock) timelocks;
@@ -50,6 +51,8 @@ library PlatformStorageLib {
         //данные для комиссии
         uint16 baseFee;  
 
+        //адрес коллекции NFT
+        address discountNFT;
         
         
     }
