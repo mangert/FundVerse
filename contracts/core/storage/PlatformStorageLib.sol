@@ -46,7 +46,7 @@ library PlatformStorageLib {
         mapping(address founder => uint32 timelock) timelocks;        
         
         //хранилище депозитов в разрезе кампаний
-        mapping(address campaign => uint256 deposited) depositsByCompaigns;
+        mapping(address campaign => uint256 deposited) depositsByCampaigns;
         
         //мэппинг для информации о поддерживаемых токенах
         mapping (address token => bool allowed) allowedTokens;        

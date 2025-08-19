@@ -44,7 +44,7 @@ describe("Platform main functionality tests", function() {
             //формируем стандарный набор аргументов кампании
             const args = defaultCreateCampaignArgs();
             //создаем кампанию
-            const txCreate = await platform.connect(user0).createCompaign(...args);
+            const txCreate = await platform.connect(user0).createCampaign(...args);
             
             //смортрим, что получилось            
             const campaignAddress = await platform.getCampaignByIndex(0);            
@@ -69,7 +69,7 @@ describe("Platform main functionality tests", function() {
             (await platform.connect(ownerPlatform).addTokenToAllowed(tokenERC20Addr)).wait(1);
             
             //создаем кампанию
-            const txCreate = await platform.connect(user0).createCompaign(...args);
+            const txCreate = await platform.connect(user0).createCampaign(...args);
             
             //смотрим, что получилось
             const campaignAddress = await platform.getCampaignByIndex(0);            
@@ -90,7 +90,7 @@ describe("Platform main functionality tests", function() {
             //меняем в аргументах цель на ноль
             const argsNative = defaultCreateCampaignArgs({goal: 0n});
             //формируем транзакцию
-            const txCreateNative = platform.connect(user0).createCompaign(...argsNative);
+            const txCreateNative = platform.connect(user0).createCampaign(...argsNative);
             //отправляем и ждем, что отвалится с ошибкой
             await expect(txCreateNative).revertedWithCustomError(platform, "FundVerseErrorZeroGoal");
             
@@ -102,7 +102,7 @@ describe("Platform main functionality tests", function() {
             const argsToken = defaultCreateCampaignArgs({goal:0, token: tokenERC20Addr});
 
             //формируем транзакцию
-            const txCreateToken = platform.connect(user0).createCompaign(...argsToken);
+            const txCreateToken = platform.connect(user0).createCampaign(...argsToken);
             //отправляем и ждем, что отвалится с ошибкой
             await expect(txCreateToken).revertedWithCustomError(platform, "FundVerseErrorZeroGoal");            
         });
@@ -113,7 +113,7 @@ describe("Platform main functionality tests", function() {
             //уменьшаем в аргументах дедлайн до 1 минуты
             const argsNative = defaultCreateCampaignArgs({deadline: BigInt(Math.floor(Date.now() / 1000)) + 60n});
             //формируем транзакцию
-            const txCreateNative = platform.connect(user0).createCompaign(...argsNative);
+            const txCreateNative = platform.connect(user0).createCampaign(...argsNative);
             //отправляем и ждем, что отвалится с ошибкой
             await expect(txCreateNative).revertedWithCustomError(platform, "FundVerseErrorDeadlineLessMinimun");
             
@@ -123,7 +123,7 @@ describe("Platform main functionality tests", function() {
             //уменьшаем в аргументах дедлайн до 1 минуты
             const argsToken = defaultCreateCampaignArgs({deadline: BigInt(Math.floor(Date.now() / 1000)) + 60n, token: tokenERC20Addr});
             //формируем транзакцию
-            const txCreateToken = platform.connect(user0).createCompaign(...argsToken);
+            const txCreateToken = platform.connect(user0).createCampaign(...argsToken);
             //отправляем и ждем, что отвалится с ошибкой
             await expect(txCreateToken).revertedWithCustomError(platform, "FundVerseErrorDeadlineLessMinimun");            
         });
@@ -134,7 +134,7 @@ describe("Platform main functionality tests", function() {
             const args0 = defaultCreateCampaignArgs();
             
             //создаем кампанию
-            const txCreate = await platform.connect(user0).createCompaign(...args0);
+            const txCreate = await platform.connect(user0).createCampaign(...args0);
             
             //смотрим, что получилось
             const timelock = await platform.getFounderTimelock(user0);
@@ -149,7 +149,7 @@ describe("Platform main functionality tests", function() {
 
             //а теперь пробуем создать новую кампанию (стандартный таймлок - двое суток)
             const args1 = defaultCreateCampaignArgs({token: tokenERC20Addr});
-            const txCreate1 = platform.connect(user0).createCompaign(...args1);
+            const txCreate1 = platform.connect(user0).createCampaign(...args1);
             //ожидаем, что ревертнется, так как таймлок еще не закончился
             await expect(txCreate1).revertedWithCustomError(platform, "FundVerseErrorTimeLocked")
                 .withArgs(timelock);            
@@ -164,7 +164,7 @@ describe("Platform main functionality tests", function() {
             //обновляем аргументы - дедлайн устанавливаем с учетом прокрученного времения
             const args2 = defaultCreateCampaignArgs({deadline: futureTime + 60 * 60 * 48 });
             //создаем кампанию
-            const txCreate2 = await platform.connect(user0).createCompaign(...args2);
+            const txCreate2 = await platform.connect(user0).createCampaign(...args2);
             //и проверяем, что у нашего user0 теперь две кампании
             expect(await platform.getCampaignsCountByFounder(user0)).equal(2);            
         });
@@ -175,7 +175,7 @@ describe("Platform main functionality tests", function() {
             
             const argsToken = defaultCreateCampaignArgs({ token: tokenERC20Addr});
             //формируем транзакцию
-            const txCreateToken = platform.connect(user0).createCompaign(...argsToken);
+            const txCreateToken = platform.connect(user0).createCampaign(...argsToken);
             //отправляем и ждем, что отвалится с ошибкой
            await expect(txCreateToken).revertedWithCustomError(platform, "FundVerseUnsupportedToken")
             .withArgs(tokenERC20);
@@ -193,13 +193,13 @@ describe("Platform main functionality tests", function() {
             //формируем стандарный набор аргументов кампании
             const args = defaultCreateCampaignArgs();
             //сделаем транзакцию по созданию кампании, но залог перечислять не будем
-            const txCreate = platform.connect(user0).createCompaign(...args);
+            const txCreate = platform.connect(user0).createCampaign(...args);
             //и ожидаем, что отвалится
             await expect(txCreate).revertedWithCustomError(platform, "FundVerseInsufficientDeposit")
                 .withArgs(0, deposit);
             
             //сделаем транзакцию по созданию с перечислением залога (должна пройти)            
-            const txCreateDep = await platform.connect(user0).createCompaign(...args, {value : deposit});
+            const txCreateDep = await platform.connect(user0).createCampaign(...args, {value : deposit});
             expect(await platform.getCampaignsCountByFounder(user0)).equal(1);     
             expect(txCreateDep).to.emit(platform, "FundVerseDepositLocked")
                 .withArgs(user0, deposit, await platform.getCampaignByIndex(0));
@@ -251,7 +251,7 @@ describe("Platform main functionality tests", function() {
             //дополнительно проверим - создание кампании в этом токене должно отвалиться
             const argsToken = defaultCreateCampaignArgs({ token: tokenERC20Addr});
             //формируем транзакцию
-            const txCreateToken = platform.connect(user0).createCompaign(...argsToken);
+            const txCreateToken = platform.connect(user0).createCampaign(...argsToken);
             //отправляем и ждем, что отвалится с ошибкой
            await expect(txCreateToken).revertedWithCustomError(platform, "FundVerseUnsupportedToken")
             .withArgs(tokenERC20);
@@ -396,7 +396,7 @@ describe("Platform main functionality tests", function() {
             //сбросим таймлок, чтобы не мешался
             const txSetTimelock = (await platform.connect(ownerPlatform).setDelay(0)).wait(1);
             for(let i = 0; i != 3; ++i){
-                const tx = await platform.connect(user0).createCompaign(...args, {value : deposit});
+                const tx = await platform.connect(user0).createCampaign(...args, {value : deposit});
                 await tx.wait(1);
             }
             const totalDep = deposit * count;            

@@ -5,8 +5,8 @@ import { PlatformStorageLib } from "../core/storage/PlatformStorageLib.sol";
 import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
 import { ICampaign } from "../interfaces/ICampaign.sol";
 
-using PlatformStorageLib for PlatformStorageLib.Layout;
-
+/// @title Модуль учета залогов
+/// @notice содержит базовый функционал настройки, учета и возврата залогов
 abstract contract DepositLogic is IPlatformCommon {
     
     /// @notice регистрирует залог
@@ -20,7 +20,7 @@ abstract contract DepositLogic is IPlatformCommon {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
         // сохраняем залог
         s.totalDeposit += amount;
-        s.depositsByCompaigns[address(campaign)] = amount;
+        s.depositsByCampaigns[address(campaign)] = amount;
 
         emit FundVerseDepositLocked(founder, amount, address(campaign));
     }
@@ -36,17 +36,17 @@ abstract contract DepositLogic is IPlatformCommon {
         // проверяем, что этот залог можно вернуть
         require(_isCampaignFinished(campaign), FundVerseDepositNotYetReturnable());                   
 
-        uint256 amount = s.depositsByCompaigns[address(campaign)];
+        uint256 amount = s.depositsByCampaigns[address(campaign)];
         require(amount > 0, FundVerseZeroWithdrawnAmount());
 
         // обнуляем, чтобы не вернуть дважды
-        s.depositsByCompaigns[address(campaign)] = 0;
-        s.totalDeposit -= amount;
+        s.depositsByCampaigns[address(campaign)] = 0;
+        s.totalDeposit -= amount;        
         
+        emit FundVerseDepositReturned(founder, amount, address(campaign));
+
         (bool success, ) = payable(founder).call{value: amount}("");
         require(success, FundVerseTransferFailed(founder, amount, address(0)));
-
-        emit FundVerseDepositReturned(founder, amount, address(campaign));
     }
 
     /// @notice функция по установке суммы залога    

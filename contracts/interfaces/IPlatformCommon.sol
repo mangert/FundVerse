@@ -53,7 +53,7 @@ interface IPlatformCommon {
     error FundVerseDepositNotYetReturnable();
 
     /// @notice ошибка возникает при недостатке баланса для вывода         
-    ///  @param amount сумма вывода
+    /// @param amount сумма вывода
     /// @param available сумма располагаемая  
     /// @param token валюта вывода (для нативной валюты address(0))
     error FundVerseInsufficientFunds(uint256 amount, uint256 available, address token);
@@ -65,9 +65,12 @@ interface IPlatformCommon {
     error FundVerseReentrancyDetected();
 
     /// @notice ошибка возникает при вызове функций кампании у контракта, который не был создан платформой
-    /// @dev campaign адрес контракта, к которому обращаемся
+    /// @param campaign адрес контракта, к которому обращаемся
     error FundVersNotRegisteredCampaign(address campaign);
 
+    /// @notice ошибка возникает при привязать контракт лояльности, который не знает про нашу платформу
+    /// @param loyaltyProgram адрес привязываемого контракта программы лояльности
+    error FundVerseUnacceptableLoyaltyProgram(address loyaltyProgram);
 
     //события
     /// @notice событие порождается при изменении настроек платформы

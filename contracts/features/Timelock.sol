@@ -4,8 +4,6 @@ pragma solidity ^0.8.30;
 import {PlatformStorageLib} from "../core/storage/PlatformStorageLib.sol";
 import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
 
-using PlatformStorageLib for PlatformStorageLib.Layout;
-
 /// @title Модуль проверки timelock
 /// @notice содержит функционал для проверки и установки таймлоков создания новых кампаний
 abstract contract Timelock is IPlatformCommon {      

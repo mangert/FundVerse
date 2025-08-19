@@ -10,8 +10,6 @@ pragma solidity ^0.8.30;
 import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
 import {PlatformStorageLib} from "../core/storage/PlatformStorageLib.sol"; //хранилище данных
 
-using PlatformStorageLib for PlatformStorageLib.Layout;
-
 abstract contract TokenAllowList is IPlatformCommon {
 
     /// @notice функция проверяет, входит ли токен в список поддерживаемых

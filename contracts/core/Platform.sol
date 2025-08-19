@@ -19,7 +19,6 @@ import { DepositLogic} from "../features/DepositLogic.sol"; //функциона
 
 import {PlatformStorageLib} from "./storage/PlatformStorageLib.sol"; //хранилище данных
 
-using PlatformStorageLib for PlatformStorageLib.Layout;
 
 ///@title Главный контракт краудфандинговой платформы  
 ///@notice обеспечивает функционирование самой платформы
@@ -75,12 +74,17 @@ contract Platform is
         s.minLifespan = 60 * 60 * 24;        
     }
 
+    constructor() { // чтобы никто не инициализировал напрямую
+    _disableInitializers();
+    }
+
+
     /// @notice функция создает новую кампанию
     /// @param _goal целевая сумма сбора
     /// @param _deadline срок действия кампании
     /// @param _campaignMeta данные кампании (имя, описание, ссылка на документы)    
     /// @param _token валюта сбора (address(0) для нативной валюты)        
-    function createCompaign(
+    function createCampaign(
             uint128 _goal,
             uint32 _deadline,
             string calldata _campaignMeta,            
@@ -183,8 +187,9 @@ contract Platform is
     /// @notice loyaltyProgram адрес прикрепляемой программы лояльности
     function setLoyaltyProgram(address loyaltyProgram) external onlyRole(CONFIGURATOR_ROLE) {
         
-        require(IFundVerseLoyaltyMinimal(loyaltyProgram).platform() == address(this), "ERROR");
-
+        //Проверяем, знает ли что-то программа лояльности про наш контракт
+        require(IFundVerseLoyaltyMinimal(loyaltyProgram).platform() == address(this)
+            , FundVerseUnacceptableLoyaltyProgram(loyaltyProgram));
         
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.loyaltyProgram = loyaltyProgram;
@@ -234,11 +239,12 @@ contract Platform is
         //рассчитываем доступные средства
         require(amount <= availableValue,  FundVerseInsufficientFunds(amount, availableValue, address(0)));
 
+        emit FundVerseWithdrawn(amount, recipient, address(0));
+
         (bool success, ) = recipient.call{value: amount}("");
         require(success, FundVerseTransferFailed(recipient, amount, address(0)));
-        
-        emit FundVerseWithdrawn(amount, recipient, address(0));
-    }   
+    }
+
     /// @notice функция позволяет вывести средства в токенах
     /// @param amount сумма вывода
     /// @param recipient адрес вывода
@@ -250,13 +256,15 @@ contract Platform is
         uint256 availableValue = IERC20(token).balanceOf(address(this));
         require(amount <= availableValue,  FundVerseInsufficientFunds(amount, availableValue, token));
 
-        (bool success, bytes memory returndata) = token.call(
-            abi.encodeWithSelector(IERC20.transfer.selector, recipient, amount)
-        );
-        bool result = success && (returndata.length == 0 || abi.decode(returndata, (bool)));
-        require(result, FundVerseTransferFailed(recipient, amount, token));
         
         emit FundVerseWithdrawn(amount, recipient, token);
+
+        (bool success, bytes memory returndata) = token.call(
+            abi.encodeWithSelector(IERC20.transfer.selector, recipient, amount)
+        );       
+        
+        bool result = success && (returndata.length == 0 || abi.decode(returndata, (bool)));
+        require(result, FundVerseTransferFailed(recipient, amount, token));
     }                   
 
     /// @notice пустой receive — для автоматического приёма комиссий и любых входящих переводов
@@ -271,9 +279,9 @@ contract Platform is
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         require(s.registeredCampaigns[campaign], FundVersNotRegisteredCampaign(campaign));
         
-        ICampaign(campaign).claimPendingFunds();
-        
         emit FundVerseCampaignPendingClaimed(campaign);
+
+        ICampaign(campaign).claimPendingFunds();       
     }    
 
     function _authorizeUpgrade(address newImplementation)

@@ -8,9 +8,8 @@ pragma solidity ^0.8.30;
 interface ICampaign {
     
     //типы
-    /**
-     * @notice перечисление статусов кампаний
-     */
+   
+    /// @notice перечисление статусов кампаний    
     enum Status {
         Live,         // идет сбор
         Stopped,      // временно приостановлена

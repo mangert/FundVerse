@@ -4,13 +4,9 @@ pragma solidity ^0.8.30;
 import { PlatformStorageLib } from "../core/storage/PlatformStorageLib.sol";
 import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
 import { IFundVerseLoyaltyMinimal } from "../interfaces/IFundVerseLoyaltyMininal.sol";
-/**
- * @title черновик
- * @author 
- * @notice 
- */
-using PlatformStorageLib for PlatformStorageLib.Layout;
 
+/// @title Модуль рабрты с комиссиями платформы
+/// @notice содержит базовый функционал настройки и расчетов комисиий
 abstract contract FeeLogic is IPlatformCommon {    
     
     /// @notice функция возвращает базовый размер комиссии
@@ -57,6 +53,7 @@ abstract contract FeeLogic is IPlatformCommon {
         s.baseFee = _baseFee;  
         
         emit FundVersePlatformParameterUpdated("baseFee", _baseFee, msg.sender);
-    }   
+    }
+    
 
 }

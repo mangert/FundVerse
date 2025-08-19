@@ -3,9 +3,9 @@
 pragma solidity ^0.8.30;
 
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { Platform } from "../core/Platform.sol"; //сделать интерфейс? Если да, минимальный или полный?
+import { IPlatformMinimal } from "../interfaces/IPlatformMinimal.sol"; 
 import { ICampaign } from "../interfaces/ICampaign.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 
 contract FundVerseLoyaltyv1 is ERC721, Ownable {
@@ -20,6 +20,10 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
     /// @notice получатели NFT
     /// @dev если NFT быд выдан, то при передаче в списке остается старый владелец
     mapping (address founder => uint256 tokenId) foundersTokens;
+
+    /// @notice скидка, зафиксированная при минте
+    mapping (uint256 tokenId => uint16 discountAtMint) private tokenDiscount;
+
 
     /// @notice размер дисконта
     uint16 feeDiscount;
@@ -76,14 +80,18 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
         _safeMint(to, ++counter);
         //и включаем его в список
         foundersTokens[to] = counter;
+        // сохраняем скидку для этого NFT
+        tokenDiscount[counter] = feeDiscount;
+    
     }
 
     /// @notice функция возвращает размер скидки фаундера (в вычитаемых из размера комиссии промилле)
     /// @param founder адрес фаундера, для которого возвращаем скидку
-    function getFounderDiscount(address founder) external view returns(uint16) {
-        
-        if(balanceOf(founder) > 0) {
-            return feeDiscount;
+    function getFounderDiscount(address founder) external view returns(uint16) {        
+
+        uint256 tokenId = foundersTokens[founder];
+        if (tokenId != 0 && _ownerOf(tokenId) == founder) {
+            return tokenDiscount[tokenId]; // скидка зафиксирована в момент минта
         }
         return 0;
     }
@@ -101,7 +109,9 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
     /// @notice функция позволяет установить новое значение дисконта
     /// @param newFeeDiscount новое значение дисконта
     function setFeeDiscount(uint16 newFeeDiscount) external onlyOwner() {
-        require(newFeeDiscount <= 1000, UnacceptableFeeDiscount(newFeeDiscount));
+        require(newFeeDiscount <= 1000 &&
+            newFeeDiscount <= IPlatformMinimal(platform).getBaseFee()
+            , UnacceptableFeeDiscount(newFeeDiscount));
         
         emit FeeDiscountChanged(feeDiscount, newFeeDiscount, msg.sender);        
         feeDiscount = newFeeDiscount;
@@ -118,11 +128,11 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
         
         //теперь проверим, какие у него есть кампании
         //и сначал получим их количество
-        uint32 countCampaigns = Platform(payable(platform)).getCampaignsCountByFounder(founder);
+        uint32 countCampaigns = IPlatformMinimal(platform).getCampaignsCountByFounder(founder);
         //пробежимся по всем
         for(uint32 i = 0; i != countCampaigns; ++i) {            
             //и проверим статус
-            address campaign = Platform(payable(platform)).getCampaignOfFounderByIndex(founder,i);
+            address campaign = IPlatformMinimal(platform).getCampaignOfFounderByIndex(founder,i);
             if(ICampaign(campaign).status() == ICampaign.Status.Successful){
                 return true; //если закончилась успехом - сразу возвращаемся
             } 
