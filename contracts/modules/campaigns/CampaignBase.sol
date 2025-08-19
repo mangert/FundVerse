@@ -41,14 +41,16 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
 
     /// @notice внутренний флаг, что фаундер еще не выводил средства
     bool internal founderWithdrawn;
-   
+
+    /// @notice флаг для nonReentrancy
+    bool private _inCall;
+       
     /// @notice JSON-метаданные (описание + документы/IPFS)   
     string public campaignMeta; 
 
     mapping(address investor => uint256 value) internal donates; //хранилище для вкладов участников
     mapping (address recipient => uint256 value) internal pendingWithdrawals; //хранилище для "зависших" сумм
-
-    //модификаторы 
+    
     /**
      * @dev модификатор применяется к функциям, которые может вызвать только фаундер
      */

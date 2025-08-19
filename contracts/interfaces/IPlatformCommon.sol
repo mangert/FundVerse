@@ -79,6 +79,12 @@ interface IPlatformCommon {
         uint256 newValue,
         address indexed updatedBy
     );
+    /// @notice событие порождается при изменении настроек платформы - перегрузка для адресов
+    event FundVersePlatformParameterUpdated(
+        string indexed parameter,          
+        address newValue,
+        address indexed updatedBy
+    );
 
     /// @notice событие порождается при создании новой кампании
     /// @param NewCampaignAddress адрес контратка созданной кампании

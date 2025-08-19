@@ -14,6 +14,23 @@ library PlatformStorageLib {
         
          // Адрес фабрики
         address factory;
+        //адрес контракта программы лояльности
+        address loyaltyProgram;       
+
+        //общий счетчик кампаний
+        uint32 totalCounter;
+        // переменная задержки для таймлоков
+        uint32 delay;        
+        // минимальная продолжительность (кампании с нулевым периодом сбора не имеют смысла)
+        uint32 minLifespan;         
+        //данные для комиссии
+        uint16 baseFee;  
+        //переменные для залогов
+        //требуемая сумма залога
+        uint256 requiredDeposit;
+        //общая сумма накопленных депозитов
+        uint256 totalDeposit;
+
         //хранилище кампаний
         //все созданные кампании в разрезе фаундеров
         mapping(address founder => 
@@ -25,36 +42,14 @@ library PlatformStorageLib {
         mapping (uint32 index => address campaign) campaignIndex;    
         //список зарегистрированных кампаний
         mapping (address campaign => bool) registeredCampaigns;            
-        //общий счетчик кампаний
-        uint32 totalCounter;
-
-        //переменные для залогов
-        //требуемая сумма залога
-        uint256 requiredDeposit;
-        //общая сумма накопленных депозитов
-        uint256 totalDeposit;
+        //хранилище timelock
+        mapping(address founder => uint32 timelock) timelocks;        
+        
         //хранилище депозитов в разрезе кампаний
         mapping(address campaign => uint256 deposited) depositsByCompaigns;
         
-        //хранилище timelock
-        mapping(address founder => uint32 timelock) timelocks;
-        uint32 delay;
-
-        //другие общие установки
-        // минимальная продолжительность (кампании с нулевым периодом сбора не имеют смысла)
-        uint32 minLifespan;         
-        
         //мэппинг для информации о поддерживаемых токенах
         mapping (address token => bool allowed) allowedTokens;        
-        
-
-        //данные для комиссии
-        uint16 baseFee;  
-
-        //адрес коллекции NFT
-        address discountNFT;
-        
-        
     }
 
     function layout() internal pure returns (Layout storage l) {

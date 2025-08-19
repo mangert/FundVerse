@@ -105,7 +105,7 @@ interface ICampaign {
     event PendingFundsClaimed(address indexed recipient, uint256 amount);
 
 
-    //ошибки
+    //ошибки    
     /**
      * @notice индицирует попытку доступа к функциям кампании не владельцем
      * @param account адрес, с которого вызывалась функция

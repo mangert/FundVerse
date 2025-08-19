@@ -10,6 +10,8 @@ import { ICampaign } from "../interfaces/ICampaign.sol"; //интерфейс к
 import {IFactoryCore} from "../interfaces/IFactoryCore.sol"; //интерфейс фабрики
 import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol"; //события и ошибки
 
+import { IFundVerseLoyaltyMinimal} from "../interfaces/IFundVerseLoyaltyMininal.sol"; //может, убрать?
+
 import { Timelock } from "../features/Timelock.sol"; //функционал проверки таймлоков;
 import { FeeLogic } from "../features/FeeLogic.sol"; //функционал установки комиссий
 import { TokenAllowList} from "../features/TokenAllowList.sol"; //функционал поддержки токенов
@@ -28,7 +30,8 @@ contract Platform is
     IPlatformCommon,
     Timelock,
     TokenAllowList,
-    DepositLogic {                
+    DepositLogic,
+    FeeLogic {                
     
     //роли
     /// @notice роль, позволяющая обновить контракт
@@ -41,16 +44,15 @@ contract Platform is
     bytes32 public constant TREASURE_ROLE = keccak256("TREASURE");
 
     /// @notice флаг для nonReentrancy
-    bool private _inWithdrawal;
+    bool private _inCall;
 
     /// @notice модификатор для функций вывода
     modifier NonReentrancy() {
-        require(!_inWithdrawal, FundVerseReentrancyDetected());
-        _inWithdrawal = true;
+        require(!_inCall, FundVerseReentrancyDetected());
+        _inCall = true;
         _;
-        _inWithdrawal = false;        
-    }
-    
+        _inCall = false;        
+    }   
 
     /// @notice инициализатор - вместо конструктора
     function initialize(address _factory) public initializer {       
@@ -93,13 +95,16 @@ contract Platform is
             uint256 deposit = msg.value;
             require(deposit >= s.requiredDeposit, FundVerseInsufficientDeposit(deposit, s.requiredDeposit));
             
+            // slither-disable-next-line timestamp
             require(_deadline > (s.minLifespan + block.timestamp)
                 , FundVerseErrorDeadlineLessMinimun()); //проверяем, что дедлайн не слишком маленький
             
             address founder = msg.sender;
             require(!_isLocked(founder), FundVerseErrorTimeLocked(s.timelocks[founder]));            
             
-            uint128 _platformFee = 0; //TODO - функция из FeeLogic            
+            //посчитаем комиссию
+            uint128 _platformFee = getFounderFee(founder);
+            
             ICampaign newCampaign = IFactoryCore(s.factory).createCampaign(
                 founder, 
                 s.totalCounter, 
@@ -109,6 +114,7 @@ contract Platform is
                 _platformFee, 
                 _token
                 );    
+            
             //проверим на всякий случай, что то-то вернулось
             require(address(newCampaign).code.length != 0, FundVerseCreateFailed());
 
@@ -119,8 +125,7 @@ contract Platform is
             _registerCampaign(founder, newCampaign); //записываем данные в хранилище
             _setLockTime(founder); //устанавливаем новый таймлок
             
-            emit FundVerseCampaignCreated(newCampaign, founder, _token, _goal);       
-
+            emit FundVerseCampaignCreated(newCampaign, founder, _token, _goal); 
     }
 
     //геттеры
@@ -173,6 +178,19 @@ contract Platform is
         _setRequiredDeposit(depositAmount);
     }
 
+    /// @notice функция по прикреплению контракта программы лояльности
+    /// @notice действует глобально для всех пользователей, создающих кампании после установки нового значения
+    /// @notice loyaltyProgram адрес прикрепляемой программы лояльности
+    function setLoyaltyProgram(address loyaltyProgram) external onlyRole(CONFIGURATOR_ROLE) {
+        
+        require(IFundVerseLoyaltyMinimal(loyaltyProgram).platform() == address(this), "ERROR");
+
+        
+        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
+        s.loyaltyProgram = loyaltyProgram;
+        emit FundVersePlatformParameterUpdated("loyaltyProgram", loyaltyProgram, msg.sender);
+    }
+
     /// @notice функция по установке минимального срока действия кампаний
     /// @notice позволяет устанавливать минимальный срок действия кампаний взамен установленного ранее
     /// @notice действует глобально для всех кампаний, создаваемых после установки нового значения    
@@ -195,6 +213,12 @@ contract Platform is
     function removeTokenFromAllowed (address token) external onlyRole(CONFIGURATOR_ROLE) {
         _removeTokenFromAllowed(token);        
     }
+
+    /// @notice функция установки базовой комиссии
+    /// @param _baseFee новой значение базовой комиссии
+    function setBaseFee(uint16 _baseFee) external onlyRole(CONFIGURATOR_ROLE) {
+        _setBaseFee(_baseFee);
+    }   
 
     //функции вывода средств
     /// @notice функция позволяет вывести средства в нативной валюте

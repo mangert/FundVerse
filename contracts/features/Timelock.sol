@@ -13,7 +13,7 @@ abstract contract Timelock is IPlatformCommon {
     /// @notice функция проверяет, действует ли еще таймлок для фаундера
     function _isLocked(address founder) internal view returns(bool) {            
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
-        
+        // slither-disable-next-line timestamp
         return(s.timelocks[founder] >= uint32(block.timestamp));
     }
 
