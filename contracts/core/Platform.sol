@@ -10,7 +10,7 @@ import { ICampaign } from "../interfaces/ICampaign.sol"; //интерфейс к
 import {IFactoryCore} from "../interfaces/IFactoryCore.sol"; //интерфейс фабрики
 import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol"; //события и ошибки
 
-import { IFundVerseLoyaltyMinimal} from "../interfaces/IFundVerseLoyaltyMininal.sol"; //может, убрать?
+import { IFundVerseLoyaltyMinimal} from "../interfaces/IFundVerseLoyaltyMininal.sol"; //нужен для проверки прикрепления
 
 import { Timelock } from "../features/Timelock.sol"; //функционал проверки таймлоков;
 import { FeeLogic } from "../features/FeeLogic.sol"; //функционал установки комиссий
@@ -73,11 +73,6 @@ contract Platform is
         //устанавливаем минимальную продолжительность для кампаний
         s.minLifespan = 60 * 60 * 24;        
     }
-
-    constructor() { // чтобы никто не инициализировал напрямую
-    _disableInitializers();
-    }
-
 
     /// @notice функция создает новую кампанию
     /// @param _goal целевая сумма сбора
@@ -267,13 +262,13 @@ contract Platform is
         require(result, FundVerseTransferFailed(recipient, amount, token));
     }                   
 
-    /// @notice пустой receive — для автоматического приёма комиссий и любых входящих переводов
+    /// @notice пустой receive — для автоматического приема комиссий и любых входящих переводов
     receive() external payable {}
 
     /// @notice функция аварийного получения зависших средств из кампании
     /// @dev используется только в случае сбоев/кривых токенов, когда комиссия или средства не пришли
     /// @param campaign адрес кампании, из которой нужно вытащить зависшие средства    
-    function claimCampaignPending(address campaign) external onlyRole(TREASURE_ROLE) {        
+    function claimCampaignPending(address campaign) external onlyRole(TREASURE_ROLE) {       
         
         //проверим, что это "наша" кампания, а не левый вредоносный контракт
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();

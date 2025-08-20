@@ -107,16 +107,14 @@ contract CampaignToken is ICampaign, CampaignBase {
         require(success && (returndata.length == 0 || abi.decode(returndata, (bool))),
             CampaignPendingWithdrawFailed(recipient, amount, token)
         );
-    }
+    }    
     
-    /**
-     * @notice служебная функция перевода средств
-     * @dev используется для рефандов и переводов
-     * @dev не использовать при клейме зависших средств!
-     * @dev Внешний вызов безопасен — состояние не меняется до него.
-     * Запись в pendingWithdrawals происходит ТОЛЬКО при неудаче отправки.
-     * Вызов обернут в external функцию с модификатором nonReentrant. 
-     */
+    /// @notice служебная функция перевода средств
+    /// @dev используется для рефандов и переводов
+    /// @dev не использовать при клейме зависших средств!
+    /// @dev Внешний вызов безопасен — состояние не меняется до него.
+    /// Запись в pendingWithdrawals происходит ТОЛЬКО при неудаче отправки.
+    /// Вызов обернут в external функцию с модификатором nonReentrant.      
     function _transferTo(address recipient, uint256 amount) internal override returns (bool) {               
         
         (bool success, bytes memory returndata) = token.call(

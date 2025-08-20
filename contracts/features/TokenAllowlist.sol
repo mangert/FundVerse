@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-/**
- * @title Абстрактный контракт управления токенами
- * @notice содержит функции проверки, поддерживается ли токен, функции добавления и удаления токенов из списка поддержки
- * @dev для нативной валюты предусмотрено значение address(0)
- */
+/// @title Абстрактный контракт управления токенами
+/// @notice содержит функции проверки, поддерживается ли токен, функции добавления и удаления токенов из списка поддержки
+/// @dev для нативной валюты предусмотрено значение address(0) 
 
 import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
 import {PlatformStorageLib} from "../core/storage/PlatformStorageLib.sol"; //хранилище данных

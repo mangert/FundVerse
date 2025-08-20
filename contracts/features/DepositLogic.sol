@@ -33,11 +33,11 @@ abstract contract DepositLogic is IPlatformCommon {
 
         address founder = msg.sender;
         require((campaign.creator()) == founder, FundVerseNotCampaignFounder());
+        
         // проверяем, что этот залог можно вернуть
-        require(_isCampaignFinished(campaign), FundVerseDepositNotYetReturnable());                   
-
         uint256 amount = s.depositsByCampaigns[address(campaign)];
         require(amount > 0, FundVerseZeroWithdrawnAmount());
+        require(_isCampaignFinished(campaign), FundVerseDepositNotYetReturnable());                           
 
         // обнуляем, чтобы не вернуть дважды
         s.depositsByCampaigns[address(campaign)] = 0;
@@ -77,5 +77,4 @@ abstract contract DepositLogic is IPlatformCommon {
             status == ICampaign.Status.Failed
         );
     }
-
 }

@@ -64,3 +64,17 @@ export function defaultCreateCampaignArgs(overrides = {}) : [
         merged.token        
     ];   
 }
+
+//хелперы для тестов платформы
+
+// функция-хелпер, чтобы заворачивать событие 
+function getEventHash(signature : string) {
+        
+    return ethers.id(signature);
+}
+
+//Хэши сигнатур событий
+export const EVENT_HASHES = {
+    PARAM_UINT: getEventHash("FundVersePlatformParameterUpdated(string,uint256,address)"),
+    PARAM_ADDRESS: getEventHash("FundVersePlatformParameterUpdated(string,address,address)"),            
+};

@@ -1,8 +1,8 @@
 import { loadFixture, ethers, expect  } from "./setup";
 import { upgrades } from "hardhat";
 import { network } from "hardhat";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import {defaultCampaignArgs, getBadReciever, defaultCreateCampaignArgs} from "./test-helpers";
+import {defaultCampaignArgs, getBadReciever, 
+    defaultCreateCampaignArgs, EVENT_HASHES } from "./test-helpers";
 
 
 describe("Platform main functionality tests", function() {
@@ -287,7 +287,7 @@ describe("Platform main functionality tests", function() {
             const newDelay = 60 * 60 * 24;
             const tx = await platform.connect(ownerPlatform).setDelay(newDelay);
             tx.wait(1);            
-            await expect(tx).to.emit(platform, "FundVersePlatformParameterUpdated")
+            await expect(tx).to.emit(platform, EVENT_HASHES.PARAM_UINT)
                 .withArgs("delay", newDelay, ownerPlatform);
             expect(await platform.getDelay()).equal(newDelay);            
         });
@@ -308,9 +308,9 @@ describe("Platform main functionality tests", function() {
             //установим размер залога
             const deposit = 1000n;
             const txSetDeposit = await platform.connect(ownerPlatform).setRequiredDeposit(deposit);
-            (await txSetDeposit).wait(1);
+            txSetDeposit.wait(1);
             //проверяем, что получилось
-            expect(txSetDeposit).to.emit(platform, "FundVersePlatformParameterUpdated")
+            expect(txSetDeposit).to.emit(platform, EVENT_HASHES.PARAM_UINT)
                 .withArgs("depositAmount", deposit, ownerPlatform);
         });
 
@@ -332,7 +332,7 @@ describe("Platform main functionality tests", function() {
             const lifespan = 60 * 60;
             const txSetLifespan = await platform.connect(ownerPlatform).setMinLifespan(lifespan);
             
-            expect(txSetLifespan).to.emit(platform, "FundVersePlatformParameterUpdated")
+            expect(txSetLifespan).to.emit(platform, EVENT_HASHES.PARAM_UINT)
                 .withArgs("minLifespan", lifespan, ownerPlatform);            
         });
 
@@ -345,7 +345,25 @@ describe("Platform main functionality tests", function() {
             await expect(txSetLifespan).revertedWithCustomError(platform, "AccessControlUnauthorizedAccount");            
         
         });
-       
+
+        //проверяем, что можно установить размер базовой комиссии
+        it("should change base fee", async function() {
+            const {ownerPlatform, platform } = await loadFixture(deploy);            
+            const newBaseFee = 70n;
+            const tx = await platform.connect(ownerPlatform).setBaseFee(newBaseFee);
+            tx.wait(1);            
+            await expect(tx).to.emit(platform, EVENT_HASHES.PARAM_UINT)
+                .withArgs("baseFee", newBaseFee, ownerPlatform);
+            expect(await platform.getBaseFee()).equal(newBaseFee);            
+        });
+        
+        //проверяем, что кто попало не может установить размер базовой комиссии
+        it("should revert unauthorized base fee", async function() {
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);            
+            const newBaseFee = 70;
+            const tx = platform.connect(user0).setBaseFee(newBaseFee);
+            await expect(tx).revertedWithCustomError(platform, "AccessControlUnauthorizedAccount");            
+        });       
     });    
 
     //тесты выводов средств с платформы
@@ -373,7 +391,7 @@ describe("Platform main functionality tests", function() {
                     [incomes, -incomes]
                 );            
         });
-
+        //проверяем, что вывод отвалится, если попытаться вывести больше, чем есть
         it("should revert withraw more than incomes in native", async function() {
             const {user0, ownerPlatform, platform } = await loadFixture(deploy);                      
             
@@ -410,6 +428,27 @@ describe("Platform main functionality tests", function() {
                 .withArgs(incomes + totalDep, incomes, ethers.ZeroAddress);            
         });
 
+        //проверяем, что кто попало не может вывести
+        it("should revert unauthorized withraw incomes in native", async function() {
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);                      
+            
+            //кинем на наш контракт как-бы прибыль
+            //для этого создадим отправителя
+            const sender_Factory = await ethers.getContractFactory("ETHSender");
+            const sender = await sender_Factory.deploy();
+            sender.waitForDeployment();
+            const incomes = 1000n;
+            await sender.sendTo(platform.target, {value : incomes});            
+            
+            //пробуем вывести прибыль от имени левого кошелька
+            const txWD = platform.connect(user0)["withdrawIncomes(address,uint256)"]
+            (user0, incomes);
+            
+            //и ожидаем, что отвалится
+            await expect(txWD).revertedWithCustomError(platform, "AccessControlUnauthorizedAccount");            
+        });
+
+        //проверяем, что можно вывеcти доход в токенах
         it("should withraw incomes in token", async function() {
             const {user0, ownerPlatform, platform, tokenERC20, tokenERC20Addr } = await loadFixture(deploy);            
             
@@ -418,7 +457,6 @@ describe("Platform main functionality tests", function() {
             const txMint = await tokenERC20.mint(platform.getAddress(), incomes);
 
             //попробуем вывести на адрес скажем user0.
-
             const txWD = await platform.connect(ownerPlatform)["withdrawIncomes(address,uint256,address)"]
             (user0, incomes, tokenERC20Addr);
             await txWD.wait(1);
@@ -430,8 +468,307 @@ describe("Platform main functionality tests", function() {
                     [user0, platform],
                     [incomes, -incomes]
                 );
-        });      
+        });
+        
+        //проверяем, что кто попало не может выести доход в токенах
+        it("should withraw incomes in token", async function() {
+            const {user0, ownerPlatform, platform, tokenERC20, tokenERC20Addr } = await loadFixture(deploy);            
             
-    });    
+            const incomes = 1000000n;
+            //наминтим на адрес платформы токенов и представим, что это пришли комиссии
+            const txMint = await tokenERC20.mint(platform.getAddress(), incomes);
+
+            //попробуем вывести от имени левого кошелька
+            const txWD = platform.connect(user0)["withdrawIncomes(address,uint256,address)"]
+            (user0, incomes, tokenERC20Addr);
+            await expect(txWD).revertedWithCustomError(platform, "AccessControlUnauthorizedAccount");
+        });
+        
+        //проверяем, что нельзя вывести деньги в токенах больше, чем есть
+        it("should revert withraw more than incomes in token", async function() {
+            const {user0, ownerPlatform, platform, tokenERC20, tokenERC20Addr } = await loadFixture(deploy);            
+            
+            const incomes = 1000000n;
+            //наминтим на адрес платформы токенов и представим, что это пришли комиссии
+            const txMint = await tokenERC20.mint(platform.getAddress(), incomes);
+
+            const delta = 1000n;
+            //попробуем вывести на адрес скажем user0 больше, чем есть на дельту
+            const txWD = platform.connect(ownerPlatform)["withdrawIncomes(address,uint256,address)"]
+            (user0, incomes + delta, tokenERC20Addr);            
+
+            //и ожидаем, что отвалится
+            await expect(txWD).revertedWithCustomError(platform, "FundVerseInsufficientFunds")
+                .withArgs(incomes + delta, incomes, tokenERC20);            
+        });      
+
+        //проверяем, что можно вывести залог
+        it("should return deposit", async function() {
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);
+            //установим размер залога
+            const depositAmount = 1000;
+            const txSetDeposit = await platform.setRequiredDeposit(depositAmount);
+            txSetDeposit.wait(1);
+
+            //проверим
+            expect(await platform.getRequiredDeposit()).equal(depositAmount);
+
+            //формируем стандарный набор аргументов кампании
+            const args = defaultCreateCampaignArgs();
+            //создаем кампанию
+            const txCreate = await platform.connect(user0).createCampaign(...args, {value : depositAmount});
+            
+            //получим адрес кампании
+            const campaignAddr = await platform.getCampaignByIndex(0);
+            const campaign = await ethers.getContractAt("CampaignNative", campaignAddr);
+            
+            //завершим кампанию - перечислим средства до цели
+            const goal = await campaign.goal();
+            const txContribute = await campaign.connect(user0)["contribute()"]({value: goal});
+            txContribute.wait(1);
+
+            //а теперь вернем депозит
+            const txReturnDep = await platform.connect(user0).returnDeposit(campaign);
+            await txReturnDep.wait(1);
+            //и проверим, что получилось
+            await expect(txReturnDep).changeEtherBalances([user0, platform], [depositAmount, -depositAmount]);
+            await expect(txReturnDep).to.emit(platform, "FundVerseDepositReturned")
+                .withArgs(user0, depositAmount, campaign);
+        });     
+
+        //проверяем, что нельзя вывести залог, если кампания не завершилась
+        it("should revert return deposit from unfinished campaign", async function() {
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);
+            //установим размер залога
+            const depositAmount = 1000;
+            const txSetDeposit = await platform.setRequiredDeposit(depositAmount);
+            txSetDeposit.wait(1);
+
+            //проверим
+            expect(await platform.getRequiredDeposit()).equal(depositAmount);
+
+            //формируем стандарный набор аргументов кампании
+            const args = defaultCreateCampaignArgs();
+            //создаем кампанию
+            const txCreate = await platform.connect(user0).createCampaign(...args, {value : depositAmount});
+            
+            //получим адрес кампании
+            const campaignAddr = await platform.getCampaignByIndex(0);
+            const campaign = await ethers.getContractAt("CampaignNative", campaignAddr);
+            
+            //не будем завершать кампанию
+
+            //и попробуем вернуть депозит
+            const txReturnDep = platform.connect(user0).returnDeposit(campaign);
+            
+            //ждем, что отвалится
+            await expect(txReturnDep).revertedWithCustomError(platform, "FundVerseDepositNotYetReturnable");
+        });
+
+        //проверяем, что нельзя вывести залог дважды
+        it("should revert twice return deposit", async function() {
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);
+            //установим размер залога
+            const depositAmount = 1000;
+            const txSetDeposit = await platform.setRequiredDeposit(depositAmount);
+            txSetDeposit.wait(1);
+
+            //проверим
+            expect(await platform.getRequiredDeposit()).equal(depositAmount);
+
+            //формируем стандарный набор аргументов кампании
+            const args = defaultCreateCampaignArgs();
+            //создаем кампанию
+            const txCreate = await platform.connect(user0).createCampaign(...args, {value : depositAmount});
+            
+            //получим адрес кампании
+            const campaignAddr = await platform.getCampaignByIndex(0);
+            const campaign = await ethers.getContractAt("CampaignNative", campaignAddr);
+            
+            //завершим кампанию - перечислим средства до цели
+            const goal = await campaign.goal();
+            const txContribute = await campaign.connect(user0)["contribute()"]({value: goal});
+            txContribute.wait(1);                        
+            
+            //и попробуем вернуть депозит
+            const txReturnDep = await platform.connect(user0).returnDeposit(campaign);
+            txReturnDep.wait(1);
+
+            //и еще раз
+            const txReturnDep2 = platform.connect(user0).returnDeposit(campaign);
+            
+            //ждем, что отвалится
+            await expect(txReturnDep2).revertedWithCustomError(platform, "FundVerseZeroWithdrawnAmount");
+        });
+
+        //проверяем, что нельзя вывести чужой залог
+        it("should revert return not own deposit", async function() {
+            const {user0, user1, ownerPlatform, platform } = await loadFixture(deploy);
+            //установим размер залога
+            const depositAmount = 1000;
+            const txSetDeposit = await platform.setRequiredDeposit(depositAmount);
+            txSetDeposit.wait(1);
+
+            //проверим
+            expect(await platform.getRequiredDeposit()).equal(depositAmount);
+
+            //формируем стандарный набор аргументов кампании
+            const args = defaultCreateCampaignArgs();
+            //создаем кампанию
+            const txCreate = await platform.connect(user0).createCampaign(...args, {value : depositAmount});
+            
+            //получим адрес кампании
+            const campaignAddr = await platform.getCampaignByIndex(0);
+            const campaign = await ethers.getContractAt("CampaignNative", campaignAddr);
+            
+            //завершим кампанию - перечислим средства до цели
+            const goal = await campaign.goal();
+            const txContribute = await campaign.connect(user0)["contribute()"]({value: goal});
+            txContribute.wait(1);                        
+            
+            //и попробуем вернуть депозит
+            const txReturnDep = platform.connect(user1).returnDeposit(campaign);            
+
+            //ждем, что отвалится
+            await expect(txReturnDep).revertedWithCustomError(platform, "FundVerseNotCampaignFounder");
+        });            
+    });
+    
+    //тестируем программу лояльности
+    describe("loyaty program tеsts", function() {
+        
+        //хелпер - чтобы каждый раз не деполить нашу программу
+        async function loyaltyProgram (ownerPlatform : any, platform  : any) {        
+            
+            //деплоим
+            const loyalty_Factory = await ethers.getContractFactory("FundVerseLoyaltyv1");
+            const loyalty = await loyalty_Factory.deploy(ownerPlatform, platform);
+            loyalty.waitForDeployment();
+            
+            return loyalty;            
+        }
+        
+        //проверяем возможности деплоя и настройки комиссий
+        // - положительный и отрицательный сценарии
+        it("should possible set discount", async function() {
+            
+            const {user0, user1, ownerPlatform, platform } = await loadFixture(deploy);
+
+            //установим комиссию платформы
+            const baseFee = 20;
+            const txSetPlatformFee = await platform.connect(ownerPlatform).setBaseFee(baseFee);
+            
+            //задеплоим программу лояльности
+            const loyalty = await loyaltyProgram(ownerPlatform, platform);
+            expect(platform.target).to.be.properAddress;            
+
+            //настроим дисконт - 10 промилле
+            const discount = 10;
+            const txSetDiscont = await loyalty.connect(ownerPlatform).setFeeDiscount(discount);
+            expect(txSetDiscont).to.emit(loyalty, "FeeDiscountChanged")
+                .withArgs(0, discount, ownerPlatform);
+            expect(await loyalty.feeDiscount()).equal(discount);
+
+            //поменяем дисконт на недопустимый - больше комиссии
+            const txSetDiscont2 = loyalty.connect(ownerPlatform).setFeeDiscount(discount + baseFee);
+            await expect(txSetDiscont2).revertedWithCustomError(loyalty, "UnacceptableFeeDiscount")
+                .withArgs(discount + baseFee);
+
+            //поменяем дисконт на недопустиым - больше 1000
+            const txSetDiscont3 = loyalty.connect(ownerPlatform).setFeeDiscount(1001);
+            await expect(txSetDiscont3).revertedWithCustomError(loyalty, "UnacceptableFeeDiscount")
+                .withArgs(1001);    
+
+            //поменяем дисконт на допустимый от имени кого попало
+            const txSetDiscont4 = loyalty.connect(user0).setFeeDiscount(discount);
+            await expect(txSetDiscont4).revertedWithCustomError(loyalty, "OwnableUnauthorizedAccount");                
+        });
+
+        //проверяем возможности настройки адреса платформы
+        // - положительный и отрицательный сценарии
+        it("should possible set platform", async function() {
+            
+            const {user0, user1, ownerPlatform, platform } = await loadFixture(deploy);
+                        
+            //задеплоим программу лояльности
+            const loyalty = await loyaltyProgram(ownerPlatform, platform);
+            expect(platform.target).to.be.properAddress;            
+
+            //сначала поменяем на действительный адрес(пусть это и не наша платформа)            
+            const txSetPlatform = await loyalty.connect(ownerPlatform).setPlatformAddress(user0);
+            expect(txSetPlatform).to.emit(loyalty, "PlatformAddressChanged")
+                .withArgs(platform, user0, ownerPlatform);            
+
+            //поменяем на недопустимый - нулевой
+            const txSetPlatform2 = loyalty.connect(ownerPlatform).setPlatformAddress(ethers.ZeroAddress);
+            await expect(txSetPlatform2).revertedWithCustomError(loyalty, "UnacceptablePlatformAddress")
+                .withArgs(ethers.ZeroAddress);
+
+            //поменяем на допустимый от имени кого попало
+            const txSetPlatform3 = loyalty.connect(user0).setPlatformAddress(user0);
+            await expect(txSetPlatform3).revertedWithCustomError(loyalty, "OwnableUnauthorizedAccount");                
+        });
+
+        //прооверим подключение программы лояльности к платформе        
+        it("should set loyalty program on platform", async function() {
+            
+            const {user0, user1, ownerPlatform, platform } = await loadFixture(deploy);                        
+            
+            //задеплоим программу лояльности
+            const loyalty = await loyaltyProgram(ownerPlatform, platform);            
+
+            //установим нашу программу на платформе
+            const txSetLoyalty = await platform.connect(ownerPlatform).setLoyaltyProgram(loyalty);
+            await expect(txSetLoyalty).to.emit(platform, EVENT_HASHES.PARAM_ADDRESS)
+                .withArgs("loyaltyProgram", loyalty, ownerPlatform);
+            
+        });
+
+        //сложный тест на минт NFT
+        it("should mint NFT", async function() {
+            
+            const {user0, user1, ownerPlatform, platform } = await loadFixture(deploy);                        
+            
+            //1. Подготовка
+            //задеплоим программу лояльности
+            const loyalty = await loyaltyProgram(ownerPlatform, platform);            
+
+            //установим комиссию платформы
+            const baseFee = 20;
+            const txSetPlatformFee = await platform.connect(ownerPlatform).setBaseFee(baseFee);
+            //сбросим таймлок, чтобы не мешался
+            (await platform.connect(ownerPlatform).setDelay(0)).wait(1);
+            //установим нашу программу на платформе            
+            const txSetLoyalty = await platform.connect(ownerPlatform).setLoyaltyProgram(loyalty);
+            
+            //настроим дисконт - 10 промилле
+            const discount = 10;
+            const txSetDiscont = await loyalty.connect(ownerPlatform).setFeeDiscount(discount);
+
+            //2. Создадим и завершим кампанию
+            //создаем кампанию
+            const args = defaultCreateCampaignArgs();
+            const txCreate = await platform.connect(user0).createCampaign(...args);
+            
+            //получим адрес кампании
+            const campaignAddr = await platform.getCampaignByIndex(0);
+            const campaign = await ethers.getContractAt("CampaignNative", campaignAddr);
+            
+            //завершим кампанию - перечислим средства до цели
+            const goal = await campaign.goal();
+            const txContribute = await campaign.connect(user0)["contribute()"]({value: goal});
+            txContribute.wait(1); 
+            
+            //3. Пробуем сминтить NFT
+            const mintTx = await loyalty.connect(user0).safeMint(user0);
+            expect(mintTx).to.emit(loyalty, "Transfer").withArgs(ethers.ZeroAddress, user0, 1);
+
+            //4. Для пробы - еще раз (должно отвалиться)
+            const mintTx2 = loyalty.connect(user0).safeMint(user0);
+            await expect(mintTx2).revertedWithCustomError(loyalty, "RepeatNFTRequest")
+                .withArgs(user0, 1);
+        });
+    });
+
 
 });

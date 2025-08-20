@@ -26,7 +26,7 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
 
 
     /// @notice размер дисконта
-    uint16 feeDiscount;
+    uint16 public feeDiscount;
 
     //события
     
@@ -40,8 +40,7 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
     /// @param oldValue старый адрес
     /// @param newValue новый адрес
     /// @param author автор изменений    
-    event PlatformAddressChanged(address oldValue, address newValue, address author);
-    
+    event PlatformAddressChanged(address oldValue, address newValue, address author);    
 
     //ошибки
     
@@ -68,7 +67,7 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
         Ownable(initialOwner)
     {
         //начальные установки
-        feeDiscount = 20; //в вычитаемых промилле
+        feeDiscount = 5; //в вычитаемых промилле
         platform = _platform;
     }
 
@@ -95,7 +94,7 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
         }
         return 0;
     }
-    //функции установки настроек
+    //функции установки настроек    
     
     /// @notice функция позволяет установить адрес платформы
     /// @param platformAddr новый адрес

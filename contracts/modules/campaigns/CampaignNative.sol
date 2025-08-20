@@ -4,10 +4,8 @@ pragma solidity ^0.8.30;
 import "../../interfaces/ICampaign.sol"; //интерфейс
 import "./CampaignBase.sol"; //общий код
 
-/**
- * @title Контракт кампании (разновидность в нативной валюте) 
- * @notice обеспечивает сбор денег на конкретную цель
- */
+/// @title Контракт кампании (разновидность в нативной валюте) 
+/// @notice обеспечивает сбор денег на конкретную цель
 contract CampaignNative is ICampaign, CampaignBase {
     constructor(
         address  _platformAddress,
@@ -91,14 +89,13 @@ contract CampaignNative is ICampaign, CampaignBase {
     }          
 
     //вспомогательные функции
-    /**
-     * @notice служебная функция перевода средств
-     * @dev используется для рефандов и переводов
-     * @dev не использовать при клейме зависших средств!
-     * @dev Внешний вызов безопасен — состояние не меняется до него.
-     * Запись в pendingWithdrawals происходит ТОЛЬКО при неудаче отправки.
-     * Вызов обёрнут в external функцию с модификатором nonReentrant. 
-     */
+ 
+    /// @notice служебная функция перевода средств
+    /// @dev используется для рефандов и переводов
+    /// @dev не использовать при клейме зависших средств!
+    /// @dev Внешний вызов безопасен — состояние не меняется до него.
+    /// Запись в pendingWithdrawals происходит ТОЛЬКО при неудаче отправки.
+    /// Вызов обёрнут в external функцию с модификатором nonReentrant.     
     function _transferTo(address recipient, uint256 amount) internal override returns (bool) {
         (bool success, ) = payable(recipient).call{value: amount}("");
             if (!success) {

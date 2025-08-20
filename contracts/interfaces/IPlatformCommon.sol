@@ -135,5 +135,4 @@ interface IPlatformCommon {
     /// @notice событие для фиксации того, что платформа вытянула зависшие средства из кампании
     /// @param campaign адрес кампании, из которой тянули средства
     event FundVerseCampaignPendingClaimed(address indexed campaign);
-
 }

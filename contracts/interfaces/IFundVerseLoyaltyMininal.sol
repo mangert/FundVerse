@@ -11,5 +11,4 @@ interface IFundVerseLoyaltyMinimal {
 
     /// @notice функция возвращает адрес платформы, на которую распространяется программа лояльности
     function platform() external view returns(address);
-
 }

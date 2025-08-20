@@ -39,7 +39,7 @@ abstract contract FeeLogic is IPlatformCommon {
         //и применим к ней скидку (если вдруг скидка больше базовой комиссии, просто не применяем)
         unchecked {
             if (fee >= discount) {
-              fee - discount;  
+              fee -= discount;  
             }
         }               
         return fee;               

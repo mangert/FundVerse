@@ -17,7 +17,6 @@ interface IPlatformMinimal {
     
     /// @notice Получить кампанию фаундера по его локальному индексу
     function getCampaignOfFounderByIndex(address founder, uint32 index) external view returns (address);
-
 }
 
 
