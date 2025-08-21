@@ -7,42 +7,30 @@ import { IFundVerseLoyaltyMinimal } from "../interfaces/IFundVerseLoyaltyMininal
 
 /// @title Модуль рабрты с комиссиями платформы
 /// @notice содержит базовый функционал настройки и расчетов комисиий
-abstract contract FeeLogic is IPlatformCommon {    
+abstract contract FeeLogic is IPlatformCommon {
+
+    // Константы для настройки событий изменения параметров платформы
+    bytes32 constant PARAM_BASE_FEE = keccak256("baseFee");
     
     /// @notice функция возвращает базовый размер комиссии
-    function getBaseFee() public view returns (uint256) {        
+    function getBaseFee() public view returns (uint16) {        
         return PlatformStorageLib.layout().baseFee;
     }
 
     /// @notice функция возвращает размер комиссии для конкретного фаундера (с учетом дисконта)
     /// @param founder адрес фаундера, для которого запрашиваем комиссию
     function getFounderFee(address founder) public view returns (uint16) {        
-        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
-        address loyaltyProgram = s.loyaltyProgram;
-
-        //получаем размер скидки. 
-        // если программа лояльности не прикреплена, скидка равна 0
-        //если вдруг скидка больше 1000 промилле, просто отбрасываем лишнее
-        // slither-disable-next-line uninitialized-local
-        uint16 discount;
-        if (loyaltyProgram != address(0)) {
-            discount = IFundVerseLoyaltyMinimal(loyaltyProgram).getFounderDiscount(founder);
-            if (discount > 1000) {
-                discount = 1000; // ограничим сверху
-            }
-        }
-
-        //запишем в переменную базовую комиссию
         uint16 fee = s.baseFee;
-        
-        //и применим к ней скидку (если вдруг скидка больше базовой комиссии, просто не применяем)
-        unchecked {
-            if (fee >= discount) {
-              fee -= discount;  
+
+        if (s.loyaltyProgram != address(0)) {
+            uint16 discount = IFundVerseLoyaltyMinimal(s.loyaltyProgram).getFounderDiscount(founder);
+            if (discount > fee) {
+                discount = fee;
             }
-        }               
-        return fee;               
+            fee -= discount;
+        }
+        return fee;        
     }
 
     /// @notice функция установки базовой комиссии
@@ -50,9 +38,8 @@ abstract contract FeeLogic is IPlatformCommon {
     /// @param _baseFee новой значение базовой комиссии
     function _setBaseFee(uint16 _baseFee) internal {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
-        s.baseFee = _baseFee;  
-        
-        emit FundVersePlatformParameterUpdated("baseFee", _baseFee, msg.sender);
+        s.baseFee = _baseFee;          
+        emit FundVersePlatformParameterUpdated(PARAM_BASE_FEE, _baseFee, msg.sender);
     }
     
 

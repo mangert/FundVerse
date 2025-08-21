@@ -8,6 +8,9 @@ import { ICampaign } from "../interfaces/ICampaign.sol";
 /// @title Модуль учета залогов
 /// @notice содержит базовый функционал настройки, учета и возврата залогов
 abstract contract DepositLogic is IPlatformCommon {
+
+    // Константы для настройки событий изменения параметров платформы    
+    bytes32 constant PARAM_DEPOSIT = keccak256("depositAmount");
     
     /// @notice регистрирует залог
     /// @dev следует вызывать после деплоя новой кампании
@@ -56,7 +59,7 @@ abstract contract DepositLogic is IPlatformCommon {
     function _setRequiredDeposit(uint256 depositAmount) internal {        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
         s.requiredDeposit = depositAmount;
-        emit FundVersePlatformParameterUpdated("depositAmount", depositAmount, msg.sender);
+        emit FundVersePlatformParameterUpdated(PARAM_DEPOSIT, depositAmount, msg.sender);
     }
 
     //геттеры

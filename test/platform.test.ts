@@ -1,8 +1,7 @@
 import { loadFixture, ethers, expect  } from "./setup";
 import { upgrades } from "hardhat";
 import { network } from "hardhat";
-import {defaultCampaignArgs, getBadReciever, 
-    defaultCreateCampaignArgs, EVENT_HASHES } from "./test-helpers";
+import { defaultCreateCampaignArgs, EVENT_HASHES } from "./test-helpers";
 
 
 describe("Platform main functionality tests", function() {
@@ -288,7 +287,7 @@ describe("Platform main functionality tests", function() {
             const tx = await platform.connect(ownerPlatform).setDelay(newDelay);
             tx.wait(1);            
             await expect(tx).to.emit(platform, EVENT_HASHES.PARAM_UINT)
-                .withArgs("delay", newDelay, ownerPlatform);
+                .withArgs(ethers.keccak256(ethers.toUtf8Bytes("delay")), newDelay, ownerPlatform);
             expect(await platform.getDelay()).equal(newDelay);            
         });
 
@@ -311,11 +310,11 @@ describe("Platform main functionality tests", function() {
             txSetDeposit.wait(1);
             //проверяем, что получилось
             expect(txSetDeposit).to.emit(platform, EVENT_HASHES.PARAM_UINT)
-                .withArgs("depositAmount", deposit, ownerPlatform);
+                .withArgs(ethers.keccak256(ethers.toUtf8Bytes("depositAmount")), deposit, ownerPlatform);
         });
 
-        //проверяем, что кто попало не может изменить параметр таймлока
-        it("should revert unauthorized change default timelock delay", async function() {
+        //проверяем, что кто попало не может изменить параметр размера залога
+        it("should revert unauthorized change required deposit ", async function() {
             const {user0, ownerPlatform, platform } = await loadFixture(deploy);            
             //установим размер залога
             const deposit = 1000n;
@@ -333,11 +332,11 @@ describe("Platform main functionality tests", function() {
             const txSetLifespan = await platform.connect(ownerPlatform).setMinLifespan(lifespan);
             
             expect(txSetLifespan).to.emit(platform, EVENT_HASHES.PARAM_UINT)
-                .withArgs("minLifespan", lifespan, ownerPlatform);            
+                .withArgs(ethers.keccak256(ethers.toUtf8Bytes("minLifespan")), lifespan, ownerPlatform);            
         });
 
         //проверяем, что кто попало не может менять минимальный дедлайн
-        it("should revert unauthorized change default timelock delay", async function() {
+        it("should revert unauthorized change default minLifespan", async function() {
             const {user0, ownerPlatform, platform } = await loadFixture(deploy);            
             const lifespan = 60 * 60;
             const txSetLifespan = platform.connect(user0).setMinLifespan(lifespan);            
@@ -353,7 +352,7 @@ describe("Platform main functionality tests", function() {
             const tx = await platform.connect(ownerPlatform).setBaseFee(newBaseFee);
             tx.wait(1);            
             await expect(tx).to.emit(platform, EVENT_HASHES.PARAM_UINT)
-                .withArgs("baseFee", newBaseFee, ownerPlatform);
+                .withArgs(ethers.keccak256(ethers.toUtf8Bytes("baseFee")), newBaseFee, ownerPlatform);
             expect(await platform.getBaseFee()).equal(newBaseFee);            
         });
         
@@ -363,7 +362,7 @@ describe("Platform main functionality tests", function() {
             const newBaseFee = 70;
             const tx = platform.connect(user0).setBaseFee(newBaseFee);
             await expect(tx).revertedWithCustomError(platform, "AccessControlUnauthorizedAccount");            
-        });       
+        });
     });    
 
     //тесты выводов средств с платформы
@@ -720,7 +719,17 @@ describe("Platform main functionality tests", function() {
             //установим нашу программу на платформе
             const txSetLoyalty = await platform.connect(ownerPlatform).setLoyaltyProgram(loyalty);
             await expect(txSetLoyalty).to.emit(platform, EVENT_HASHES.PARAM_ADDRESS)
-                .withArgs("loyaltyProgram", loyalty, ownerPlatform);
+                .withArgs(ethers.keccak256(ethers.toUtf8Bytes("loyaltyProgram")), loyalty, ownerPlatform);
+
+            //проверим, что можно отключить программу лояльности    
+            const txSetLoyaltyOff = await platform.connect(ownerPlatform).setLoyaltyProgram(ethers.ZeroAddress);
+            await expect(txSetLoyaltyOff).to.emit(platform, EVENT_HASHES.PARAM_ADDRESS)
+                .withArgs(ethers.keccak256(ethers.toUtf8Bytes("loyaltyProgram")), ethers.ZeroAddress, ownerPlatform);
+            
+            //проверим, что нельзя прицепить что попало (ну например - сам адрес платформы)
+            const txSetBadLoyalty = platform.connect(ownerPlatform).setLoyaltyProgram(platform);
+            await expect(txSetBadLoyalty).revertedWithCustomError(platform, "FundVerseUnacceptableLoyaltyProgram")
+                .withArgs(platform);
             
         });
 
@@ -768,7 +777,63 @@ describe("Platform main functionality tests", function() {
             await expect(mintTx2).revertedWithCustomError(loyalty, "RepeatNFTRequest")
                 .withArgs(user0, 1);
         });
+
+        //тес проверки расчетов комиссий со скидками по NFT
+        it("should calculate founder fees", async function() {
+            
+            const {user0, user1, ownerPlatform, platform } = await loadFixture(deploy);                        
+            
+            //1. Подготовка
+            //задеплоим программу лояльности
+            const loyalty = await loyaltyProgram(ownerPlatform, platform);            
+
+            //установим комиссию платформы
+            const baseFee = 20;
+            (await platform.connect(ownerPlatform).setBaseFee(baseFee)).wait(1);
+            //сбросим таймлок, чтобы не мешался
+            (await platform.connect(ownerPlatform).setDelay(0)).wait(1);
+            //установим нашу программу на платформе            
+            const txSetLoyalty = await platform.connect(ownerPlatform).setLoyaltyProgram(loyalty);
+            
+            //настроим дисконт - 10 промилле
+            const discount = 10n;
+            const txSetDiscont = await loyalty.connect(ownerPlatform).setFeeDiscount(discount);
+
+            //2. Создадим и завершим кампанию
+            //создаем кампанию
+            const args = defaultCreateCampaignArgs();
+            const txCreate = await platform.connect(user0).createCampaign(...args);
+            
+            //получим адрес кампании
+            const campaignAddr = await platform.getCampaignByIndex(0);
+            const campaign = await ethers.getContractAt("CampaignNative", campaignAddr);
+            
+            //завершим кампанию - перечислим средства до цели
+            const goal = await campaign.goal();
+            const txContribute = await campaign.connect(user0)["contribute()"]({value: goal});
+            txContribute.wait(1); 
+            
+            //3. Сминтим NFT
+            const mintTx = await loyalty.connect(user0).safeMint(user0);
+
+            //4. Проверим комиссию для нашего user0 (должна быть fee - discount)
+            expect(await platform.getFounderFee(user0)).equal(await platform.getBaseFee() - discount);
+
+            //5. Уменьшим комиссию на платформе до размера дисконта и посмотрим, какая будет комиссия у фаундера (0)
+            (await platform.connect(ownerPlatform).setBaseFee(discount)).wait(1);            
+            expect(await platform.getFounderFee(user0)).equal(0);
+
+             //6. Уменьшим комиссию на платформе меньше дисконта и посмотрим, какая будет комиссия у фаундера (0)
+            const newBaseFee = discount - 5n;
+             (await platform.connect(ownerPlatform).setBaseFee(newBaseFee)).wait(1);            
+            expect(await platform.getFounderFee(user0)).equal(0);
+
+            //7. Проверим, какая будет комиссия у фаундера без NFT
+            expect(await platform.getFounderFee(user1)).equal(newBaseFee);
+
+            //8. Отключим программу лояльности и проверим, какая теперь будет комиссия у нашего user0
+            (await platform.connect(ownerPlatform).setLoyaltyProgram(ethers.ZeroAddress)).wait(1);    
+            expect(await platform.getFounderFee(user0)).equal(newBaseFee);        
+        });
     });
-
-
 });

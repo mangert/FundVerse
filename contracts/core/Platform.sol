@@ -40,11 +40,15 @@ contract Platform is
     bytes32 public constant CONFIGURATOR_ROLE = keccak256("CONFIGURATOR");
     
     /// @notice роль, позволяющая забирать с контракта средства
-    bytes32 public constant TREASURE_ROLE = keccak256("TREASURE");
+    bytes32 public constant TREASURE_ROLE = keccak256("TREASURE");    
+
+    // Константы для настройки событий изменения параметров платформы
+    bytes32 constant PARAM_LOYALTY_PROG  = keccak256("loyaltyProgram");
+    bytes32 constant PARAM_MIN_LIFESPAN  = keccak256("minLifespan");
 
     /// @notice флаг для nonReentrancy
     bool private _inCall;
-
+    
     /// @notice модификатор для функций вывода
     modifier NonReentrancy() {
         require(!_inCall, FundVerseReentrancyDetected());
@@ -178,17 +182,33 @@ contract Platform is
     }
 
     /// @notice функция по прикреплению контракта программы лояльности
+    /// @notice отключение - установка программы лояльности на нулевой адрес
     /// @notice действует глобально для всех пользователей, создающих кампании после установки нового значения
-    /// @notice loyaltyProgram адрес прикрепляемой программы лояльности
+    /// @notice loyaltyProgram адрес прикрепляемой программы лояльности (или нулевой адрес для отключения)
     function setLoyaltyProgram(address loyaltyProgram) external onlyRole(CONFIGURATOR_ROLE) {
         
+        //если в параметрах нулевой адрес
+        if (loyaltyProgram == address(0)) {
+            // отключаем программу лояльности
+            PlatformStorageLib.layout().loyaltyProgram = address(0);
+            emit FundVersePlatformParameterUpdated(PARAM_LOYALTY_PROG, address(0), msg.sender);
+            return; //и завершаем функцию
+        }
+
         //Проверяем, знает ли что-то программа лояльности про наш контракт
-        require(IFundVerseLoyaltyMinimal(loyaltyProgram).platform() == address(this)
-            , FundVerseUnacceptableLoyaltyProgram(loyaltyProgram));
-        
-        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
-        s.loyaltyProgram = loyaltyProgram;
-        emit FundVersePlatformParameterUpdated("loyaltyProgram", loyaltyProgram, msg.sender);
+        //делаем вызов функции platform в контратке программы лояльности
+        (bool success, bytes memory data) = loyaltyProgram.staticcall(
+            abi.encodeWithSelector(IFundVerseLoyaltyMinimal.platform.selector)
+        );
+
+        //проверяем - вызов должен быть успешный и вернуть адрес платформы (т.е. платформа записана в контракте лояльности)
+        require(
+            success && data.length == 32 && abi.decode(data, (address)) == address(this),
+            FundVerseUnacceptableLoyaltyProgram(loyaltyProgram)
+        );
+
+        PlatformStorageLib.layout().loyaltyProgram = loyaltyProgram;
+        emit FundVersePlatformParameterUpdated(PARAM_LOYALTY_PROG, loyaltyProgram, msg.sender);
     }
 
     /// @notice функция по установке минимального срока действия кампаний
@@ -197,7 +217,7 @@ contract Platform is
     function setMinLifespan(uint32 _lifespan) external onlyRole(CONFIGURATOR_ROLE) {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.minLifespan = _lifespan;
-        emit FundVersePlatformParameterUpdated("minLifespan", _lifespan, msg.sender);
+        emit FundVersePlatformParameterUpdated(PARAM_MIN_LIFESPAN, _lifespan, msg.sender);
     }    
 
     /// @notice функция добавляет токен в список поддерживаемых платформой

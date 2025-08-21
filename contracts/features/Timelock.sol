@@ -8,6 +8,9 @@ import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
 /// @notice содержит функционал для проверки и установки таймлоков создания новых кампаний
 abstract contract Timelock is IPlatformCommon {      
 
+    // Константы для настройки событий изменения параметров платформы
+    bytes32 constant PARAM_DELAY = keccak256("delay");
+
     /// @notice функция проверяет, действует ли еще таймлок для фаундера
     function _isLocked(address founder) internal view returns(bool) {            
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
@@ -32,7 +35,7 @@ abstract contract Timelock is IPlatformCommon {
     function _setDelay(uint32 newDelay) internal {        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
         s.delay = newDelay;
-        emit FundVersePlatformParameterUpdated("delay", newDelay, msg.sender);
+        emit FundVersePlatformParameterUpdated(PARAM_DELAY, newDelay, msg.sender);
     }
 
     //геттеры

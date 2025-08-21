@@ -8,7 +8,6 @@ import {ICampaign} from "./ICampaign.sol";
 interface IPlatformCommon {    
     
     //ошибки
-
     /// @notice ошибка индицирует неуспешную попытку исходящего перевода средств
     /// @param recipient получатель платежа
     /// @param amount сумма платежа
@@ -78,13 +77,13 @@ interface IPlatformCommon {
     /// @param newValue новое значение
     /// @param updatedBy адрес, изменивший параметр
     event FundVersePlatformParameterUpdated(
-        string indexed parameter,          
+        bytes32 indexed parameter,          
         uint256 newValue,
         address indexed updatedBy
     );
     /// @notice событие порождается при изменении настроек платформы - перегрузка для адресов
     event FundVersePlatformParameterUpdated(
-        string indexed parameter,          
+        bytes32 indexed parameter,          
         address newValue,
         address indexed updatedBy
     );

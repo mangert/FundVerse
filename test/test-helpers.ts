@@ -75,6 +75,6 @@ function getEventHash(signature : string) {
 
 //Хэши сигнатур событий
 export const EVENT_HASHES = {
-    PARAM_UINT: getEventHash("FundVersePlatformParameterUpdated(string,uint256,address)"),
-    PARAM_ADDRESS: getEventHash("FundVersePlatformParameterUpdated(string,address,address)"),            
+    PARAM_UINT: getEventHash("FundVersePlatformParameterUpdated(bytes32,uint256,address)"),
+    PARAM_ADDRESS: getEventHash("FundVersePlatformParameterUpdated(bytes32,address,address)"),            
 };
