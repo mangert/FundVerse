@@ -19,3 +19,4 @@ ignition/deployments/chain-31337
 # черновики, заметки и временные файлы
 data.txt
 /contracts/examples
+commands.txt
