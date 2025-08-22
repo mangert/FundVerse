@@ -75,6 +75,17 @@ function getEventHash(signature : string) {
 
 //Хэши сигнатур событий
 export const EVENT_HASHES = {
-    PARAM_UINT: getEventHash("FundVersePlatformParameterUpdated(bytes32,uint256,address)"),
-    PARAM_ADDRESS: getEventHash("FundVersePlatformParameterUpdated(bytes32,address,address)"),            
+    PARAM_UINT: getEventHash("FVPlatformParameterUpdated(bytes32,uint256,address)"),
+    PARAM_ADDRESS: getEventHash("FVPlatformParameterUpdated(bytes32,address,address)"),            
 };
+
+//хелпер - чтобы каждый раз не деполить нашу программу
+export async function loyaltyProgram (ownerPlatform : any, platform  : any) {        
+            
+    //деплоим
+    const loyalty_Factory = await ethers.getContractFactory("FundVerseLoyaltyv1");
+    const loyalty = await loyalty_Factory.deploy(ownerPlatform, platform);
+    loyalty.waitForDeployment();
+            
+        return loyalty;            
+}

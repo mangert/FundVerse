@@ -12,7 +12,7 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1000,
+        runs: 200,
       },
     },
   },
@@ -32,7 +32,7 @@ const config: HardhatUserConfig = {
   },
   gasReporter: {
     //enabled: process.env.REPORT_GAS === "true",
-    enabled: true,
+    enabled: false,
     currency: "ETH", 
   },
 };

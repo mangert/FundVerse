@@ -51,7 +51,7 @@ contract Platform is
     
     /// @notice модификатор для функций вывода
     modifier NonReentrancy() {
-        require(!_inCall, FundVerseReentrancyDetected());
+        require(!_inCall, FVReentrancyDetected());
         _inCall = true;
         _;
         _inCall = false;        
@@ -89,21 +89,21 @@ contract Platform is
             string calldata _campaignMeta,            
             address _token
         ) external payable {            
-            require(_goal > 0, FundVerseErrorZeroGoal()); //проверяем, что цель не нулевая
-            require(isAllowedToken(_token), FundVerseUnsupportedToken(_token)); //проверяем, что валюта кампании поддерживается
+            require(_goal > 0, FVErrorZeroGoal()); //проверяем, что цель не нулевая
+            require(isAllowedToken(_token), FVUnsupportedToken(_token)); //проверяем, что валюта кампании поддерживается
                         
             PlatformStorageLib.Layout storage s = PlatformStorageLib.layout(); //ссылка на хранилище            
 
             //проверяем, что залог перечислен
             uint256 deposit = msg.value;
-            require(deposit >= s.requiredDeposit, FundVerseInsufficientDeposit(deposit, s.requiredDeposit));
+            require(deposit >= s.requiredDeposit, FVInsufficientDeposit(deposit, s.requiredDeposit));
             
             // slither-disable-next-line timestamp
             require(_deadline > (s.minLifespan + block.timestamp)
-                , FundVerseErrorDeadlineLessMinimun()); //проверяем, что дедлайн не слишком маленький
+                , FVErrorDeadlineLessMinimun()); //проверяем, что дедлайн не слишком маленький
             
             address founder = msg.sender;
-            require(!_isLocked(founder), FundVerseErrorTimeLocked(s.timelocks[founder]));            
+            require(!_isLocked(founder), FVErrorTimeLocked(s.timelocks[founder]));            
             
             //посчитаем комиссию
             uint128 _platformFee = getFounderFee(founder);
@@ -119,7 +119,7 @@ contract Platform is
                 );    
             
             //проверим на всякий случай, что то-то вернулось
-            require(address(newCampaign).code.length != 0, FundVerseCreateFailed());
+            require(address(newCampaign).code.length != 0, FVCreateFailed());
 
             if(deposit > 0) { //если вдруг у нас платформа не требует залога, не будем нули регистрировать
                 _lockDeposit(founder, deposit, newCampaign); //регистрируем залог
@@ -128,7 +128,7 @@ contract Platform is
             _registerCampaign(founder, newCampaign); //записываем данные в хранилище
             _setLockTime(founder); //устанавливаем новый таймлок
             
-            emit FundVerseCampaignCreated(newCampaign, founder, _token, _goal); 
+            emit FVCampaignCreated(newCampaign, founder, _token, _goal); 
     }
 
     //геттеры
@@ -191,7 +191,7 @@ contract Platform is
         if (loyaltyProgram == address(0)) {
             // отключаем программу лояльности
             PlatformStorageLib.layout().loyaltyProgram = address(0);
-            emit FundVersePlatformParameterUpdated(PARAM_LOYALTY_PROG, address(0), msg.sender);
+            emit FVPlatformParameterUpdated(PARAM_LOYALTY_PROG, address(0), msg.sender);
             return; //и завершаем функцию
         }
 
@@ -204,11 +204,11 @@ contract Platform is
         //проверяем - вызов должен быть успешный и вернуть адрес платформы (т.е. платформа записана в контракте лояльности)
         require(
             success && data.length == 32 && abi.decode(data, (address)) == address(this),
-            FundVerseUnacceptableLoyaltyProgram(loyaltyProgram)
+            FVUnacceptableLoyaltyProgram(loyaltyProgram)
         );
 
         PlatformStorageLib.layout().loyaltyProgram = loyaltyProgram;
-        emit FundVersePlatformParameterUpdated(PARAM_LOYALTY_PROG, loyaltyProgram, msg.sender);
+        emit FVPlatformParameterUpdated(PARAM_LOYALTY_PROG, loyaltyProgram, msg.sender);
     }
 
     /// @notice функция по установке минимального срока действия кампаний
@@ -217,7 +217,7 @@ contract Platform is
     function setMinLifespan(uint32 _lifespan) external onlyRole(CONFIGURATOR_ROLE) {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.minLifespan = _lifespan;
-        emit FundVersePlatformParameterUpdated(PARAM_MIN_LIFESPAN, _lifespan, msg.sender);
+        emit FVPlatformParameterUpdated(PARAM_MIN_LIFESPAN, _lifespan, msg.sender);
     }    
 
     /// @notice функция добавляет токен в список поддерживаемых платформой
@@ -252,12 +252,12 @@ contract Platform is
         uint256 availableValue = address(this).balance - s.totalDeposit;
         
         //рассчитываем доступные средства
-        require(amount <= availableValue,  FundVerseInsufficientFunds(amount, availableValue, address(0)));
+        require(amount <= availableValue,  FVInsufficientFunds(amount, availableValue, address(0)));
 
-        emit FundVerseWithdrawn(amount, recipient, address(0));
+        emit FVWithdrawn(amount, recipient, address(0));
 
         (bool success, ) = recipient.call{value: amount}("");
-        require(success, FundVerseTransferFailed(recipient, amount, address(0)));
+        require(success, FVTransferFailed(recipient, amount, address(0)));
     }
 
     /// @notice функция позволяет вывести средства в токенах
@@ -269,17 +269,17 @@ contract Platform is
         
         // смотрим доступные средства
         uint256 availableValue = IERC20(token).balanceOf(address(this));
-        require(amount <= availableValue,  FundVerseInsufficientFunds(amount, availableValue, token));
+        require(amount <= availableValue,  FVInsufficientFunds(amount, availableValue, token));
 
         
-        emit FundVerseWithdrawn(amount, recipient, token);
+        emit FVWithdrawn(amount, recipient, token);
 
         (bool success, bytes memory returndata) = token.call(
             abi.encodeWithSelector(IERC20.transfer.selector, recipient, amount)
         );       
         
         bool result = success && (returndata.length == 0 || abi.decode(returndata, (bool)));
-        require(result, FundVerseTransferFailed(recipient, amount, token));
+        require(result, FVTransferFailed(recipient, amount, token));
     }                   
 
     /// @notice пустой receive — для автоматического приема комиссий и любых входящих переводов
@@ -294,7 +294,7 @@ contract Platform is
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         require(s.registeredCampaigns[campaign], FundVersNotRegisteredCampaign(campaign));
         
-        emit FundVerseCampaignPendingClaimed(campaign);
+        emit FVCampaignPendingClaimed(campaign);
 
         ICampaign(campaign).claimPendingFunds();       
     }    

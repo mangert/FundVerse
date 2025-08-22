@@ -39,7 +39,7 @@ abstract contract FeeLogic is IPlatformCommon {
     function _setBaseFee(uint16 _baseFee) internal {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.baseFee = _baseFee;          
-        emit FundVersePlatformParameterUpdated(PARAM_BASE_FEE, _baseFee, msg.sender);
+        emit FVPlatformParameterUpdated(PARAM_BASE_FEE, _baseFee, msg.sender);
     }
     
 

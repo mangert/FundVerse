@@ -1,12 +1,13 @@
 import { loadFixture, ethers, expect  } from "./setup";
 import { upgrades } from "hardhat";
 import { network } from "hardhat";
-import { defaultCreateCampaignArgs, EVENT_HASHES } from "./test-helpers";
+import { defaultCreateCampaignArgs, EVENT_HASHES, loyaltyProgram } from "./test-helpers";
+import { time } from "@nomicfoundation/hardhat-toolbox/network-helpers";
 
 
 describe("Platform main functionality tests", function() {
     async function deploy() {        
-        const [ownerPlatform, userCreator, user0, user1] = await ethers.getSigners();               
+        const [ownerPlatform, userCreator, user0, user1, user2, user3, beneficiar] = await ethers.getSigners();               
         
         //депплоим фабрику
         const factory_Factory = await ethers.getContractFactory("FactoryCore");
@@ -23,7 +24,11 @@ describe("Platform main functionality tests", function() {
         const tokenERC20 = await token_Factory.deploy();
         const tokenERC20Addr = await tokenERC20.getAddress();        
         
-        return {ownerPlatform, userCreator, user0, user1, platform, tokenERC20, tokenERC20Addr, factory};       
+        return {ownerPlatform, userCreator, 
+            user0, user1, user2, user3, 
+            platform, tokenERC20, tokenERC20Addr, factory,
+            beneficiar
+        };       
     }
 
     describe("deployment tеsts", function() { //примитивный тест на деплой - просто проверить, что общая часть работает
@@ -47,7 +52,7 @@ describe("Platform main functionality tests", function() {
             
             //смортрим, что получилось            
             const campaignAddress = await platform.getCampaignByIndex(0);            
-            await expect(txCreate).to.emit(platform, "FundVerseCampaignCreated")
+            await expect(txCreate).to.emit(platform, "FVCampaignCreated")
                 .withArgs(campaignAddress, user0, ethers.ZeroAddress, args[0]);       
             
             
@@ -72,7 +77,7 @@ describe("Platform main functionality tests", function() {
             
             //смотрим, что получилось
             const campaignAddress = await platform.getCampaignByIndex(0);            
-            await expect(txCreate).to.emit(platform, "FundVerseCampaignCreated")
+            await expect(txCreate).to.emit(platform, "FVCampaignCreated")
                 .withArgs(campaignAddress, user0, tokenERC20Addr, args[0]);       
             
             expect(await platform.getTotalCampaigns()).equal(1);
@@ -91,7 +96,7 @@ describe("Platform main functionality tests", function() {
             //формируем транзакцию
             const txCreateNative = platform.connect(user0).createCampaign(...argsNative);
             //отправляем и ждем, что отвалится с ошибкой
-            await expect(txCreateNative).revertedWithCustomError(platform, "FundVerseErrorZeroGoal");
+            await expect(txCreateNative).revertedWithCustomError(platform, "FVErrorZeroGoal");
             
             //а теперь то же самое в токенах
             //добавим наш токен в список
@@ -103,7 +108,7 @@ describe("Platform main functionality tests", function() {
             //формируем транзакцию
             const txCreateToken = platform.connect(user0).createCampaign(...argsToken);
             //отправляем и ждем, что отвалится с ошибкой
-            await expect(txCreateToken).revertedWithCustomError(platform, "FundVerseErrorZeroGoal");            
+            await expect(txCreateToken).revertedWithCustomError(platform, "FVErrorZeroGoal");            
         });
         //проверка реверта создания кампаний c маленькой продолжительностью 
         it("should revert campaign with too litle lifespan", async function() {
@@ -114,7 +119,7 @@ describe("Platform main functionality tests", function() {
             //формируем транзакцию
             const txCreateNative = platform.connect(user0).createCampaign(...argsNative);
             //отправляем и ждем, что отвалится с ошибкой
-            await expect(txCreateNative).revertedWithCustomError(platform, "FundVerseErrorDeadlineLessMinimun");
+            await expect(txCreateNative).revertedWithCustomError(platform, "FVErrorDeadlineLessMinimun");
             
             //а теперь то же самое в токенах
             //добавим наш токен в список
@@ -124,7 +129,7 @@ describe("Platform main functionality tests", function() {
             //формируем транзакцию
             const txCreateToken = platform.connect(user0).createCampaign(...argsToken);
             //отправляем и ждем, что отвалится с ошибкой
-            await expect(txCreateToken).revertedWithCustomError(platform, "FundVerseErrorDeadlineLessMinimun");            
+            await expect(txCreateToken).revertedWithCustomError(platform, "FVErrorDeadlineLessMinimun");            
         });
         //проверка реверта создания кампаний до истечения таймлока
         it("should revert create campaign before timelock expired", async function() {
@@ -138,9 +143,9 @@ describe("Platform main functionality tests", function() {
             //смотрим, что получилось
             const timelock = await platform.getFounderTimelock(user0);
             const campaignAddress = await platform.getCampaignByIndex(0);            
-            await expect(txCreate).to.emit(platform, "FundVerseCampaignCreated")
+            await expect(txCreate).to.emit(platform, "FVCampaignCreated")
                 .withArgs(campaignAddress, user0, ethers.ZeroAddress, args0[0]);            
-            await expect(txCreate).to.emit(platform, "FundVerseSetFounderTimelock")
+            await expect(txCreate).to.emit(platform, "FVSetFounderTimelock")
                 .withArgs(user0, timelock);
 
             //добавим наш токен в список
@@ -150,7 +155,7 @@ describe("Platform main functionality tests", function() {
             const args1 = defaultCreateCampaignArgs({token: tokenERC20Addr});
             const txCreate1 = platform.connect(user0).createCampaign(...args1);
             //ожидаем, что ревертнется, так как таймлок еще не закончился
-            await expect(txCreate1).revertedWithCustomError(platform, "FundVerseErrorTimeLocked")
+            await expect(txCreate1).revertedWithCustomError(platform, "FVErrorTimeLocked")
                 .withArgs(timelock);            
 
             //а теперь пропустим время и попробуем еще раз - должно получиться
@@ -176,7 +181,7 @@ describe("Platform main functionality tests", function() {
             //формируем транзакцию
             const txCreateToken = platform.connect(user0).createCampaign(...argsToken);
             //отправляем и ждем, что отвалится с ошибкой
-           await expect(txCreateToken).revertedWithCustomError(platform, "FundVerseUnsupportedToken")
+           await expect(txCreateToken).revertedWithCustomError(platform, "FVUnsupportedToken")
             .withArgs(tokenERC20);
         });
 
@@ -194,13 +199,13 @@ describe("Platform main functionality tests", function() {
             //сделаем транзакцию по созданию кампании, но залог перечислять не будем
             const txCreate = platform.connect(user0).createCampaign(...args);
             //и ожидаем, что отвалится
-            await expect(txCreate).revertedWithCustomError(platform, "FundVerseInsufficientDeposit")
+            await expect(txCreate).revertedWithCustomError(platform, "FVInsufficientDeposit")
                 .withArgs(0, deposit);
             
             //сделаем транзакцию по созданию с перечислением залога (должна пройти)            
             const txCreateDep = await platform.connect(user0).createCampaign(...args, {value : deposit});
             expect(await platform.getCampaignsCountByFounder(user0)).equal(1);     
-            expect(txCreateDep).to.emit(platform, "FundVerseDepositLocked")
+            expect(txCreateDep).to.emit(platform, "FVDepositLocked")
                 .withArgs(user0, deposit, await platform.getCampaignByIndex(0));
             
         });
@@ -212,7 +217,7 @@ describe("Platform main functionality tests", function() {
 
             const tx = await platform.connect(ownerPlatform).addTokenToAllowed(tokenERC20);
             tx.wait(1);
-            expect(tx).to.emit(platform, "FundVerseNewTokenAdded").withArgs(tokenERC20);                        
+            expect(tx).to.emit(platform, "FVNewTokenAdded").withArgs(tokenERC20);                        
         });
 
         // проверяем, что нельзя добавить токен, который уже есть
@@ -223,7 +228,7 @@ describe("Platform main functionality tests", function() {
             tx.wait(1);
             //добавляем тот же токен второй раз, и ждем, что отвалится
             const txNew = platform.connect(ownerPlatform).addTokenToAllowed(tokenERC20);
-            await expect(txNew).revertedWithCustomError(platform, "FundVerseAddingTokenAlreadySupported").withArgs(tokenERC20);
+            await expect(txNew).revertedWithCustomError(platform, "FVAddingTokenAlreadySupported").withArgs(tokenERC20);
         });
 
         // проверяем, что токен не может добавить кто попало
@@ -245,14 +250,14 @@ describe("Platform main functionality tests", function() {
             //а теперь удалим, что добавили
             const txRemove = await platform.connect(ownerPlatform).removeTokenFromAllowed(tokenERC20);
             txRemove.wait(1);
-            expect(txRemove).to.emit(platform, "FundVerseTokenRemoved").withArgs(tokenERC20);                        
+            expect(txRemove).to.emit(platform, "FVTokenRemoved").withArgs(tokenERC20);                        
 
             //дополнительно проверим - создание кампании в этом токене должно отвалиться
             const argsToken = defaultCreateCampaignArgs({ token: tokenERC20Addr});
             //формируем транзакцию
             const txCreateToken = platform.connect(user0).createCampaign(...argsToken);
             //отправляем и ждем, что отвалится с ошибкой
-           await expect(txCreateToken).revertedWithCustomError(platform, "FundVerseUnsupportedToken")
+           await expect(txCreateToken).revertedWithCustomError(platform, "FVUnsupportedToken")
             .withArgs(tokenERC20);
         });
 
@@ -263,7 +268,7 @@ describe("Platform main functionality tests", function() {
             //удалим токен, которого не добавляли
             const tx = platform.connect(ownerPlatform).removeTokenFromAllowed(tokenERC20);
             //и ждем, что отвалится
-            await expect(tx).revertedWithCustomError(platform, "FundVerseRemovingTokenNotSupported").withArgs(tokenERC20);
+            await expect(tx).revertedWithCustomError(platform, "FVRemovingTokenNotSupported").withArgs(tokenERC20);
         }); 
 
         // проверяем, что токен не может удалить кто попало
@@ -383,7 +388,7 @@ describe("Platform main functionality tests", function() {
             (user0, incomes);
             await txWD.wait(1);
 
-            expect(txWD).to.emit(platform, "FundVerseWithdrawn").withArgs(incomes, user0, ethers.ZeroAddress);
+            expect(txWD).to.emit(platform, "FVWithdrawn").withArgs(incomes, user0, ethers.ZeroAddress);
             expect(txWD).changeEtherBalances
                 (                    
                     [user0, platform],
@@ -423,7 +428,7 @@ describe("Platform main functionality tests", function() {
             (user0, incomes + totalDep);
             
             //и ожидаем, что отвалится
-            await expect(txWD).revertedWithCustomError(platform, "FundVerseInsufficientFunds")
+            await expect(txWD).revertedWithCustomError(platform, "FVInsufficientFunds")
                 .withArgs(incomes + totalDep, incomes, ethers.ZeroAddress);            
         });
 
@@ -460,7 +465,7 @@ describe("Platform main functionality tests", function() {
             (user0, incomes, tokenERC20Addr);
             await txWD.wait(1);
 
-            expect(txWD).to.emit(platform, "FundVerseWithdrawn").withArgs(incomes, user0, tokenERC20Addr);
+            expect(txWD).to.emit(platform, "FVWithdrawn").withArgs(incomes, user0, tokenERC20Addr);
             expect(txWD).changeTokenBalances
                 (
                     tokenERC20,
@@ -497,7 +502,7 @@ describe("Platform main functionality tests", function() {
             (user0, incomes + delta, tokenERC20Addr);            
 
             //и ожидаем, что отвалится
-            await expect(txWD).revertedWithCustomError(platform, "FundVerseInsufficientFunds")
+            await expect(txWD).revertedWithCustomError(platform, "FVInsufficientFunds")
                 .withArgs(incomes + delta, incomes, tokenERC20);            
         });      
 
@@ -531,7 +536,7 @@ describe("Platform main functionality tests", function() {
             await txReturnDep.wait(1);
             //и проверим, что получилось
             await expect(txReturnDep).changeEtherBalances([user0, platform], [depositAmount, -depositAmount]);
-            await expect(txReturnDep).to.emit(platform, "FundVerseDepositReturned")
+            await expect(txReturnDep).to.emit(platform, "FVDepositReturned")
                 .withArgs(user0, depositAmount, campaign);
         });     
 
@@ -561,7 +566,7 @@ describe("Platform main functionality tests", function() {
             const txReturnDep = platform.connect(user0).returnDeposit(campaign);
             
             //ждем, что отвалится
-            await expect(txReturnDep).revertedWithCustomError(platform, "FundVerseDepositNotYetReturnable");
+            await expect(txReturnDep).revertedWithCustomError(platform, "FVDepositNotYetReturnable");
         });
 
         //проверяем, что нельзя вывести залог дважды
@@ -597,7 +602,7 @@ describe("Platform main functionality tests", function() {
             const txReturnDep2 = platform.connect(user0).returnDeposit(campaign);
             
             //ждем, что отвалится
-            await expect(txReturnDep2).revertedWithCustomError(platform, "FundVerseZeroWithdrawnAmount");
+            await expect(txReturnDep2).revertedWithCustomError(platform, "FVZeroWithdrawnAmount");
         });
 
         //проверяем, что нельзя вывести чужой залог
@@ -629,23 +634,12 @@ describe("Platform main functionality tests", function() {
             const txReturnDep = platform.connect(user1).returnDeposit(campaign);            
 
             //ждем, что отвалится
-            await expect(txReturnDep).revertedWithCustomError(platform, "FundVerseNotCampaignFounder");
+            await expect(txReturnDep).revertedWithCustomError(platform, "FVNotCampaignFounder");
         });            
     });
     
     //тестируем программу лояльности
     describe("loyaty program tеsts", function() {
-        
-        //хелпер - чтобы каждый раз не деполить нашу программу
-        async function loyaltyProgram (ownerPlatform : any, platform  : any) {        
-            
-            //деплоим
-            const loyalty_Factory = await ethers.getContractFactory("FundVerseLoyaltyv1");
-            const loyalty = await loyalty_Factory.deploy(ownerPlatform, platform);
-            loyalty.waitForDeployment();
-            
-            return loyalty;            
-        }
         
         //проверяем возможности деплоя и настройки комиссий
         // - положительный и отрицательный сценарии
@@ -728,7 +722,7 @@ describe("Platform main functionality tests", function() {
             
             //проверим, что нельзя прицепить что попало (ну например - сам адрес платформы)
             const txSetBadLoyalty = platform.connect(ownerPlatform).setLoyaltyProgram(platform);
-            await expect(txSetBadLoyalty).revertedWithCustomError(platform, "FundVerseUnacceptableLoyaltyProgram")
+            await expect(txSetBadLoyalty).revertedWithCustomError(platform, "FVUnacceptableLoyaltyProgram")
                 .withArgs(platform);
             
         });
@@ -834,6 +828,100 @@ describe("Platform main functionality tests", function() {
             //8. Отключим программу лояльности и проверим, какая теперь будет комиссия у нашего user0
             (await platform.connect(ownerPlatform).setLoyaltyProgram(ethers.ZeroAddress)).wait(1);    
             expect(await platform.getFounderFee(user0)).equal(newBaseFee);        
+        });
+    });
+    //комплексный тест
+    describe("complex tеsts", function() {
+        it("should work", async function() {
+            const {user0, user1, user2, user3, ownerPlatform, platform
+                , tokenERC20, tokenERC20Addr, beneficiar } = await loadFixture(deploy);                        
+            
+            //1. Подготовка
+            //задеплоим программу лояльности
+            const loyalty = await loyaltyProgram(ownerPlatform, platform);            
+
+            //установим комиссию платформы
+            const baseFee = 20n;
+            (await platform.connect(ownerPlatform).setBaseFee(baseFee)).wait(1);
+            //сбросим таймлок, чтобы не мешался
+            (await platform.connect(ownerPlatform).setDelay(0)).wait(1);
+            //установим нашу программу на платформе            
+            (await platform.connect(ownerPlatform).setLoyaltyProgram(loyalty)).wait(1);
+            
+            //настроим дисконт - 10 промилле
+            const discount = 10n;
+            (await loyalty.connect(ownerPlatform).setFeeDiscount(discount)).wait(1);
+
+            //добавим в допустимые наш токен ERC20
+            (await platform.connect(ownerPlatform).addTokenToAllowed(tokenERC20)).wait(1);
+
+            //параметры кампаний по умолчанию
+            const argsToken = defaultCreateCampaignArgs({token: tokenERC20Addr});
+            const argsNative = defaultCreateCampaignArgs();
+            
+            //2. Проверка процесса
+            // A. user0 создает успешную кампанию в ETH
+            
+            const tx0 = await platform.connect(user0).createCampaign(...argsNative);                
+            tx0.wait();
+
+            const campaign0Addr = await platform.getCampaignByIndex(0);            
+            const campaign0 = await ethers.getContractAt("CampaignNative", campaign0Addr);
+            const goal0 = await campaign0.goal();
+
+            await (await campaign0.connect(user1)["contribute()"]({ value: goal0 / 2n })).wait();
+            await (await campaign0.connect(user2)["contribute()"]({ value: goal0 / 2n })).wait();
+
+            // B. user1 создает кампанию, которая НЕ наберет target
+            const tx1 = await (await platform.connect(user1).createCampaign(...argsNative)).wait();
+            const campaign1Addr = await platform.getCampaignByIndex(1);
+            const campaign1 = await ethers.getContractAt("CampaignNative", campaign1Addr);
+
+            const contribution1 = await campaign1.goal() / 2n;
+            await (await campaign1.connect(user2)["contribute()"]({ value: contribution1 })).wait();
+            
+            // C. user2 создает кампанию в ERC20 и сам отменяет            
+            const tx2 = await (await platform.connect(user2).createCampaign(...argsToken)).wait();
+
+            const campaign2Addr = await platform.getCampaignByIndex(2);
+            const campaign2 = await ethers.getContractAt("CampaignToken", campaign2Addr);
+
+            const contribution2 = await campaign2.goal() / 2n;
+            await tokenERC20.mint(user3, contribution2);
+            await tokenERC20.connect(user3).approve(campaign2Addr, contribution2);
+            await (await campaign2.connect(user3)["contribute(uint128)"](contribution2)).wait();
+            await (await campaign2.connect(user2).setCampaignStatus(2)).wait();
+            
+            // D. user3 создает успешную кампанию в ETH
+            const tx3 = await (await platform.connect(user3).createCampaign(...argsNative)).wait();
+            const campaign3Addr = await platform.getCampaignByIndex(3);
+            const campaign3 = await ethers.getContractAt("CampaignNative", campaign3Addr);
+
+            const goal3 = await campaign3.goal();
+            await (await campaign3.connect(user2)["contribute()"]({ value: goal3})).wait();
+            // --- 3. Прокрутить время, чтобы все дедлайны прошли ---
+            await time.increaseTo(argsNative[1] + 1n);            
+                
+            // --- 4. Фаундеры пробуют выводить ---
+            const txUs0WD = await campaign0.connect(user0).withdrawFunds(); // успешная кампания ETH           
+            const txUs2Claim = await campaign1.connect(user2).claimContribution(); // неуспешная кампания, возврат донорам ETH
+            const txUs3Claim = await campaign2.connect(user3).claimContribution(); // отмененная кампания в ERC20
+            const txUs3WD = await campaign3.connect(user3).withdrawFunds(); // успешная кампания ETH
+            
+            //проверяем балансы после каждой транзацкции вывода            
+            await expect(txUs0WD).changeEtherBalances([user0, campaign0, platform]
+                    ,[goal0 * (1000n - baseFee) / 1000n, -goal0, goal0 * baseFee / 1000n]);
+            await expect(txUs2Claim).changeEtherBalances([user2, campaign1], [contribution1, -contribution1]);
+            await expect(txUs3Claim).changeTokenBalances(tokenERC20, [user3, campaign2], [contribution2, -contribution2]);
+            await expect(txUs3WD).changeEtherBalances([user3, campaign3, platform]
+                    ,[goal3 * (1000n - baseFee) / 1000n, -goal3, goal3 * baseFee / 1000n]);    
+                
+            // --- 5. Платформа выводит комиссию ---            
+            const incomes = ((await campaign0.raised() + await campaign3.raised()) * baseFee) / 1000n;
+            expect(await ethers.provider.getBalance(platform)).equal(incomes);
+            const txPlatformWD = await platform.connect(ownerPlatform)
+                ["withdrawIncomes(address,uint256)"](beneficiar, incomes);
+            await expect(txPlatformWD).changeEtherBalances([platform, beneficiar], [-incomes, incomes]);            
         });
     });
 });

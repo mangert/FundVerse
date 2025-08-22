@@ -26,11 +26,11 @@ abstract contract TokenAllowList is IPlatformCommon {
         
         //повторно не добавляем        
         if(token == address(0) || isAllowedToken(token)) {
-            revert FundVerseAddingTokenAlreadySupported(token);
+            revert FVAddingTokenAlreadySupported(token);
         }        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.allowedTokens[token] = true;                
-        emit FundVerseNewTokenAdded(token);
+        emit FVNewTokenAdded(token);
     }
 
     /// @notice функция убирает токен из поддерживаемых платформой
@@ -41,11 +41,11 @@ abstract contract TokenAllowList is IPlatformCommon {
         
         //если нет, не убираем        
         if(token == address(0) || !isAllowedToken(token)) {
-            revert FundVerseRemovingTokenNotSupported(token);
+            revert FVRemovingTokenNotSupported(token);
         }        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         delete s.allowedTokens[token];
-        emit FundVerseTokenRemoved(token);
+        emit FVTokenRemoved(token);
         
     }    
 }

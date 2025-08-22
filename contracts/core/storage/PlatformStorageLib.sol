@@ -8,7 +8,7 @@ import "../../interfaces/ICampaign.sol";
  */
 
 library PlatformStorageLib {
-    bytes32 internal constant STORAGE_SLOT = keccak256("fundverse.platform.storage");
+    bytes32 internal constant STORAGE_SLOT = keccak256("FV.platform.storage");
 
     struct Layout {
         

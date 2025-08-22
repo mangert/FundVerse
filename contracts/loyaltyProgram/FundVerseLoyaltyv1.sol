@@ -7,7 +7,6 @@ import { IPlatformMinimal } from "../interfaces/IPlatformMinimal.sol";
 import { ICampaign } from "../interfaces/ICampaign.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
-
 contract FundVerseLoyaltyv1 is ERC721, Ownable {
 
     /// @notice ссылка на адрес платформы

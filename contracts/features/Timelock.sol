@@ -25,7 +25,7 @@ abstract contract Timelock is IPlatformCommon {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         uint32 _timelock = uint32(block.timestamp) + s.delay;
         s.timelocks[founder] = _timelock;
-        emit FundVerseSetFounderTimelock(founder, _timelock);
+        emit FVSetFounderTimelock(founder, _timelock);
     }
 
     /// @notice функция по установке срока таймлоков,
@@ -35,7 +35,7 @@ abstract contract Timelock is IPlatformCommon {
     function _setDelay(uint32 newDelay) internal {        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
         s.delay = newDelay;
-        emit FundVersePlatformParameterUpdated(PARAM_DELAY, newDelay, msg.sender);
+        emit FVPlatformParameterUpdated(PARAM_DELAY, newDelay, msg.sender);
     }
 
     //геттеры

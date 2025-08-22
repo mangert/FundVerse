@@ -25,7 +25,7 @@ abstract contract DepositLogic is IPlatformCommon {
         s.totalDeposit += amount;
         s.depositsByCampaigns[address(campaign)] = amount;
 
-        emit FundVerseDepositLocked(founder, amount, address(campaign));
+        emit FVDepositLocked(founder, amount, address(campaign));
     }
 
     /// @notice возвращает залог фаундеру
@@ -35,21 +35,21 @@ abstract contract DepositLogic is IPlatformCommon {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
 
         address founder = msg.sender;
-        require((campaign.creator()) == founder, FundVerseNotCampaignFounder());
+        require((campaign.creator()) == founder, FVNotCampaignFounder());
         
         // проверяем, что этот залог можно вернуть
         uint256 amount = s.depositsByCampaigns[address(campaign)];
-        require(amount > 0, FundVerseZeroWithdrawnAmount());
-        require(_isCampaignFinished(campaign), FundVerseDepositNotYetReturnable());                           
+        require(amount > 0, FVZeroWithdrawnAmount());
+        require(_isCampaignFinished(campaign), FVDepositNotYetReturnable());                           
 
         // обнуляем, чтобы не вернуть дважды
         s.depositsByCampaigns[address(campaign)] = 0;
         s.totalDeposit -= amount;        
         
-        emit FundVerseDepositReturned(founder, amount, address(campaign));
+        emit FVDepositReturned(founder, amount, address(campaign));
 
         (bool success, ) = payable(founder).call{value: amount}("");
-        require(success, FundVerseTransferFailed(founder, amount, address(0)));
+        require(success, FVTransferFailed(founder, amount, address(0)));
     }
 
     /// @notice функция по установке суммы залога    
@@ -59,7 +59,7 @@ abstract contract DepositLogic is IPlatformCommon {
     function _setRequiredDeposit(uint256 depositAmount) internal {        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
         s.requiredDeposit = depositAmount;
-        emit FundVersePlatformParameterUpdated(PARAM_DEPOSIT, depositAmount, msg.sender);
+        emit FVPlatformParameterUpdated(PARAM_DEPOSIT, depositAmount, msg.sender);
     }
 
     //геттеры
