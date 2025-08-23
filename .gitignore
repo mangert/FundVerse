@@ -16,6 +16,17 @@ node_modules
 # Hardhat Ignition default folder for deployments against a local node
 ignition/deployments/chain-31337
 
+#FRONT
+# Контрактные адреса (генерируются при деплое)
+front/src/contracts/addresses.json
+front/src/contracts/addresses.*.json
+
+# Но исключаем template из игнора
+!front/src/contracts/addresses.template.json
+
+# Дополнительно
+front/src/contracts/abis/*.dbg.json
+
 # черновики, заметки и временные файлы
 data.txt
 /contracts/examples

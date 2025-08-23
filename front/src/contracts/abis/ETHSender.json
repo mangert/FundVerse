@@ -1,0 +1,15 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "address payable",
+        "name": "target",
+        "type": "address"
+      }
+    ],
+    "name": "sendTo",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  }
+]

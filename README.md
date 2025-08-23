@@ -11,3 +11,14 @@ REPORT_GAS=true npx hardhat test
 npx hardhat node
 npx hardhat ignition deploy ./ignition/modules/Lock.ts
 ```
+# Контракты FundVerse
+
+## Структура
+- `src/contracts/abis/` - ABI всех контрактов (в коммите)
+- `src/contracts/addresses.json` - адреса развертывания (в .gitignore)
+
+## Настройка после клонирования
+
+1. Установите зависимости:
+```bash
+npm install
