@@ -9,6 +9,11 @@ import { config } from './config/wagmi';
 // Импортируем стили RainbowKit
 import '@rainbow-me/rainbowkit/styles.css';
 
+//импортируем стили компонентов
+import './styles/variables.css';
+import './styles/globals.css';
+import './styles/components.css';
+
 const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

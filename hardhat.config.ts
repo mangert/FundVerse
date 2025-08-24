@@ -18,7 +18,7 @@ const config: HardhatUserConfig = {
   },
   networks: {
     hardhat: {
-      chainId: 1337,
+      chainId: 31337,
       initialBaseFeePerGas: 0,
     },
     sepolia: {
@@ -31,7 +31,7 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY || "",
   },
   gasReporter: {
-    //enabled: process.env.REPORT_GAS === "true",
+    //eabled: process.env.REPORT_GAS === "true",
     enabled: false,
     currency: "ETH", 
   },
