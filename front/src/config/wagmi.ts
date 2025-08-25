@@ -15,8 +15,7 @@ export const config = getDefaultConfig({
   transports: {
     [hardhat.id]: http('http://127.0.0.1:8545'),
     [sepolia.id]: http(import.meta.env.VITE_ALCHEMY_API_KEY as string),
-  },
-  ssr: false, // Отключаем SSR для простоты
+  },  
 });
 
 /*export const config = createConfig({

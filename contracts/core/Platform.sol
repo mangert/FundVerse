@@ -73,7 +73,7 @@ contract Platform is
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.factory = _factory;
         //устанавливаем стандартную продолжительность таймлока        
-        s.delay = 60 * 60 * 24 * 2; //двое суток
+        s.delay = 0; //отладочно, потом сколько-нибудь поставить! 60 * 60 * 24 * 2; //двое суток
         //устанавливаем минимальную продолжительность для кампаний
         s.minLifespan = 60 * 60 * 24;        
     }

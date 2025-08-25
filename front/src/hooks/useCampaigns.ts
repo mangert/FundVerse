@@ -2,7 +2,6 @@ import { useReadContract, useReadContracts } from 'wagmi';
 import { PlatformABI } from '../utils/abi';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
 import { useMemo } from 'react';
-import { useCampaign } from './useCampaign';
 
 export const useCampaigns = () => {
   // Получаем общее количество кампаний
@@ -33,18 +32,9 @@ export const useCampaigns = () => {
     if (!campaignsData) return [];
     return campaignsData.map(item => item.result as string).filter(Boolean);
   }, [campaignsData]);
+  
 
-  // Для каждого адреса получаем сводку через useCampaign
-  const campaigns = campaignAddresses.map(address => {
-    const { data: summary } = useCampaign(address);
-    return {
-      address,
-      summary,
-      isLoading: !summary,
-    };
-  });
+  const isLoading = isLoadingAddresses;
 
-  const isLoading = isLoadingAddresses || campaigns.some(c => c.isLoading);
-
-  return { campaigns, isLoading };
+  return { campaignAddresses, isLoading };
 };

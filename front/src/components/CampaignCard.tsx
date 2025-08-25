@@ -4,10 +4,12 @@ import { formatEther } from 'viem';
 interface CampaignCardProps {
   address: string;
 }
-
+//компонет сводной карточки кампании
 export const CampaignCard = ({ address }: CampaignCardProps) => {
+  //получаем данные кампании по адресу
   const { data: summary, isLoading } = useCampaign(address);
 
+  //пока данные не загрузились
   if (isLoading) {
     return (
       <div className="card">
@@ -16,6 +18,7 @@ export const CampaignCard = ({ address }: CampaignCardProps) => {
     );
   }
 
+  //если нифига не получили
   if (!summary) {
     return (
       <div className="card">
@@ -24,8 +27,10 @@ export const CampaignCard = ({ address }: CampaignCardProps) => {
     );
   }
 
+  //считаем прогресс и остаток времени
   const progress = Number(summary.raised) / Number(summary.goal) * 100;
   const daysLeft = Math.max(0, Math.ceil((summary.deadline * 1000 - Date.now()) / (1000 * 60 * 60 * 24)));
+  //TODO разобраться с валютой
 
   return (
     <div className="card">
@@ -34,7 +39,7 @@ export const CampaignCard = ({ address }: CampaignCardProps) => {
       
       <div className="progress-bar">
         <div style={{ width: `${Math.min(progress, 100)}%` }} />
-      </div>
+      </div>      
       
       <div className="campaign-stats">
         <div><strong>Raised:</strong> {formatEther(summary.raised)} ETH</div>

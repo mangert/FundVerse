@@ -6,14 +6,14 @@ async function main() {
   console.log('🚀 Creating test campaign...');
 
   // Загружаем ABI
-  const abiPath = join(__dirname, '../src/contracts/abis/Platform.json');
+  const abiPath = join(__dirname, '../front/src/contracts/abis/Platform.json');
   const abi = JSON.parse(readFileSync(abiPath, 'utf8'));
   
   // Загружаем адреса
-  const addressesPath = join(__dirname, '../src/contracts/addresses.hardhat.json');
+  const addressesPath = join(__dirname, '../front/src/contracts/addresses.hardhat.json');
   const addresses = JSON.parse(readFileSync(addressesPath, 'utf8'));
   
-  const [deployer] = await ethers.getSigners();
+  const [deployer, user] = await ethers.getSigners();
   console.log('Using account:', deployer.address);
   console.log('Platform address:', addresses.platform);
 
@@ -26,7 +26,7 @@ async function main() {
 
   // Параметры кампании
   const goal = ethers.parseEther('1.0');
-  const duration = 7 * 24 * 60 * 60; // 7 дней
+  const deadline = BigInt(Math.floor(Date.now() / 1000)) + 7n * 24n * 60n * 60n; // 7 дней
   const campaignMeta = 'ipfs://QmTestCampaignMetadataHash';
   const token = ethers.ZeroAddress;
 
@@ -47,7 +47,7 @@ async function main() {
   console.log('⏳ Creating campaign...');
   const tx = await platform.createCampaign(
     goal,
-    duration,
+    deadline,
     campaignMeta,
     token,
     { value: requiredDeposit }
@@ -65,7 +65,7 @@ async function main() {
     for (const log of receipt.logs) {
       try {
         const parsedLog = platform.interface.parseLog(log);
-        if (parsedLog?.name === 'CampaignCreated') {
+        if (parsedLog?.name === 'FVCampaignCreated') {
           console.log('🎉 Campaign created at address:', parsedLog.args[0]);
           console.log('📝 Refresh your frontend to see the new campaign!');
           return;

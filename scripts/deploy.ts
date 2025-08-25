@@ -45,8 +45,10 @@ async function main() {
   }
 
   // Получаем network из hardhat runtime environment  
-  const network = await ethers.provider.getNetwork();
-  const networkName = (network.name === 'unknown' ? 'localhost' : network.name);
+  const network = await ethers.provider.getNetwork();  
+  const networkName = (network.name === 'unknown' ? (
+    network.id === 31337 ? 'hardhat' :'localhost') 
+    : network.name);
   const outputPath = path.join(addressesDir, `addresses.${networkName}.json`);
 
   fs.writeFileSync(
@@ -54,7 +56,7 @@ async function main() {
     JSON.stringify(addresses, null, 2)
   );
   
-  console.log('📁 Addresses saved to front/src/contracts/addresses.json');
+  console.log('📁 ', path.join(addressesDir, `addresses.${networkName}.json`));
 }
 
 main()
