@@ -3,56 +3,62 @@ import { usePublicClient } from 'wagmi';
 import { PlatformABI } from '../utils/abi';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
 import { decodeEventLog } from 'viem';
+import { useNotifications } from '../contexts/NotificationContext';
 
-// Типы для событий
-export interface CampaignCreatedEvent {
-  NewCampaignAddress: string;
-  founder: string;
-  token: string;
-  goal: bigint;
-}
-
-export interface PlatformEventCallbacks {
-  onCampaignCreated?: (event: CampaignCreatedEvent) => void;
-  onError?: (error: Error) => void;
-}
-
-export const usePlatformEvents = (callbacks: PlatformEventCallbacks) => {
+export const usePlatformEvents = (onCampaignCreated?: (event: any) => void) => {
   const publicClient = usePublicClient();
-  const callbackRef = useRef(callbacks);
-  const handledTransactions = useRef(new Set<string>());
-
-  useEffect(() => {
-    callbackRef.current = callbacks;
-  }, [callbacks]);
+  const { addNotification } = useNotifications();
+  const lastProcessedBlock = useRef<bigint>(0n);
+  const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!publicClient) return;
 
-    let isMounted = true;
+    // Инициализация - получаем текущий блок и начинаем опрос
+    const initPolling = async () => {
+      try {
+        const currentBlock = await publicClient.getBlockNumber();
+        lastProcessedBlock.current = currentBlock;
+        
+        // Начинаем опрос с интервалом в 5 секунд
+        pollingInterval.current = setInterval(pollNewEvents, 5000);
+      } catch (error) {
+        console.error('Error initializing event polling:', error);
+      }
+    };
 
-    const unwatch = publicClient.watchContractEvent({
-      address: PLATFORM_ADDRESS,
-      abi: PlatformABI,
-      eventName: 'FVCampaignCreated',
-      onLogs: (logs) => {
-        if (!isMounted) return;
+    const pollNewEvents = async () => {
+      try {
+        if (!publicClient) return;
 
-        // Очищаем Set если стал слишком большим
-        if (handledTransactions.current.size > 1000) {
-          const recentTransactions = Array.from(handledTransactions.current)
-            .slice(-100);
-          handledTransactions.current = new Set(recentTransactions);
+        // Получаем текущий блок
+        const currentBlock = await publicClient.getBlockNumber();
+        
+        // Если нет новых блоков, выходим
+        if (currentBlock <= lastProcessedBlock.current) {
+          return;
         }
 
-        logs.forEach((log) => {
-          try {
-            // Проверяем что transactionHash существует и это строка
-            if (typeof log.transactionHash !== 'string') return;
-            
-            if (handledTransactions.current.has(log.transactionHash)) return;
-            handledTransactions.current.add(log.transactionHash);
+        // Ищем события в новых блоках
+        const logs = await publicClient.getLogs({
+          address: PLATFORM_ADDRESS,
+          event: {
+            type: 'event',
+            name: 'FVCampaignCreated',
+            inputs: [
+              { type: 'address', indexed: true, name: 'NewCampaignAddress' },
+              { type: 'address', indexed: true, name: 'founder' },
+              { type: 'address', indexed: true, name: 'token' },
+              { type: 'uint256', name: 'goal' }
+            ]
+          },
+          fromBlock: lastProcessedBlock.current + 1n,
+          toBlock: currentBlock
+        });
 
+        // Обрабатываем каждое найденное событие
+        for (const log of logs) {
+          try {
             const decoded = decodeEventLog({
               abi: PlatformABI,
               data: log.data,
@@ -60,24 +66,46 @@ export const usePlatformEvents = (callbacks: PlatformEventCallbacks) => {
             }) as unknown as { args: any };
 
             if (decoded.args?.NewCampaignAddress) {
-              callbackRef.current.onCampaignCreated?.({
+              const eventData = {
                 NewCampaignAddress: decoded.args.NewCampaignAddress,
                 founder: decoded.args.founder,
                 token: decoded.args.token || '0x0',
                 goal: decoded.args.goal
+              };
+
+              console.log('Processing new campaign event from block:', log.blockNumber, eventData);
+              
+              // Вызываем callback если передан
+              onCampaignCreated?.(eventData);
+              
+              // Добавляем уведомление
+              addNotification({
+                type: 'success',
+                message: `🎉 New campaign created: ${eventData.NewCampaignAddress.slice(0, 8)}...`,
+                isGlobal: true,
+                transactionHash: log.transactionHash
               });
             }
           } catch (error) {
             console.warn('Failed to decode event:', error);
-            callbackRef.current.onError?.(error as Error);
           }
-        });
-      },
-    });
+        }
 
-    return () => {
-      isMounted = false;
-      unwatch();
+        // Обновляем последний обработанный блок
+        lastProcessedBlock.current = currentBlock;
+
+      } catch (error) {
+        console.error('Error polling events:', error);
+      }
     };
-  }, [publicClient]);
+
+    initPolling();
+
+    // Очистка при размонтировании
+    return () => {
+      if (pollingInterval.current) {
+        clearInterval(pollingInterval.current);
+      }
+    };
+  }, [publicClient, addNotification, onCampaignCreated]);
 };

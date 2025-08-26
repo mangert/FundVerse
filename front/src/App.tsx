@@ -1,27 +1,25 @@
-import { useAccount, useChainId, useBlockNumber } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { chains, defaultChain } from './config/wagmi';
 import { Dashboard } from './pages/Dashboard';
-import { useEffect } from 'react';
-import { hardhat, sepolia } from 'wagmi/chains';
+import { StatusBar } from './components/StatusBar';
+import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
+import { usePlatformEvents } from './hooks/usePlatformEvents';
+import { Toast } from './components/Toast';
 
-function App() {  
-  const chainId = useChainId();      
-  console.log('Current chain ID:', chainId);
-  console.log('Current network:', chains.find(c => c.id === chainId)?.name);
-  const { chain } = useAccount();
+// Компонент-обертка для обработки событий
+const AppContent = () => {
+  const { address } = useAccount();
+  const { state, dispatch } = useNotifications();
+  
+  usePlatformEvents();
 
-  useEffect(() => {
-    console.log('=== NETWORK DEBUG INFO ===');
-    console.log('useChainId():', chainId);
-    console.log('useAccount().chain:', chain);
-    console.log('Hardhat chain ID:', hardhat.id);
-    console.log('Sepolia chain ID:', sepolia.id);
-  }, [chainId, chain]);
+  // Показываем toast только для персональных уведомлений текущего пользователя
+  const personalToasts = state.notifications.filter(
+    n => !n.isGlobal && n.account === address?.toLowerCase() && !n.persistent
+  );
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Header */}
+    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: '0 auto', paddingBottom: '40px' }}>
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -33,9 +31,30 @@ function App() {
         <h1 style={{ margin: 0, color: '#333' }}>FundVerse Front</h1>
         <ConnectButton />
       </div>
-      <Dashboard/>;
       
+      <Dashboard/>
+      
+      {/* Toast уведомления */}
+      {personalToasts.slice(0, 3).map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          duration={toast.duration}
+          onClose={() => dispatch({ type: 'REMOVE_NOTIFICATION', payload: toast.id })}
+        />
+      ))}
+      
+      <StatusBar />
     </div>
+  );
+};
+
+function App() {
+  return (
+    <NotificationProvider>
+      <AppContent />
+    </NotificationProvider>
   );
 }
 
