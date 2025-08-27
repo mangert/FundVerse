@@ -1,15 +1,16 @@
 import { useCampaign } from '../hooks/useCampaign';
 import { formatEther } from 'viem';
+import { tokenService } from '../services/TokenService';
+import { getStatusText, getStatusClass, type CampaignStatus } from '../types/Campaign';
+import { getCampaignName } from '../utils/campaignMeta'; 
 
 interface CampaignCardProps {
   address: string;
 }
-//компонет сводной карточки кампании
+
 export const CampaignCard = ({ address }: CampaignCardProps) => {
-  //получаем данные кампании по адресу
   const { data: summary, isLoading } = useCampaign(address);
 
-  //пока данные не загрузились
   if (isLoading) {
     return (
       <div className="card">
@@ -18,7 +19,6 @@ export const CampaignCard = ({ address }: CampaignCardProps) => {
     );
   }
 
-  //если нифига не получили
   if (!summary) {
     return (
       <div className="card">
@@ -27,23 +27,34 @@ export const CampaignCard = ({ address }: CampaignCardProps) => {
     );
   }
 
-  //считаем прогресс и остаток времени
+  const tokenInfo = tokenService.getTokenInfo(summary.token);
+  const displaySymbol = tokenInfo?.symbol || 'ETH';
+  const statusText = getStatusText(summary.status as CampaignStatus);
+  const statusClass = getStatusClass(summary.status as CampaignStatus);
+
+  // Получаем название кампании
+  const campaignName = getCampaignName(summary.campaignMeta);
+
   const progress = Number(summary.raised) / Number(summary.goal) * 100;
   const daysLeft = Math.max(0, Math.ceil((summary.deadline * 1000 - Date.now()) / (1000 * 60 * 60 * 24)));
-  //TODO разобраться с валютой
 
   return (
     <div className="card">
-      <h3>Campaign #{summary.id}</h3>
-      <p>By: {summary.creator.slice(0, 8)}...</p>
+      <div className="card-header">
+        <h3>{campaignName}</h3> 
+        <span className={`status-badge ${statusClass}`}>{statusText}</span>
+      </div>
+      
+      <p>ID: #{summary.id.toString()} • By: {summary.creator.slice(0, 8)}...</p> {/* ← ДОБАВЛЯЕМ ID */}
+      <p><strong>Currency:</strong> {displaySymbol}</p>
       
       <div className="progress-bar">
         <div style={{ width: `${Math.min(progress, 100)}%` }} />
       </div>      
       
       <div className="campaign-stats">
-        <div><strong>Raised:</strong> {formatEther(summary.raised)} ETH</div>
-        <div><strong>Goal:</strong> {formatEther(summary.goal)} ETH</div>
+        <div><strong>Raised:</strong> {formatEther(summary.raised)} {displaySymbol}</div>
+        <div><strong>Goal:</strong> {formatEther(summary.goal)} {displaySymbol}</div>
         <div><strong>Progress:</strong> {progress.toFixed(1)}%</div>
         <div><strong>Time left:</strong> {daysLeft} days</div>
       </div>

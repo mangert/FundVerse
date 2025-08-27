@@ -6,12 +6,20 @@ import { NotificationProvider, useNotifications } from './contexts/NotificationC
 import { Toast } from './components/Toast';
 import { useEffect } from 'react';
 import { initEventService, stopEventService } from './services/eventService';
+import { tokenService } from './services/TokenService';
 
 const AppContent = () => {
   const { address } = useAccount();
   const publicClient = usePublicClient();
   const { state, dispatch, addNotification } = useNotifications();
 
+  // Инициализируем сервис токенов
+  useEffect(() => {
+    if (publicClient) {
+      tokenService.init(publicClient);
+    }
+  }, [publicClient]);
+  
   // Инициализируем сервис событий
   useEffect(() => {
     if (publicClient) {

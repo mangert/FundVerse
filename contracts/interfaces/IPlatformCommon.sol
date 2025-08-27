@@ -6,70 +6,6 @@ import {ICampaign} from "./ICampaign.sol";
 /// @title интерфейс IPlatformCommon - события и ошибки платформы
 /// @notice содержит объявления событий и ошибок, кидаемых платформой
 interface IPlatformCommon {    
-    
-    //ошибки
-    /// @notice ошибка индицирует неуспешную попытку исходящего перевода средств
-    /// @param recipient получатель платежа
-    /// @param amount сумма платежа
-    /// @param token валюта платежа (для нативной валюты - address(0))
-    error FVTransferFailed(address recipient, uint256 amount, address token);    
-    
-    /// @notice ошибка индицирует попытку создания кампании со слишком коротким сроком
-    error FVErrorDeadlineLessMinimun();    
-
-    /// @notice ошибка индицирует провал операции создания кампании
-    error FVCreateFailed();
-
-    /// @notice ошибка индицирует попытку создания кампании c нулевой целью
-    error FVErrorZeroGoal();
-    
-    /// @notice ошибка индицирует попытку создания кампании в неподдерживаемой валюте
-    /// @param token переданный адрес неподдерживаемого токена
-    error FVUnsupportedToken(address token);
-
-    /// @notice ошибка показывает, что добавление токена не произошло, потому что такой уже есть
-    /// @param token адрес токена, который пытались добавить    
-    error FVAddingTokenAlreadySupported(address token);
-
-    /// @notice ошибка показывает, что удаление токена не произошло, потому что и так не поддерживается
-    /// @param token адрес токена, который пытались удалить    
-    error FVRemovingTokenNotSupported(address token);
-
-    
-    /// @notice ошибка при недостаточном залоге    
-    /// @param sent направленная сумма залога
-    /// @param required требуемая сумма залога
-    error FVInsufficientDeposit(uint256 sent, uint256 required);
-
-    /// @notice ошибка индицирует попытку создания кампании до истечения таймлока
-    /// @param timelock время истечения таймлока
-    error FVErrorTimeLocked(uint256 timelock);
-
-    /// @notice ошибка при попытке вернуть чужой залог
-    error FVNotCampaignFounder();
-
-    /// @notice ошибка при попытке вернуть залог раньше времени
-    error FVDepositNotYetReturnable();
-
-    /// @notice ошибка возникает при недостатке баланса для вывода         
-    /// @param amount сумма вывода
-    /// @param available сумма располагаемая  
-    /// @param token валюта вывода (для нативной валюты address(0))
-    error FVInsufficientFunds(uint256 amount, uint256 available, address token);
-
-    /// @notice ошибка возникает при планируемой сумме вывода равной нулю (если нечего выводить или такой вывод запрошен)
-    error FVZeroWithdrawnAmount();
-
-    /// @notice ошибка возникает при попытке рекурсивного вызова функции вывода средств
-    error FVReentrancyDetected();
-
-    /// @notice ошибка возникает при вызове функций кампании у контракта, который не был создан платформой
-    /// @param campaign адрес контракта, к которому обращаемся
-    error FundVersNotRegisteredCampaign(address campaign);
-
-    /// @notice ошибка возникает при привязать контракт лояльности, который не знает про нашу платформу
-    /// @param loyaltyProgram адрес привязываемого контракта программы лояльности
-    error FVUnacceptableLoyaltyProgram(address loyaltyProgram);
 
     //события
     /// @notice событие порождается при изменении настроек платформы
@@ -134,4 +70,68 @@ interface IPlatformCommon {
     /// @notice событие для фиксации того, что платформа вытянула зависшие средства из кампании
     /// @param campaign адрес кампании, из которой тянули средства
     event FVCampaignPendingClaimed(address indexed campaign);
+    
+    //ошибки
+    /// @notice ошибка индицирует неуспешную попытку исходящего перевода средств
+    /// @param recipient получатель платежа
+    /// @param amount сумма платежа
+    /// @param token валюта платежа (для нативной валюты - address(0))
+    error FVTransferFailed(address recipient, uint256 amount, address token);    
+    
+    /// @notice ошибка индицирует попытку создания кампании со слишком коротким сроком
+    error FVErrorDeadlineLessMinimun();    
+
+    /// @notice ошибка индицирует провал операции создания кампании
+    error FVCreateFailed();
+
+    /// @notice ошибка индицирует попытку создания кампании c нулевой целью
+    error FVErrorZeroGoal();
+    
+    /// @notice ошибка индицирует попытку создания кампании в неподдерживаемой валюте
+    /// @param token переданный адрес неподдерживаемого токена
+    error FVUnsupportedToken(address token);
+
+    /// @notice ошибка показывает, что добавление токена не произошло, потому что такой уже есть
+    /// @param token адрес токена, который пытались добавить    
+    error FVAddingTokenAlreadySupported(address token);
+
+    /// @notice ошибка показывает, что удаление токена не произошло, потому что и так не поддерживается
+    /// @param token адрес токена, который пытались удалить    
+    error FVRemovingTokenNotSupported(address token);
+
+    
+    /// @notice ошибка при недостаточном залоге    
+    /// @param sent направленная сумма залога
+    /// @param required требуемая сумма залога
+    error FVInsufficientDeposit(uint256 sent, uint256 required);
+
+    /// @notice ошибка индицирует попытку создания кампании до истечения таймлока
+    /// @param timelock время истечения таймлока
+    error FVErrorTimeLocked(uint256 timelock);
+
+    /// @notice ошибка при попытке вернуть чужой залог
+    error FVNotCampaignFounder();
+
+    /// @notice ошибка при попытке вернуть залог раньше времени
+    error FVDepositNotYetReturnable();
+
+    /// @notice ошибка возникает при недостатке баланса для вывода         
+    /// @param amount сумма вывода
+    /// @param available сумма располагаемая  
+    /// @param token валюта вывода (для нативной валюты address(0))
+    error FVInsufficientFunds(uint256 amount, uint256 available, address token);
+
+    /// @notice ошибка возникает при планируемой сумме вывода равной нулю (если нечего выводить или такой вывод запрошен)
+    error FVZeroWithdrawnAmount();
+
+    /// @notice ошибка возникает при попытке рекурсивного вызова функции вывода средств
+    error FVReentrancyDetected();
+
+    /// @notice ошибка возникает при вызове функций кампании у контракта, который не был создан платформой
+    /// @param campaign адрес контракта, к которому обращаемся
+    error FundVersNotRegisteredCampaign(address campaign);
+
+    /// @notice ошибка возникает при привязать контракт лояльности, который не знает про нашу платформу
+    /// @param loyaltyProgram адрес привязываемого контракта программы лояльности
+    error FVUnacceptableLoyaltyProgram(address loyaltyProgram);
 }

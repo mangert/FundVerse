@@ -78,6 +78,9 @@ contract Platform is
         s.minLifespan = 60 * 60 * 24;        
     }
 
+    /// @notice пустой receive — для автоматического приема комиссий и любых входящих переводов
+    receive() external payable {}
+
     /// @notice функция создает новую кампанию
     /// @param _goal целевая сумма сбора
     /// @param _deadline срок действия кампании
@@ -280,10 +283,7 @@ contract Platform is
         
         bool result = success && (returndata.length == 0 || abi.decode(returndata, (bool)));
         require(result, FVTransferFailed(recipient, amount, token));
-    }                   
-
-    /// @notice пустой receive — для автоматического приема комиссий и любых входящих переводов
-    receive() external payable {}
+    }                      
 
     /// @notice функция аварийного получения зависших средств из кампании
     /// @dev используется только в случае сбоев/кривых токенов, когда комиссия или средства не пришли
