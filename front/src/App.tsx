@@ -1,39 +1,47 @@
-import { useAccount } from 'wagmi';
+import { useAccount, usePublicClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Dashboard } from './pages/Dashboard';
 import { StatusBar } from './components/StatusBar';
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
-import { usePlatformEvents } from './hooks/usePlatformEvents';
 import { Toast } from './components/Toast';
+import { useEffect } from 'react';
+import { initEventService, stopEventService } from './services/eventService';
 
-// Компонент-обертка для обработки событий
 const AppContent = () => {
   const { address } = useAccount();
-  const { state, dispatch } = useNotifications();
-  
-  usePlatformEvents();
+  const publicClient = usePublicClient();
+  const { state, dispatch, addNotification } = useNotifications();
 
-  // Показываем toast только для персональных уведомлений текущего пользователя
+  // Инициализируем сервис событий
+  useEffect(() => {
+    if (publicClient) {
+      initEventService(publicClient, addNotification);
+    }
+
+    // Очищаем при размонтировании компонента
+    return () => {
+      stopEventService();
+    };
+  }, [publicClient, addNotification]);
+
+  // Очистка уведомлений при загрузке
+  useEffect(() => {
+    console.log('Cleaning up notifications');
+    dispatch({ type: 'CLEAR_NOTIFICATIONS' });
+  }, [dispatch]);
+
+  // Показываем toast только для персональных уведомлений
   const personalToasts = state.notifications.filter(
     n => !n.isGlobal && n.account === address?.toLowerCase() && !n.persistent
   );
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif', maxWidth: '1200px', margin: '0 auto', paddingBottom: '40px' }}>
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '30px',
-        borderBottom: '2px solid #f0f0f0',
-        paddingBottom: '20px'
-      }}>
-        <h1 style={{ margin: 0, color: '#333' }}>FundVerse Front</h1>
+    <div className="app-container">
+      <div className="app-header">
+        <h1 className="app-title">FundVerse Front</h1>
         <ConnectButton />
-      </div>
-      
-      <Dashboard/>
-      
+      </div>      
+      <Dashboard/>      
       {/* Toast уведомления */}
       {personalToasts.slice(0, 3).map((toast) => (
         <Toast

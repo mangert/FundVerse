@@ -48,8 +48,7 @@ export const useCampaigns = () => {
   }, [campaignsData]);
 
   // Функция для полного обновления
-  const refetch = useCallback(async () => {
-    console.log('Refetching campaigns data...');
+  const refetch = useCallback(async () => {    
     await Promise.all([refetchTotal(), refetchAddresses()]);
   }, [refetchTotal, refetchAddresses]);
 

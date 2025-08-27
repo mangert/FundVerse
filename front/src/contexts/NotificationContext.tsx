@@ -33,9 +33,15 @@ const NotificationContext = createContext<{
 const notificationReducer = (state: NotificationState, action: NotificationAction): NotificationState => {
   switch (action.type) {
     case 'ADD_NOTIFICATION':
+      // Автоматически удаляем уведомления старше 1 часа
+      const oneHourAgo = Date.now() - 60 * 60 * 1000;
+      const recentNotifications = state.notifications.filter(
+        n => n.timestamp.getTime() > oneHourAgo
+      );
+      
       return {
         ...state,
-        notifications: [...state.notifications, action.payload],
+        notifications: [...recentNotifications, action.payload],
       };
     case 'REMOVE_NOTIFICATION':
       return {

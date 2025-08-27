@@ -1,44 +1,19 @@
 import { useCampaigns } from '../hooks/useCampaigns';
 import { CampaignCard } from '../components/CampaignCard';
-import { usePlatformEvents } from '../hooks/usePlatformEvents';
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 export const Dashboard = () => {
   const { campaignAddresses, isLoading, refetch } = useCampaigns();
   const [isRefetching, setIsRefetching] = useState(false);
-  const lastProcessedEvent = useRef<string>('');
 
-  // Обработчик создания кампании - ТОЛЬКО обновление данных
-  const handleCampaignCreated = useCallback((event: any) => {
-    const eventKey = `${event.NewCampaignAddress}-${event.founder}`;
-    
-    // Проверяем, не обрабатывали ли уже это событие
-    if (lastProcessedEvent.current === eventKey) {
-      console.log('Skipping duplicate event:', eventKey);
-      return;
-    }
+  // Периодическое обновление данных
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refetch().catch(console.error);
+    }, 5000);
 
-    console.log('New campaign detected, refetching data...', event);
-    lastProcessedEvent.current = eventKey;
-    
-    // Устанавливаем флаг обновления
-    setIsRefetching(true);
-    
-    // Обновляем данные с задержкой
-    setTimeout(() => {
-      refetch()
-        .then(() => {
-          console.log('Data refetched after new campaign');
-        })
-        .catch(console.error)
-        .finally(() => {
-          setIsRefetching(false);
-        });
-    }, 1000);
+    return () => clearInterval(interval);
   }, [refetch]);
-
-  // Подписываемся на события
-  usePlatformEvents(handleCampaignCreated);
 
   if (isLoading) {
     return (
@@ -50,12 +25,20 @@ export const Dashboard = () => {
 
   return (
     <div className="page-container">
-      <div className="page-header">
-        <h1>Active Campaigns {isRefetching ? '(Updating...)' : ''}</h1>
-        <button className="btn btn-primary">
-          Create Campaign
+      {/*<div className="page-header">
+        <h1>Active Campaigns</h1>
+        <button 
+          className="btn btn-primary"
+          onClick={() => {
+            setIsRefetching(true);
+            refetch()
+              .catch(console.error)
+              .finally(() => setIsRefetching(false));
+          }}
+        >
+          {isRefetching ? 'Refreshing...' : 'Refresh Campaigns'}
         </button>
-      </div>
+      </div>*/}
 
       <div className="campaigns-grid">
         {campaignAddresses.map((address) => (

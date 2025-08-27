@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { type NotificationType } from '../contexts/NotificationContext';
+import type { NotificationType } from '../contexts/NotificationContext';
 
 interface ToastProps {
   message: string;
@@ -20,34 +20,18 @@ export const Toast = ({ message, type, duration = 5000, onClose }: ToastProps) =
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  const getBackgroundColor = (type: NotificationType) => {
+  const getToastTypeClass = (type: NotificationType) => {
     switch (type) {
-      case 'success': return '#4CAF50';
-      case 'error': return '#f44336';
-      case 'warning': return '#ff9800';
-      case 'info': return '#2196F3';
-      default: return '#666';
+      case 'success': return 'toast-success';
+      case 'error': return 'toast-error';
+      case 'warning': return 'toast-warning';
+      case 'info': return 'toast-info';
+      default: return 'toast-info';
     }
   };
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: '20px',
-        right: '20px',
-        background: getBackgroundColor(type),
-        color: 'white',
-        padding: '12px 16px',
-        borderRadius: '4px',
-        boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
-        opacity: isExiting ? 0 : 1,
-        transform: isExiting ? 'translateX(100%)' : 'translateX(0)',
-        transition: 'opacity 0.3s ease, transform 0.3s ease',
-        zIndex: 1001,
-        minWidth: '200px'
-      }}
-    >
+    <div className={`toast ${getToastTypeClass(type)} ${isExiting ? 'exiting' : ''}`}>
       {message}
     </div>
   );
