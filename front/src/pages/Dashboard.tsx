@@ -1,5 +1,6 @@
 import { useCampaigns } from '../hooks/useCampaigns';
 import { CampaignCard } from '../components/CampaignCard';
+import { PlatformInfo } from '../components/PlatformInfo';
 import { useState, useEffect } from 'react';
 
 export const Dashboard = () => {
@@ -24,21 +25,17 @@ export const Dashboard = () => {
   }
 
   return (
-    <div className="page-container">
-      {/*<div className="page-header">
+
+    <div className="page-container">    
+      <div className="page-header">
         <h1>Active Campaigns</h1>
-        <button 
-          className="btn btn-primary"
-          onClick={() => {
-            setIsRefetching(true);
-            refetch()
-              .catch(console.error)
-              .finally(() => setIsRefetching(false));
-          }}
-        >
-          {isRefetching ? 'Refreshing...' : 'Refresh Campaigns'}
+        <button className="btn btn-primary">
+          Create Campaign
         </button>
-      </div>*/}
+      </div>
+      
+      {/* Добавляем информацию о платформе */}
+      <PlatformInfo />
 
       <div className="campaigns-grid">
         {campaignAddresses.map((address) => (

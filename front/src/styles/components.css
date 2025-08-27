@@ -264,3 +264,72 @@
 .toast-info {
   background: #2196F3;
 }
+
+/*platform Info*/
+.platform-info {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.platform-info h3 {
+  margin: 0 0 16px 0;
+  color: #333;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.params-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.param-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+}
+
+.param-label {
+  font-weight: 500;
+  color: #495057;
+}
+
+.param-value {
+  font-weight: 600;
+  color: #0d6efd;
+}
+
+/* Состояния загрузки и ошибок */
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #6c757d;
+}
+
+.error {
+  text-align: center;
+  padding: 20px;
+  color: #dc3545;
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 6px;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+  .params-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .platform-info {
+    padding: 12px;
+  }
+}
