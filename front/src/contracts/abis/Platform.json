@@ -799,6 +799,19 @@
   },
   {
     "inputs": [],
+    "name": "getMinLifespan",
+    "outputs": [
+      {
+        "internalType": "uint32",
+        "name": "",
+        "type": "uint32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "getRequiredDeposit",
     "outputs": [
       {

@@ -102,7 +102,7 @@ contract Platform is
             require(deposit >= s.requiredDeposit, FVInsufficientDeposit(deposit, s.requiredDeposit));
             
             // slither-disable-next-line timestamp
-            require(_deadline > (s.minLifespan + block.timestamp)
+            require(_deadline >= (s.minLifespan + block.timestamp)
                 , FVErrorDeadlineLessMinimun()); //проверяем, что дедлайн не слишком маленький
             
             address founder = msg.sender;
@@ -135,6 +135,10 @@ contract Platform is
     }
 
     //геттеры
+    /// @notice Получить минимальную длительность кампании
+    function getMinLifespan() external view returns (uint32) {
+        return PlatformStorageLib.layout().minLifespan;
+}
     /// @notice Получить общее количество всех кампаний на платформе
     function getTotalCampaigns() external view returns (uint32) {
         return PlatformStorageLib.layout().totalCounter;

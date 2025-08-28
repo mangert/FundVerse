@@ -1,4 +1,4 @@
-import type { PublicClient } from 'viem';
+import { zeroAddress, type PublicClient } from 'viem';
 import { PlatformABI } from '../utils/abi';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
 import { BASE_TOKENS, type BaseTokensKey } from '../config/tokens';
@@ -130,8 +130,8 @@ class TokenService {
     const config = BASE_TOKENS[chainIdKey];
     
     // Добавляем нативную валюту
-    this.tokens.set('0x0000000000000000000000000000000000000000', {
-        address: '0x0000000000000000000000000000000000000000',
+    this.tokens.set(zeroAddress, {
+        address: zeroAddress,
         symbol: config.native.symbol,
         decimals: config.native.decimals,
         name: config.native.name,
@@ -210,7 +210,7 @@ class TokenService {
   }
 
   getNativeToken(): TokenInfo {
-    return this.tokens.get('0x0000000000000000000000000000000000000000')!;
+    return this.tokens.get(zeroAddress)!;
   }  
 }
 
