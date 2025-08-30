@@ -1,4 +1,3 @@
-// services/ErrorService.ts
 import { BaseError, ContractFunctionRevertedError } from 'viem';
 
 export interface DecodedError {
@@ -21,6 +20,37 @@ export class ErrorService {
   decodeContractError(error: unknown): DecodedError {
     console.error('Raw error:', error);
 
+    // Проверка на RPC ошибку (например, от MetaMask)
+    if (typeof error === 'object' && error !== null) {
+      const err = error as Record<string, any>;
+      
+      // Обработка ошибок от MetaMask/RPC
+      if (err.code === -32603) {
+        return {
+          message: 'Internal JSON-RPC error',
+          type: 'error',
+          details: 'An internal error occurred in the RPC server. This may be due to network issues or invalid transaction parameters.'
+        };
+      }
+      
+      if (err.code === 4001) {
+        return {
+          message: 'Transaction rejected by user',
+          type: 'warning',
+          details: 'You rejected the transaction in your wallet'
+        };
+      }
+
+      // Обработка ошибок, которые могут прийти от провайдера
+      if (err.code && err.message) {
+        return {
+          message: err.message,
+          type: 'error',
+          details: `Error code: ${err.code}`
+        };
+      }
+    }
+
     // Проверяем, является ли ошибка ошибкой viem
     if (error instanceof BaseError) {
       // Ищем revert error внутри
@@ -29,6 +59,13 @@ export class ErrorService {
       if (revertError instanceof ContractFunctionRevertedError) {
         return this.handleRevertError(revertError);
       }
+
+      // Если это BaseError, но не revert, то возвращаем сообщение
+      return {
+        message: error.shortMessage || error.message,
+        type: 'error',
+        details: 'A network error occurred'
+      };
     }
 
     // Обработка обычных JavaScript ошибок
@@ -87,7 +124,7 @@ export class ErrorService {
     return {
       message: 'Transaction reverted',
       type: 'error',
-      details: 'The contract rejected the transaction'
+      details: 'The contract rejected the transaction. This may be due to invalid parameters or insufficient funds.'
     };
   }
 
@@ -105,7 +142,7 @@ export class ErrorService {
       return {
         message: 'Network error',
         type: 'error',
-        details: 'Please check your network connection'
+        details: 'Please check your network connection and try again'
       };
     }
 

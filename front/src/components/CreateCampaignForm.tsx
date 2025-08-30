@@ -1,15 +1,19 @@
-// components/CreateCampaignForm.tsx
 import { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { PlatformABI } from '../utils/abi';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
-import { parseEther, zeroAddress } from 'viem';
+import { parseEther, formatEther, zeroAddress } from 'viem';
 import { tokenService } from '../services/TokenService';
 import { errorService } from '../services/ErrorService';
 import { useNotifications } from '../contexts/NotificationContext';
 import type { NotificationType } from '../contexts/NotificationContext';
 
-export const CreateCampaignForm = () => {
+interface CreateCampaignFormProps {
+  onSuccess?: () => void;
+  onClose?: () => void;
+}
+
+export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormProps) => {
   const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
@@ -25,13 +29,16 @@ export const CreateCampaignForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [minDuration, setMinDuration] = useState(1);
   const [minDurationLoading, setMinDurationLoading] = useState(true);
+  const [requiredDeposit, setRequiredDeposit] = useState<bigint>(parseEther('0.1'));
+  const [depositLoading, setDepositLoading] = useState(true);
 
-  // Загружаем минимальную длительность из контракта
+  // Загружаем минимальную длительность и требуемый депозит из контракта
   useEffect(() => {
-    const fetchMinDuration = async () => {
+    const fetchPlatformSettings = async () => {
       if (!publicClient) return;
       
       try {
+        // Загружаем минимальную длительность
         const minLifespan = await publicClient.readContract({
           address: PLATFORM_ADDRESS,
           abi: PlatformABI,
@@ -41,16 +48,28 @@ export const CreateCampaignForm = () => {
         
         const minDays = Math.ceil(Number(minLifespan) / (24 * 60 * 60));
         setMinDuration(minDays);
+
+        // Загружаем требуемый депозит
+        const deposit = await publicClient.readContract({
+          address: PLATFORM_ADDRESS,
+          abi: PlatformABI,
+          functionName: 'getRequiredDeposit',
+          args: []
+        }) as bigint;
+        
+        setRequiredDeposit(deposit);
       } catch (error) {
-        console.warn('Failed to fetch min duration, using default:', error);
+        console.warn('Failed to fetch platform settings, using defaults:', error);
         setMinDuration(1);
+        setRequiredDeposit(parseEther('0.1'));
       } finally {
         setMinDurationLoading(false);
+        setDepositLoading(false);
       }
     };
 
     if (isConnected) {
-      fetchMinDuration();
+      fetchPlatformSettings();
     }
   }, [publicClient, isConnected]);
 
@@ -93,26 +112,16 @@ export const CreateCampaignForm = () => {
     
     try {
       const goal = parseEther(formData.goal);
-      const deadline = Math.floor(Date.now() / 1000) + (durationDays * 24 * 60 * 60);
+      // Добавляем 60 секунд (1 минуту) к дедлайну для безопасности
+      const deadline = Math.floor(Date.now() / 1000) + (durationDays * 24 * 60 * 60) + 60;
 
-      console.log('Sending transaction with params:', {
-        goal: goal.toString(),
-        deadline,
-        campaignMeta: formData.campaignMeta,
-        token: formData.token,
-        value: parseEther('0.1').toString()
-      });
-
-      // Убираем симуляцию и сразу отправляем транзакцию
       const hash = await walletClient.writeContract({
         address: PLATFORM_ADDRESS,
         abi: PlatformABI,
         functionName: 'createCampaign',
         args: [goal, deadline, formData.campaignMeta, formData.token],
-        value: parseEther('0.1')
+        value: requiredDeposit
       });
-
-      console.log('Transaction hash:', hash);
 
       addNotification({
         type: 'info',
@@ -136,6 +145,11 @@ export const CreateCampaignForm = () => {
           campaignMeta: '',
           token: zeroAddress
         });
+        
+        // Вызываем колбэк при успешном создании
+        if (onSuccess) {
+          onSuccess();
+        }
       } else {
         addNotification({
           type: 'error',
@@ -156,7 +170,8 @@ export const CreateCampaignForm = () => {
         type: decodedError.type as NotificationType,
         message: decodedError.message,
         isGlobal: false,
-        persistent: decodedError.type === 'error'
+        persistent: decodedError.type === 'error',
+        ...(decodedError.details && { details: decodedError.details })
       });
       
     } finally {
@@ -173,114 +188,135 @@ export const CreateCampaignForm = () => {
 
   const activeTokens = tokenService.getActiveTokens();
   const nativeToken = tokenService.getNativeToken();
-  const isFormDisabled = !isConnected || isLoading;
+  const isFormDisabled = !isConnected || isLoading || depositLoading;
   const erc20Tokens = activeTokens.filter(token => token.address !== zeroAddress);
 
   return (
-    <div className="create-campaign-form">
-      <h2>Create New Campaign</h2>
-
-      {!isConnected && (
-        <div className="warning-message">
-          <p>⚠️ Wallet disconnected. Connect your wallet to submit the form.</p>
-        </div>
-      )}      
-      
-      <form onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label htmlFor="goal">Funding Goal:</label>
-          <input
-            type="number"
-            id="goal"
-            name="goal"
-            value={formData.goal}
-            onChange={handleChange}
-            placeholder="Enter funding goal"
-            required
-            min="0"
-            step="0.001"
-            disabled={isLoading}
-          />
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Create New Campaign</h2>
+          <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
-        <div className="form-group">
-          <label htmlFor="deadline">Duration (days):</label>
-          <input
-            type="number"
-            id="deadline"
-            name="deadline"
-            value={formData.deadline}
-            onChange={handleChange}
-            placeholder={`Campaign duration in days (min ${minDuration})`}
-            required
-            min={minDuration}
-            max="365"
-            disabled={isLoading || minDurationLoading}
-          />
-          {minDurationLoading ? (
-            <div className="form-hint">Loading minimum duration...</div>
-          ) : (
-            <div className="form-hint">Minimum campaign duration: {minDuration} days</div>
-          )}
-        </div>
+        <div className="modal-body">
+          {!isConnected && (
+            <div className="warning-message">
+              <p>⚠️ Wallet disconnected. Connect your wallet to submit the form.</p>
+            </div>
+          )}      
+          
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label htmlFor="goal">Funding Goal:</label>
+              <input
+                type="number"
+                id="goal"
+                name="goal"
+                value={formData.goal}
+                onChange={handleChange}
+                placeholder="Enter funding goal"
+                required
+                min="0"
+                step="0.001"
+                disabled={isLoading}
+              />
+            </div>
 
-        <div className="form-group">
-          <label htmlFor="token">Currency:</label>
-          <select
-            id="token"
-            name="token"
-            value={formData.token}
-            onChange={handleChange}
-            required
-            disabled={isLoading}
-          >
-            <option value={zeroAddress}>
-              {nativeToken.symbol} (Native)
-            </option>
-            {erc20Tokens.map(token => (
-              <option key={token.address} value={token.address}>
-                {token.symbol} - {token.address.slice(0, 6)}...{token.address.slice(-4)}
-              </option>
-            ))}
-          </select>
-          <div className="form-hint">
-            {formData.token === zeroAddress ? (
-              <span>Campaign will accept {nativeToken.symbol} (native currency)</span>
-            ) : (
-              <span>Campaign will accept ERC20 tokens at {formData.token}</span>
+            <div className="form-group">
+              <label htmlFor="deadline">Duration (days):</label>
+              <input
+                type="number"
+                id="deadline"
+                name="deadline"
+                value={formData.deadline}
+                onChange={handleChange}
+                placeholder={`Campaign duration in days (min ${minDuration})`}
+                required
+                min={minDuration}
+                max="365"
+                disabled={isLoading || minDurationLoading}
+              />
+              {minDurationLoading ? (
+                <div className="form-hint">Loading minimum duration...</div>
+              ) : (
+                <div className="form-hint">Minimum campaign duration: {minDuration} days</div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="token">Currency:</label>
+              <select
+                id="token"
+                name="token"
+                value={formData.token}
+                onChange={handleChange}
+                required
+                disabled={isLoading}
+              >
+                <option value={zeroAddress}>
+                  {nativeToken.symbol} (Native)
+                </option>
+                {erc20Tokens.map(token => (
+                  <option key={token.address} value={token.address}>
+                    {token.symbol} - {token.address.slice(0, 6)}...{token.address.slice(-4)}
+                  </option>
+                ))}
+              </select>
+              <div className="form-hint">
+                {formData.token === zeroAddress ? (
+                  <span>Campaign will accept {nativeToken.symbol} (native currency)</span>
+                ) : (
+                  <span>Campaign will accept ERC20 tokens at {formData.token}</span>
+                )}
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="campaignMeta">Campaign Description (JSON):</label>
+              <textarea
+                id="campaignMeta"
+                name="campaignMeta"
+                value={formData.campaignMeta}
+                onChange={handleChange}
+                placeholder='{"name": "My Campaign", "desc": "Description..."}'
+                rows={4}
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="form-deposit-info">
+              <p>Required deposit: {depositLoading ? 'Loading...' : `${formatEther(requiredDeposit)} ETH`}</p>
+            </div>
+
+            <div className="modal-actions">
+              <button 
+                type="button" 
+                className="btn btn-secondary"
+                onClick={onClose}
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                disabled={isFormDisabled}
+                className="btn btn-primary"
+                title={!isConnected ? "Connect your wallet to create a campaign" : ""}
+              >
+                {isLoading ? 'Submitting...' : 'Submit'}
+              </button>
+            </div>
+            
+            {isFormDisabled && !isLoading && (
+              <div className="form-help">
+                <p>Please connect your wallet to enable campaign creation</p>
+              </div>
             )}
-          </div>
+          </form>
         </div>
-
-        <div className="form-group">
-          <label htmlFor="campaignMeta">Campaign Description (JSON):</label>
-          <textarea
-            id="campaignMeta"
-            name="campaignMeta"
-            value={formData.campaignMeta}
-            onChange={handleChange}
-            placeholder='{"name": "My Campaign", "desc": "Description..."}'
-            rows={4}
-            required
-            disabled={isLoading}
-          />
-        </div>
-
-        <button 
-          type="submit" 
-          disabled={isFormDisabled}
-          className="btn btn-primary"
-          title={!isConnected ? "Connect your wallet to create a campaign" : ""}
-        >
-          {isLoading ? 'Creating...' : 'Create Campaign'}
-        </button>
-        
-        {isFormDisabled && !isLoading && (
-          <div className="form-help">
-            <p>Please connect your wallet to enable campaign creation</p>
-          </div>
-        )}
-      </form>
+      </div>
     </div>
   );
 };

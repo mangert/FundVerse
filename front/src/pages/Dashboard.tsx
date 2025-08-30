@@ -14,18 +14,12 @@ export const Dashboard = () => {
   // Периодическое обновление данных
   useEffect(() => {
     const interval = setInterval(() => {
-      refetch().catch(console.error);
+      setIsRefetching(true);
+      refetch().finally(() => setIsRefetching(false));
     }, 5000);
 
     return () => clearInterval(interval);
   }, [refetch]);
-
-  // Закрываем форму при отключении кошелька (если она была открыта)
-  useEffect(() => {
-    if (!isConnected && showCreateForm) {
-      setShowCreateForm(false);
-    }
-  }, [isConnected, showCreateForm]);
 
   if (isLoading) {
     return (
@@ -54,19 +48,15 @@ export const Dashboard = () => {
         )}
       </div>
       
-      {/* Изменил условие: форма показывается если showCreateForm true, независимо от подключения */}
+      {/* Модальное окно для создания кампании */}
       {showCreateForm && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <CreateCampaignForm />
-            <button 
-              className="btn btn-secondary"
-              onClick={() => setShowCreateForm(false)}
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
+        <CreateCampaignForm 
+          onSuccess={() => {
+            setShowCreateForm(false);
+            refetch(); // Обновляем список кампаний после успешного создания
+          }}
+          onClose={() => setShowCreateForm(false)}
+        />
       )}
       
       {/* Добавляем информацию о платформе */}

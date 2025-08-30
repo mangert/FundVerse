@@ -29,7 +29,7 @@ async function main() {
   const goal = ethers.parseEther('1.0');
   const deadline = BigInt(Math.floor(Date.now() / 1000)) + 7n * 24n * 60n * 60n; // 7 дней
   const campaignMeta = 'ipfs://QmTestCampaignMetadataHash';
-  const token = ethers.ZeroAddress;
+  const token = "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6";
 
   // Получаем required deposit
   console.log('⏳ Getting required deposit...');
