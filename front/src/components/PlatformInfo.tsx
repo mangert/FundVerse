@@ -2,6 +2,7 @@ import { formatEther } from 'viem';
 import { useState, useEffect } from 'react';
 import { usePublicClient } from 'wagmi';
 import { getPlatformParams, type PlatformParams } from '../services/platformInfoService';
+import { tokenService } from '../services/TokenService';
 
 export const PlatformInfo = () => {
   
@@ -38,6 +39,7 @@ export const PlatformInfo = () => {
   const platformFeePercent = Number(params.platformFee) / 10; // 100 промилле = 10%
   const depositAmountETH = formatEther(params.depositAmount);
   const minTimelockDays = Number(params.minTimelock) / (24 * 60 * 60); // секунды → дни
+  const nativeToken = tokenService.getNativeToken();
 
   // Умное форматирование
   const displayFee = platformFeePercent % 1 === 0 
@@ -58,7 +60,7 @@ export const PlatformInfo = () => {
         </div>
         <div className="param-item">
           <span className="param-label">Required Deposit: </span>
-          <span className="param-value">{displayDeposit} ETH</span>
+          <span className="param-value">{displayDeposit} {nativeToken.symbol}</span>
         </div>
         <div className="param-item">
           <span className="param-label">Min Timelock: </span>
