@@ -9,7 +9,7 @@ async function main() {
     const token = await token_Factory.deploy();
     token.waitForDeployment();
     const tokenAddr = await token.getAddress();        
-    console.log("Loyalty NFT deployed at ", tokenAddr);
+    console.log("Token deployed at ", tokenAddr);
   
     console.log('🚀 Adding token...');
 

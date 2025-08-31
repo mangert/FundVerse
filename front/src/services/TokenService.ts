@@ -1,7 +1,8 @@
-import { zeroAddress, type PublicClient } from 'viem';
+import { zeroAddress, type PublicClient, parseAbiItem, type Log } from 'viem';
 import { PlatformABI } from '../utils/abi';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
-import { BASE_TOKENS, type BaseTokensKey } from '../config/tokens';
+import { BASE_TOKENS } from '../config/tokens';
+import type { TokenConfig, NetworkTokensConfig } from '../config/tokens';
 
 export interface TokenInfo {
   address: string;
@@ -9,12 +10,28 @@ export interface TokenInfo {
   decimals: number;
   name: string;
   status: boolean;
+  addedAtBlock?: number;
+  removedAtBlock?: number;
+}
+
+// Простые интерфейсы для событий
+interface FVNewTokenAddedEvent extends Log {
+  args: {
+    token: string;
+  };
+}
+
+interface FVTokenRemovedEvent extends Log {
+  args: {
+    token: string;
+  };
 }
 
 class TokenService {
   private static instance: TokenService;
   private tokens: Map<string, TokenInfo> = new Map();
   private publicClient: PublicClient | null = null;
+  private currentChainId: number | null = null;
 
   static getInstance(): TokenService {
     if (!TokenService.instance) {
@@ -23,38 +40,115 @@ class TokenService {
     return TokenService.instance;
   }
 
-  // Инициализация сервиса
   async init(publicClient: PublicClient) {
     this.publicClient = publicClient;
+    this.currentChainId = publicClient.chain?.id || null;
+    
+    if (!this.currentChainId) {
+      console.warn('No chain ID available');
+      return;
+    }
+
+    // Загружаем базовые токены из конфига
     this.loadFromConfig();
-    this.loadFromStorage();
+    
+    // Загружаем актуальные события из блокчейна
+    await this.loadEventsFromBlockchain();
+    
+    // Подписываемся на будущие события
     await this.setupEventListeners();
   }
 
-  private loadFromStorage() {
+  private loadFromConfig() {
+    const chainId = this.currentChainId;
+    if (!chainId || !(chainId in BASE_TOKENS)) {
+      console.warn(`No config found for chainId: ${chainId}`);
+      return;
+    }
+
+    const config = BASE_TOKENS[chainId] as NetworkTokensConfig;
+    
+    // Добавляем нативную валюту
+    this.tokens.set(zeroAddress, {
+      address: zeroAddress,
+      symbol: config.native.symbol,
+      decimals: config.native.decimals,
+      name: config.native.name,
+      status: true
+    });
+
+    // Добавляем токены из конфига
+    config.tokens.forEach(token => {
+      this.tokens.set(token.address, { ...token });
+    });
+  }
+
+  private async loadEventsFromBlockchain() {
+    if (!this.publicClient || !this.currentChainId) return;
+
+    const config = BASE_TOKENS[this.currentChainId] as NetworkTokensConfig;
+    if (!config) return;
+
+    const fromBlock = BigInt(config.contractDeploymentBlock);
+    const toBlock = await this.publicClient.getBlockNumber();
+
     try {
-      const stored = localStorage.getItem('supported-tokens');
-      if (stored) {
-        const storedTokens = JSON.parse(stored);
-        
-        // Восстанавливаем токены из localStorage
-        for (const [address, tokenInfo] of Object.entries(storedTokens)) {
-          this.tokens.set(address, tokenInfo as TokenInfo);
+      // Загружаем события добавления токенов
+      const addEvents = await this.publicClient.getLogs({
+        address: PLATFORM_ADDRESS,
+        event: parseAbiItem('event FVNewTokenAdded(address token)'),
+        fromBlock,
+        toBlock
+      }) as FVNewTokenAddedEvent[];
+
+      // Загружаем события удаления токенов
+      const removeEvents = await this.publicClient.getLogs({
+        address: PLATFORM_ADDRESS,
+        event: parseAbiItem('event FVTokenRemoved(address token)'),
+        fromBlock,
+        toBlock
+      }) as FVTokenRemovedEvent[];
+
+      // Обрабатываем события добавления
+      for (const event of addEvents) {
+        const tokenAddress = event.args.token;
+        if (tokenAddress && !this.tokens.has(tokenAddress)) {
+          await this.handleTokenAdded(tokenAddress, Number(event.blockNumber));
         }
-        
-        console.log('Loaded tokens from storage:', this.tokens.size);
+      }
+
+      // Обрабатываем события удаления
+      for (const event of removeEvents) {
+        const tokenAddress = event.args.token;
+        if (tokenAddress && this.tokens.has(tokenAddress)) {
+          this.handleTokenRemoved(tokenAddress, Number(event.blockNumber));
+        }
       }
     } catch (error) {
-      console.warn('Failed to load tokens from storage:', error);
+      console.warn('Failed to load events from blockchain:', error);
     }
   }
 
-  private saveToStorage() {
+  private async handleTokenAdded(tokenAddress: string, blockNumber?: number) {
+    if (!this.publicClient) return;
+
     try {
-      const tokensObject = Object.fromEntries(this.tokens);
-      localStorage.setItem('supported-tokens', JSON.stringify(tokensObject));
+      const tokenInfo = await this.fetchTokenInfo(tokenAddress);
+      this.tokens.set(tokenAddress, {
+        ...tokenInfo,
+        status: true,
+        addedAtBlock: blockNumber
+      });
     } catch (error) {
-      console.warn('Failed to save tokens to storage:', error);
+      console.warn(`Failed to fetch info for token ${tokenAddress}:`, error);
+    }
+  }
+
+  private handleTokenRemoved(tokenAddress: string, blockNumber?: number) {
+    const token = this.tokens.get(tokenAddress);
+    if (token) {
+      token.status = false;
+      token.removedAtBlock = blockNumber;
     }
   }
 
@@ -64,11 +158,10 @@ class TokenService {
     }
 
     try {
-      // Получаем symbol и decimals с контракта токена
-      const [symbol, decimals] = await Promise.all([
+      const [symbol, decimals, name] = await Promise.all([
         this.publicClient.readContract({
           address: address as `0x${string}`,
-          abi: [{  // Минимальный ABI для ERC20 токенов
+          abi: [{
             inputs: [],
             name: 'symbol',
             outputs: [{ name: '', type: 'string' }],
@@ -81,7 +174,7 @@ class TokenService {
         
         this.publicClient.readContract({
           address: address as `0x${string}`,
-          abi: [{  // Минимальный ABI для ERC20 токенов
+          abi: [{
             inputs: [],
             name: 'decimals',
             outputs: [{ name: '', type: 'uint8' }],
@@ -90,14 +183,27 @@ class TokenService {
           }],
           functionName: 'decimals',
           args: []
-        }) as Promise<number>
+        }) as Promise<number>,
+        
+        this.publicClient.readContract({
+          address: address as `0x${string}`,
+          abi: [{
+            inputs: [],
+            name: 'name',
+            outputs: [{ name: '', type: 'string' }],
+            stateMutability: 'view',
+            type: 'function'
+          }],
+          functionName: 'name',
+          args: []
+        }) as Promise<string>
       ]);
 
       return {
         address,
         symbol,
         decimals,
-        name: symbol, // Можно добавить отдельный вызов для name если нужно
+        name,
         status: true
       };
     } catch (error) {
@@ -114,85 +220,41 @@ class TokenService {
     }
   }
 
-  // Загрузка базового конфига
-  private loadFromConfig() {
-    const chainId = this.publicClient?.chain?.id;
-    if (!chainId) return;
-
-    // Динамическая проверка: есть ли chainId в конфиге
-    const chainIdKey = String(chainId) as unknown as BaseTokensKey;
-    
-    if (!(chainIdKey in BASE_TOKENS)) {
-        console.warn(`No config found for chainId: ${chainId}`);
-        return;
-    }
-
-    const config = BASE_TOKENS[chainIdKey];
-    
-    // Добавляем нативную валюту
-    this.tokens.set(zeroAddress, {
-        address: zeroAddress,
-        symbol: config.native.symbol,
-        decimals: config.native.decimals,
-        name: config.native.name,
-        status: true
-    });
-
-   // Добавляем токены из конфига
-    config.tokens.forEach(token => {
-    this.tokens.set(token.address, { ...token });
-   });
- }
-  
-  // Подписка на события
   private async setupEventListeners() {
     if (!this.publicClient) return;
 
-    // Событие добавления токена
-    this.publicClient.watchContractEvent({
-      address: PLATFORM_ADDRESS,
-      abi: PlatformABI,
-      eventName: 'FVNewTokenAdded',
-      onLogs: (logs) => {
-        logs.forEach(log => {
-        // Просто используем any для быстрого решения
-            const tokenAddress = (log as any).args?.token;
+    try {
+      // Событие добавления токена
+      this.publicClient.watchContractEvent({
+        address: PLATFORM_ADDRESS,
+        abi: PlatformABI,
+        eventName: 'FVNewTokenAdded',
+        onLogs: (logs) => {
+          (logs as FVNewTokenAddedEvent[]).forEach(log => {
+            const tokenAddress = log.args.token;
             if (tokenAddress) {
-                this.handleTokenAdded(tokenAddress);
+              this.handleTokenAdded(tokenAddress, Number(log.blockNumber));
             }
-        });
-      } 
-    });
+          });
+        }
+      });
 
-    // Событие удаления токена
-    this.publicClient.watchContractEvent({
-      address: PLATFORM_ADDRESS,
-      abi: PlatformABI,
-      eventName: 'FVTokenRemoved',
-      onLogs: (logs) => {
-        logs.forEach(log => {
-        // Просто используем any для быстрого решения
-            const tokenAddress = (log as any).args?.token;
+      // Событие удаления токена
+      this.publicClient.watchContractEvent({
+        address: PLATFORM_ADDRESS,
+        abi: PlatformABI,
+        eventName: 'FVTokenRemoved',
+        onLogs: (logs) => {
+          (logs as FVTokenRemovedEvent[]).forEach(log => {
+            const tokenAddress = log.args.token;
             if (tokenAddress) {
-                this.handleTokenAdded(tokenAddress);
+              this.handleTokenRemoved(tokenAddress, Number(log.blockNumber));
             }
-        });
-      }
-    });
-  }
-
-  // Обработчики событий
-  private async handleTokenAdded(tokenAddress: string) {
-    const tokenInfo = await this.fetchTokenInfo(tokenAddress);
-    this.tokens.set(tokenAddress, { ...tokenInfo, status: true });
-    this.saveToStorage();
-  }
-
-  private handleTokenRemoved(tokenAddress: string) {
-    const token = this.tokens.get(tokenAddress);
-    if (token) {
-      token.status = false; // Деактивируем, но не удаляем
-      this.saveToStorage();
+          });
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to setup event listeners:', error);
     }
   }
 
@@ -211,7 +273,7 @@ class TokenService {
 
   getNativeToken(): TokenInfo {
     return this.tokens.get(zeroAddress)!;
-  }  
+  }
 }
 
 export const tokenService = TokenService.getInstance();

@@ -1,21 +1,24 @@
-export interface NetworkTokens {
+export interface TokenConfig {
+  address: string;
+  symbol: string;
+  decimals: number;
+  name: string;
+  status: boolean;
+  addedAtBlock?: number;
+}
+
+export interface NetworkTokensConfig {
   native: {
     symbol: string;
     decimals: number;
     name: string;
   };
-  tokens: {
-    address: string;
-    symbol: string;
-    decimals: number;
-    name: string;
-    status: boolean;
-  }[];
+  tokens: TokenConfig[];
+  contractDeploymentBlock: number; // Блок развертывания контракта
 }
 
-// Простой объект без жестких типов
-export const BASE_TOKENS = {
-  1: { // Mainnet
+export const BASE_TOKENS: Record<number, NetworkTokensConfig> = {
+  1: { //mainnet
     native: { symbol: 'ETH', decimals: 18, name: 'Ethereum' },
     tokens: [
       {
@@ -23,20 +26,20 @@ export const BASE_TOKENS = {
         symbol: 'USDC',
         decimals: 6,
         name: 'USD Coin',
-        status: true
+        status: true,
+        addedAtBlock: 12345678 // Пример
       }
-    ]
+    ],
+    contractDeploymentBlock: 12345678
   },
-  11155111: { // Sepolia
+  11155111: { //Sepolia
     native: { symbol: 'ETH', decimals: 18, name: 'Sepolia ETH' },
-    tokens: []
+    tokens: [],
+    contractDeploymentBlock: 0
   },
-  31337: { // hardhat
-    native: { symbol: 'ETH', decimals: 18, name: 'ETH' },
-    tokens: []
+  31337: { //hardhat
+    native: { symbol: 'HETH', decimals: 18, name: 'Hardhat ETH' },
+    tokens: [],
+    contractDeploymentBlock: 0
   }
 };
-
-// Тип для индекса - number или string
-export type BaseTokensKey = keyof typeof BASE_TOKENS;
-

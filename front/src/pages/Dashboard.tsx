@@ -32,7 +32,7 @@ export const Dashboard = () => {
   return (
     <div className="page-container">    
       <div className="page-header">
-        <h1>Active Campaigns</h1>
+        <h1>All Campaigns</h1>
         {/* Показываем кнопку только если кошелек подключен */}
         {isConnected ? (
           <button 

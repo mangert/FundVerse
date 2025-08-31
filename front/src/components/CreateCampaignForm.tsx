@@ -322,7 +322,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
       </div>
     );
   }
-
+  
   // Обычная форма создания кампании
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -484,5 +484,5 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
         </div>
       </div>
     </div>
-  );
+  ); 
 };
