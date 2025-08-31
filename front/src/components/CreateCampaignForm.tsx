@@ -37,6 +37,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [userTimelock, setUserTimelock] = useState<number>(0);
   const [timelockLoading, setTimelockLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   // Загружаем минимальную длительность, требуемый депозит и таймлок пользователя
   useEffect(() => {
@@ -85,6 +86,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
         setMinDurationLoading(false);
         setDepositLoading(false);
         setTimelockLoading(false);
+        setIsInitialLoading(false);
       }
     };
 
@@ -94,6 +96,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
       setMinDurationLoading(false);
       setDepositLoading(false);
       setTimelockLoading(false);
+      setIsInitialLoading(false);
     }
   }, [publicClient, isConnected, address]);
 
@@ -283,6 +286,25 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
   const isFormDisabled = !isConnected || isLoading || depositLoading || timelockLoading || isTimelockActive();
   const erc20Tokens = activeTokens.filter(token => token.address !== zeroAddress);
 
+  // Показываем лоадер, пока данные загружаются
+  if (isInitialLoading) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2>Create New Campaign</h2>
+            <button className="modal-close" onClick={onClose}>×</button>
+          </div>
+          <div className="modal-body">
+            <div className="loading-message">
+              <p>Loading campaign data...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Если таймлок активен, показываем сообщение вместо формы
   if (isTimelockActive()) {
     return (
@@ -322,11 +344,10 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
       </div>
     );
   }
-  
-  // Обычная форма создания кампании
+// Обычная форма создания кампании
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content" onClick={e => e.stopPropagation()}>
+      <div className="modal-content compact-form" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Create New Campaign</h2>
           <button className="modal-close" onClick={onClose}>×</button>
@@ -340,45 +361,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
           )}      
           
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="goal">Funding Goal ({nativeToken.symbol}):</label>
-              <input
-                type="number"
-                id="goal"
-                name="goal"
-                value={formData.goal}
-                onChange={handleChange}
-                placeholder={`Enter funding goal in ${nativeToken.symbol}`}
-                required
-                min="0.001"
-                step="0.001"
-                disabled={isLoading}
-              />
-              {errors.goal && <div className="error-message">{errors.goal}</div>}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="deadline">Duration (days):</label>
-              <input
-                type="number"
-                id="deadline"
-                name="deadline"
-                value={formData.deadline}
-                onChange={handleChange}
-                placeholder={`Campaign duration in days (min ${minDuration})`}
-                required
-                min={minDuration}
-                max="365"
-                disabled={isLoading || minDurationLoading}
-              />
-              {minDurationLoading ? (
-                <div className="form-hint">Loading minimum duration...</div>
-              ) : (
-                <div className="form-hint">Minimum campaign duration: {minDuration} days</div>
-              )}
-              {errors.deadline && <div className="error-message">{errors.deadline}</div>}
-            </div>
-
+            {/* Выбор токена - наверх */}
             <div className="form-group">
               <label htmlFor="token">Currency:</label>
               <select
@@ -398,15 +381,75 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
                   </option>
                 ))}
               </select>
-              <div className="form-hint">
+              <div className="token-info">
                 {formData.token === zeroAddress ? (
                   <span>Campaign will accept {nativeToken.symbol} (native currency)</span>
                 ) : (
-                  <span>Campaign will accept ERC20 tokens at {formData.token}</span>
+                  <div className="token-address">
+                    <span>ERC20: {formData.token}</span>
+                    <button 
+                      type="button" 
+                      className="copy-btn"
+                      onClick={() => {
+                        navigator.clipboard.writeText(formData.token);
+                        addNotification({
+                          type: 'info',
+                          message: 'Token address copied to clipboard',
+                          isGlobal: false
+                        });
+                      }}
+                      title="Copy token address"
+                    >
+                      📋
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
 
+            {/* Целевая сумма и длительность в одну строку */}
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="goal">Funding Goal ({nativeToken.symbol}):</label>
+                <input
+                  type="number"
+                  id="goal"
+                  name="goal"
+                  value={formData.goal}
+                  onChange={handleChange}
+                  placeholder={`Goal in ${nativeToken.symbol}`}
+                  required
+                  min="0.001"
+                  step="0.001"
+                  disabled={isLoading}
+                />
+                {errors.goal && <div className="error-message">{errors.goal}</div>}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="deadline">Duration (days):</label>
+                <input
+                  type="number"
+                  id="deadline"
+                  name="deadline"
+                  value={formData.deadline}
+                  onChange={handleChange}
+                  placeholder={`Min ${minDuration} days`}
+                  required
+                  min={minDuration}
+                  max="365"
+                  disabled={isLoading || minDurationLoading}
+                />
+                {minDurationLoading ? (
+                  <div className="form-hint">Loading min duration...</div>
+                ) : (
+                  <div className="form-hint">Min: {minDuration} days</div>
+                )}
+                {errors.deadline && <div className="error-message">{errors.deadline}</div>}
+              </div>
+            </div>
+
+            {/* Название кампании */}
             <div className="form-group">
               <label htmlFor="campaignName">Campaign Name:</label>
               <input
@@ -422,6 +465,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
               {errors.campaignName && <div className="error-message">{errors.campaignName}</div>}
             </div>
 
+            {/* Описание кампании */}
             <div className="form-group">
               <label htmlFor="campaignDesc">Campaign Description:</label>
               <textarea
@@ -429,12 +473,13 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
                 name="campaignDesc"
                 value={formData.campaignDesc}
                 onChange={handleChange}
-                placeholder="Describe your campaign"
-                rows={3}
+                placeholder="Describe your campaign goals and purpose"
+                rows={2}
                 disabled={isLoading}
               />
             </div>
 
+            {/* Дополнительная информация */}
             <div className="form-group">
               <label htmlFor="campaignInfo">Additional Information URL:</label>
               <input
@@ -447,15 +492,16 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
                 disabled={isLoading}
               />
               <div className="form-hint">
-                Link to additional documentation (website, whitepaper, etc.). 
-                The validity of this link is the responsibility of the campaign creator.
+                Link to documentation. Validity is the responsibility of the campaign creator.
               </div>
             </div>
 
+            {/* Информация о депозите */}
             <div className="form-deposit-info">
               <p>Required deposit: {depositLoading ? 'Loading...' : `${formatEther(requiredDeposit)} ${nativeToken.symbol}`}</p>
             </div>
 
+            {/* Кнопки */}
             <div className="modal-actions">
               <button 
                 type="button" 
@@ -471,7 +517,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
                 className="btn btn-primary"
                 title={!isConnected ? "Connect your wallet to create a campaign" : ""}
               >
-                {isLoading ? 'Submitting...' : 'Submit'}
+                {isLoading ? 'Submitting...' : 'Create Campaign'}
               </button>
             </div>
             
@@ -484,5 +530,5 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
         </div>
       </div>
     </div>
-  ); 
+  );
 };
