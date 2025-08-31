@@ -579,7 +579,6 @@ textarea:disabled {
     margin: 5% auto;
   }
 }
-
 /* Уменьшаем отступы в форме */
 .compact-form .form-group {
   margin-bottom: 15px;
@@ -686,4 +685,120 @@ textarea:disabled {
 .loading-message p {
   font-size: 18px;
   color: #666;
+}
+
+/* Стили для детальной карточки кампании */
+.campaign-details .modal-content {
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.campaign-status {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.days-left {
+  color: #666;
+  font-size: 14px;
+}
+
+.campaign-description {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+}
+
+.campaign-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-item label {
+  font-weight: bold;
+  color: #666;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.info-item span {
+  font-size: 14px;
+}
+
+.contribution-section,
+.refund-section,
+.creator-actions,
+.additional-info {
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+.contribution-form {
+  display: flex;
+  gap: 15px;
+  align-items: flex-end;
+}
+
+.input-with-button {
+  display: flex;
+  gap: 10px;
+}
+
+.input-with-button input {
+  flex: 1;
+}
+
+.balance-info {
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.external-link {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.external-link:hover {
+  text-decoration: underline;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .contribution-form {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .campaign-info-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .campaign-info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .input-with-button {
+    flex-direction: column;
+  }
 }

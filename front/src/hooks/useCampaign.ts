@@ -13,7 +13,7 @@ export interface CampaignSummary {
 }
 
 export const useCampaign = (address: string) => {
-  const { data, isLoading, error } = useReadContract({
+  const { data, isLoading, error, refetch } = useReadContract({
     address: address as `0x${string}`,
     abi: CampaignABI,
     functionName: 'getSummary',
@@ -21,7 +21,12 @@ export const useCampaign = (address: string) => {
 
   // Если данные загружаются или ошибка
   if (isLoading || error || !data) {
-    return { isLoading: true, error, data: null };
+    return { 
+      isLoading: true, 
+      error, 
+      data: null,
+      refetch // Добавляем refetch даже при загрузке/ошибке
+    };
   }
 
   // Парсим результат getSummary
@@ -44,5 +49,6 @@ export const useCampaign = (address: string) => {
     data: summary,
     isLoading: false,
     error: null,
+    refetch // Добавляем refetch
   };
 };

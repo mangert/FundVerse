@@ -53,3 +53,8 @@ export const getCampaignName = (metaString: string): string => {
   const meta = parseCampaignMeta(metaString);
   return meta.name || 'Unnamed Campaign';
 };
+
+export const getCampaignDescription = (metaString: string): string => {
+  const meta = parseCampaignMeta(metaString);
+  return meta.desc || 'Empty';
+};

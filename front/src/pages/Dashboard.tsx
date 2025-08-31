@@ -67,6 +67,7 @@ export const Dashboard = () => {
           <CampaignCard 
             key={address}
             address={address} 
+            onUpdate={refetch} // Передаем функцию обновления
           />
         ))}
         
