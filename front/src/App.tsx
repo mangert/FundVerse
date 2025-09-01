@@ -46,7 +46,7 @@ const AppContent = () => {
   return (
     <div className="app-container">
       <div className="app-header">
-        <h1 className="app-title">FundVerse Front</h1>
+        <h1 className="app-title">FundVerse</h1>
         <ConnectButton />
       </div>      
       <Dashboard/>      

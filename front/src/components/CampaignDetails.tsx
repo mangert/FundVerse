@@ -12,7 +12,7 @@ import { CampaignABI } from '../utils/abi';
 interface CampaignDetailsProps {
   address: string;
   onClose: () => void;
-  onUpdate?: () => void; // Добавляем новый пропс для обновления данных
+  onUpdate?: () => void;
 }
 
 export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsProps) => {
@@ -27,6 +27,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
   const [userContribution, setUserContribution] = useState<bigint>(0n);
   const [userBalance, setUserBalance] = useState<bigint>(0n);
   const [tokenAllowance, setTokenAllowance] = useState<bigint>(0n);
+  const [copiedAddress, setCopiedAddress] = useState(false);
 
   // Загрузка дополнительных данных
   useEffect(() => {
@@ -213,12 +214,35 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
   const handleMaxContribution = () => {
     if (!summary) return;
     
+    // Берем минимум из остатка до цели и баланса пользователя
     const remainingGoal = Number(summary.goal) - Number(summary.raised);
     const maxFromGoal = remainingGoal > 0 ? remainingGoal : 0;
     const maxFromBalance = Number(userBalance);
     
     const maxAmount = Math.min(maxFromGoal, maxFromBalance);
+    
+    if (maxAmount <= 0) {
+      addNotification({
+        type: 'warning',
+        message: 'Not enough funds to contribute',
+        isGlobal: false
+      });
+      return;
+    }
+    
     setContributionAmount(formatEther(BigInt(maxAmount)));
+  };
+
+  const copyAddressToClipboard = () => {
+    navigator.clipboard.writeText(address);
+    setCopiedAddress(true);
+    setTimeout(() => setCopiedAddress(false), 2000);
+    
+    addNotification({
+      type: 'info',
+      message: 'Campaign address copied to clipboard',
+      isGlobal: false
+    });
   };
 
   if (isLoading || !summary) {
@@ -254,101 +278,161 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
   const isCancelled = summary.status === 2; // Status.Cancelled
   const canContribute = isLive && isConnected;
   const canClaimRefund = (isFailed || isCancelled) && userContribution > 0n;
+  const hasZeroBalance = userBalance === 0n;
+
+  // Форматируем большие числа для лучшего отображения
+  const formatLargeNumber = (value: bigint, decimals = 4): string => {
+    const num = Number(formatEther(value));
+    if (num >= 1000) {
+      return num.toLocaleString(undefined, { maximumFractionDigits: decimals });
+    }
+    return num.toFixed(decimals);
+  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content campaign-details" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{campaignName}</h2>
+          <div className="campaign-title-section">
+            <h2>{campaignName}</h2>
+            <div className="campaign-id">ID: #{summary.id.toString()}</div>
+          </div>
           <button className="modal-close" onClick={onClose}>×</button>
         </div>
 
         <div className="modal-body">
-          <div className="campaign-status">
-            <span className={`status-badge ${statusClass}`}>{statusText}</span>
-            {daysLeft > 0 && <span className="days-left">{daysLeft} days left</span>}
+          {/* Адрес контракта кампании */}
+          <div className="campaign-address-section">
+            <div className="campaign-address-label">Campaign Address:</div>
+            <div className="campaign-address-value">
+              {address.slice(0, 8)}...{address.slice(-6)}
+              <button 
+                className="copy-address-btn"
+                onClick={copyAddressToClipboard}
+                title="Copy campaign address"
+              >
+                {copiedAddress ? '✓' : '📋'}
+              </button>
+            </div>
           </div>
 
+          {/* Статус и время */}
+          <div className="campaign-status-row">
+            <span className={`status-badge large ${statusClass}`}>{statusText}</span>
+            <div className="campaign-time-info">
+              <div className="deadline-date">
+                Deadline: {new Date(summary.deadline * 1000).toLocaleDateString()}
+              </div>
+              {daysLeft > 0 && (
+                <div className="days-left">
+                  {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Описание кампании */}
           {campaignDesc && (
             <div className="campaign-description">
+              <h3>Description</h3>
               <p>{campaignDesc}</p>
             </div>
           )}
 
-          <div className="campaign-info-grid">
-            <div className="info-item">
-              <label>Creator</label>
-              <span>{summary.creator.slice(0, 8)}...{summary.creator.slice(-6)}</span>
+          {/* Финансовая информация */}
+          <div className="financial-section">
+            <h3>Financial Information</h3>
+            <div className="financial-grid">
+              <div className="financial-item">
+                <div className="financial-label">Currency</div>
+                <div className="financial-value large">{displaySymbol}</div>
+              </div>
+              <div className="financial-item">
+                <div className="financial-label">Funding Goal</div>
+                <div className="financial-value large">
+                  {formatLargeNumber(summary.goal)} {displaySymbol}
+                </div>
+              </div>
+              <div className="financial-item">
+                <div className="financial-label">Raised</div>
+                <div className="financial-value large">
+                  {formatLargeNumber(summary.raised)} {displaySymbol}
+                </div>
+              </div>
+              <div className="financial-item">
+                <div className="financial-label">Progress</div>
+                <div className="financial-value large">{progress.toFixed(1)}%</div>
+              </div>
             </div>
-            <div className="info-item">
-              <label>Currency</label>
-              <span>{displaySymbol}</span>
-            </div>
-            <div className="info-item">
-              <label>Goal</label>
-              <span>{formatEther(summary.goal)} {displaySymbol}</span>
-            </div>
-            <div className="info-item">
-              <label>Raised</label>
-              <span>{formatEther(summary.raised)} {displaySymbol}</span>
-            </div>
-            <div className="info-item">
-              <label>Progress</label>
-              <span>{progress.toFixed(1)}%</span>
-            </div>
-            <div className="info-item">
-              <label>Deadline</label>
-              <span>{new Date(summary.deadline * 1000).toLocaleDateString()}</span>
-            </div>
-          </div>
 
-          <div className="progress-bar">
-            <div style={{ width: `${Math.min(progress, 100)}%` }} />
+            {/* Прогресс-бар */}
+            <div className="progress-container">
+              <div className="progress-bar">
+                <div 
+                  className="progress-fill"
+                  style={{ width: `${Math.min(progress, 100)}%` }} 
+                />
+              </div>
+              <div className="progress-labels">
+                <span>0 {displaySymbol}</span>
+                <span>{formatLargeNumber(summary.goal)} {displaySymbol}</span>
+              </div>
+            </div>
           </div>
 
           {/* Блок взноса для Live кампаний */}
           {canContribute && (
-            <div className="contribution-section">
-              <h3>Make a Contribution</h3>
-              <div className="contribution-form">
-                <div className="form-group">
-                  <label htmlFor="contributionAmount">Amount ({displaySymbol})</label>
-                  <div className="input-with-button">
-                    <input
-                      type="number"
-                      id="contributionAmount"
-                      value={contributionAmount}
-                      onChange={(e) => setContributionAmount(e.target.value)}
-                      placeholder={`Enter amount in ${displaySymbol}`}
-                      min="0"
-                      step="0.001"
-                      disabled={isContributing}
-                    />
+            <div className="contribution-section compact">
+              <div className="contribution-header">
+                <h3>Make a Contribution</h3>
+                <div className="balance-display">
+                  Balance: {formatLargeNumber(userBalance)} {displaySymbol}
+                </div>
+              </div>
+              
+              {hasZeroBalance ? (
+                <div className="zero-balance-message">
+                  <p>You don't have any {displaySymbol} in your wallet to contribute.</p>
+                </div>
+              ) : (
+                <div className="compact-contribution-form">
+                  <div className="input-and-actions">
+                    <div className="amount-input-group">
+                      <input
+                        type="number"
+                        value={contributionAmount}
+                        onChange={(e) => setContributionAmount(e.target.value)}
+                        placeholder={`Amount in ${displaySymbol}`}
+                        min="0"
+                        step="0.001"
+                        disabled={isContributing}
+                      />
+                      <button
+                        type="button"
+                        className="max-btn compact"
+                        onClick={handleMaxContribution}
+                        disabled={isContributing}
+                        title="Set maximum contribution amount"
+                      >
+                        Max
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      className="btn btn-secondary"
-                      onClick={handleMaxContribution}
-                      disabled={isContributing}
+                      className="btn btn-primary contribute-btn compact"
+                      onClick={handleContribute}
+                      disabled={isContributing || !contributionAmount || parseFloat(contributionAmount) <= 0}
                     >
-                      Max
+                      {isContributing ? '...' : 'Contribute'}
                     </button>
                   </div>
-                  <div className="balance-info">
-                    Your balance: {formatEther(userBalance)} {displaySymbol}
-                    {summary.token !== zeroAddress && tokenAllowance > 0n && (
-                      <span> • Allowance: {formatEther(tokenAllowance)} {displaySymbol}</span>
-                    )}
-                  </div>
+                  {summary.token !== zeroAddress && tokenAllowance > 0n && (
+                    <div className="allowance-info compact">
+                      Allowance: {formatLargeNumber(tokenAllowance)} {displaySymbol}
+                    </div>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={handleContribute}
-                  disabled={isContributing || !contributionAmount || parseFloat(contributionAmount) <= 0}
-                >
-                  {isContributing ? 'Contributing...' : 'Contribute'}
-                </button>
-              </div>
+              )}
             </div>
           )}
 
@@ -356,7 +440,9 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
           {canClaimRefund && (
             <div className="refund-section">
               <h3>Your Contribution</h3>
-              <p>You contributed: {formatEther(userContribution)} {displaySymbol}</p>
+              <p className="refund-amount">
+                You contributed: {formatLargeNumber(userContribution)} {displaySymbol}
+              </p>
               <button
                 type="button"
                 className="btn btn-primary"
@@ -372,25 +458,21 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
           {campaignMetaData.info && (
             <div className="additional-info">
               <h3>Additional Information</h3>
-              <a
-                href={campaignMetaData.info}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="external-link"
-              >
-                View campaign documentation
-              </a>
-            </div>
-          )}
-
-          {/* Для создателя кампании - управляющие кнопки */}
-          {userAddress === summary.creator && (
-            <div className="creator-actions">
-              <h3>Creator Actions</h3>
-              <div className="action-buttons">
-                {/* TODO: Implement creator actions */}
-                <button className="btn btn-secondary">Withdraw Funds</button>
-                <button className="btn btn-secondary">Change Status</button>
+              <div className="external-link-container">
+                <a
+                  href={campaignMetaData.info}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="external-link"
+                >
+                  View campaign documentation ↗
+                </a>
+                <div className="external-link-disclaimer">
+                  <small>
+                    This is an external link. The platform is not responsible for its content.
+                    Please verify the authenticity of the link before proceeding.
+                  </small>
+                </div>
               </div>
             </div>
           )}

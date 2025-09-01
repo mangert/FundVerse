@@ -802,3 +802,384 @@ textarea:disabled {
     flex-direction: column;
   }
 }
+
+/* Campaign Details Styles - Compact Version */
+.campaign-details {
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.campaign-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.campaign-id {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.campaign-address-section {
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background-color: #f5f5f5;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.campaign-address-label {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.campaign-address-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: monospace;
+}
+
+.copy-address-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background-color: #e9e9e9;
+}
+
+.copy-address-btn:hover {
+  background-color: #d9d9d9;
+}
+
+.campaign-status-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.status-badge.large {
+  font-size: 14px;
+  padding: 6px 12px;
+}
+
+.campaign-time-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.deadline-date {
+  color: #666;
+}
+
+.days-left {
+  font-weight: 500;
+  color: #e67700;
+}
+
+.campaign-description {
+  margin-bottom: 16px;
+}
+
+.campaign-description h3 {
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.campaign-description p {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.financial-section {
+  margin: 16px 0;
+}
+
+.financial-section h3 {
+  margin-bottom: 12px;
+  font-size: 16px;
+  color: #333;
+}
+
+.financial-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.financial-item {
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.financial-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.financial-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.financial-value.large {
+  font-size: 16px;
+}
+
+.progress-container {
+  margin-top: 12px;
+}
+
+.progress-bar {
+  height: 10px;
+  background-color: #e9ecef;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #28a745;
+  transition: width 0.3s ease;
+}
+
+.progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #6c757d;
+}
+
+/* Компактный блок взносов */
+.contribution-section.compact {
+  margin: 12px 0;
+  padding: 12px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+}
+
+.contribution-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.contribution-header h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.balance-display {
+  font-size: 14px;
+  color: #666;
+  font-weight: 500;
+}
+
+.compact-contribution-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-and-actions {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.amount-input-group {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+}
+
+.amount-input-group input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  min-width: 0;
+}
+
+.max-btn.compact {
+  padding: 8px 12px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.contribute-btn.compact {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.allowance-info.compact {
+  font-size: 12px;
+  color: #6c757d;
+  text-align: center;
+}
+
+.zero-balance-message {
+  text-align: center;
+  padding: 8px;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  color: #856404;
+  font-size: 14px;
+}
+
+/* Адаптивность для мобильных устройств */
+@media (max-width: 768px) {
+  .contribution-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  
+  .input-and-actions {
+    flex-direction: column;
+  }
+  
+  .amount-input-group {
+    width: 100%;
+  }
+}
+
+.refund-section {
+  margin: 16px 0;
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.refund-section h3 {
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.refund-amount {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.additional-info {
+  margin: 16px 0;
+}
+
+.additional-info h3 {
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.external-link-container {
+  padding: 12px;
+  background-color: #e7f5ff;
+  border-radius: 6px;
+  border: 1px solid #bee5eb;
+}
+
+.external-link {
+  display: block;
+  font-size: 14px;
+  color: #0056b3;
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+
+.external-link:hover {
+  text-decoration: underline;
+}
+
+.external-link-disclaimer {
+  font-size: 11px;
+  color: #6c757d;
+  line-height: 1.3;
+}
+
+/* Улучшенная адаптивность */
+@media (max-width: 768px) {
+  .campaign-details {
+    max-width: 95vw;
+  }
+  
+  .campaign-status-row {
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  
+  .campaign-time-info {
+    align-items: flex-start;
+  }
+  
+  .financial-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .financial-item {
+    padding: 8px;
+  }
+  
+  .financial-value {
+    font-size: 14px;
+  }
+  
+  .input-with-max {
+    flex-direction: column;
+  }
+  
+  .max-btn {
+    width: 100%;
+  }
+}
+
+/* Еще более компактный вариант для очень маленьких экранов */
+@media (max-width: 480px) {
+  .financial-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .campaign-address-value {
+    flex-wrap: wrap;
+  }
+  
+  .modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .modal-close {
+    align-self: flex-end;
+    margin-top: -40px;
+  }
+}

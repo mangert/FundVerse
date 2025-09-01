@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { PlatformABI } from '../utils/abi';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
-import { parseEther, formatEther, zeroAddress } from 'viem';
+import { parseUnits, formatUnits, zeroAddress } from 'viem';
 import { tokenService } from '../services/TokenService';
 import { errorService } from '../services/ErrorService';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -32,12 +32,58 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
   const [isLoading, setIsLoading] = useState(false);
   const [minDuration, setMinDuration] = useState(1);
   const [minDurationLoading, setMinDurationLoading] = useState(true);
-  const [requiredDeposit, setRequiredDeposit] = useState<bigint>(parseEther('0.1'));
+  const [requiredDeposit, setRequiredDeposit] = useState<bigint>(parseUnits('0.1', 18));
   const [depositLoading, setDepositLoading] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [userTimelock, setUserTimelock] = useState<number>(0);
   const [timelockLoading, setTimelockLoading] = useState(true);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [tokenDecimals, setTokenDecimals] = useState<number>(18);
+  const [decimalsLoading, setDecimalsLoading] = useState(false);
+
+  // Получаем информацию о выбранном токене
+  const getSelectedTokenInfo = () => {
+    if (formData.token === zeroAddress) {
+      return tokenService.getNativeToken();
+    }
+    return tokenService.getTokenInfo(formData.token) || tokenService.getNativeToken();
+  };
+
+  const selectedToken = getSelectedTokenInfo();
+
+  // Загружаем decimals для выбранного токена
+  useEffect(() => {
+    const fetchTokenDecimals = async () => {
+      if (formData.token === zeroAddress) {
+        setTokenDecimals(18); // Для нативной валюты всегда 18 decimals
+        return;
+      }
+
+      setDecimalsLoading(true);
+      try {
+        const decimals = await publicClient?.readContract({
+          address: formData.token as `0x${string}`,
+          abi: [{
+            inputs: [],
+            name: 'decimals',
+            outputs: [{ name: '', type: 'uint8' }],
+            stateMutability: 'view',
+            type: 'function'
+          }],
+          functionName: 'decimals',
+        }) as number;
+
+        setTokenDecimals(decimals || 18);
+      } catch (error) {
+        console.warn('Failed to fetch token decimals, using default (18):', error);
+        setTokenDecimals(18);
+      } finally {
+        setDecimalsLoading(false);
+      }
+    };
+
+    fetchTokenDecimals();
+  }, [formData.token, publicClient]);
 
   // Загружаем минимальную длительность, требуемый депозит и таймлок пользователя
   useEffect(() => {
@@ -80,7 +126,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
       } catch (error) {
         console.warn('Failed to fetch platform settings, using defaults:', error);
         setMinDuration(1);
-        setRequiredDeposit(parseEther('0.1'));
+        setRequiredDeposit(parseUnits('0.1', 18));
         setUserTimelock(0);
       } finally {
         setMinDurationLoading(false);
@@ -184,7 +230,9 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
     setIsLoading(true);
     
     try {
-      const goal = parseEther(formData.goal);
+      // Используем правильные decimals для парсинга цели
+      const goal = parseUnits(formData.goal, tokenDecimals);
+      
       // Добавляем 60 секунд (1 минуту) к дедлайну для безопасности
       const deadline = Math.floor(Date.now() / 1000) + (Number(formData.deadline) * 24 * 60 * 60) + 60;
 
@@ -283,7 +331,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
 
   const activeTokens = tokenService.getActiveTokens();
   const nativeToken = tokenService.getNativeToken();
-  const isFormDisabled = !isConnected || isLoading || depositLoading || timelockLoading || isTimelockActive();
+  const isFormDisabled = !isConnected || isLoading || depositLoading || timelockLoading || isTimelockActive() || decimalsLoading;
   const erc20Tokens = activeTokens.filter(token => token.address !== zeroAddress);
 
   // Показываем лоадер, пока данные загружаются
@@ -344,7 +392,8 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
       </div>
     );
   }
-// Обычная форма создания кампании
+
+  // Обычная форма создания кампании
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content compact-form" onClick={e => e.stopPropagation()}>
@@ -385,8 +434,13 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
                 {formData.token === zeroAddress ? (
                   <span>Campaign will accept {nativeToken.symbol} (native currency)</span>
                 ) : (
-                  <div className="token-address">
+                  <div className="token-details">
                     <span>ERC20: {formData.token}</span>
+                    {decimalsLoading ? (
+                      <span className="decimals-info">Loading decimals...</span>
+                    ) : (
+                      <span className="decimals-info">{tokenDecimals} decimals</span>
+                    )}
                     <button 
                       type="button" 
                       className="copy-btn"
@@ -410,19 +464,25 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
             {/* Целевая сумма и длительность в одну строку */}
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="goal">Funding Goal ({nativeToken.symbol}):</label>
+                <label htmlFor="goal">Funding Goal ({selectedToken.symbol}):</label>
                 <input
                   type="number"
                   id="goal"
                   name="goal"
                   value={formData.goal}
                   onChange={handleChange}
-                  placeholder={`Goal in ${nativeToken.symbol}`}
+                  placeholder={`Goal in ${selectedToken.symbol}`}
                   required
-                  min="0.001"
-                  step="0.001"
-                  disabled={isLoading}
+                  min="0.000001"
+                  step="0.000001"
+                  disabled={isLoading || decimalsLoading}
                 />
+                {decimalsLoading && (
+                  <div className="form-hint">Loading token details...</div>
+                )}
+                {!decimalsLoading && formData.token !== zeroAddress && (
+                  <div className="form-hint">{tokenDecimals} decimals</div>
+                )}
                 {errors.goal && <div className="error-message">{errors.goal}</div>}
               </div>
 
@@ -498,7 +558,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
 
             {/* Информация о депозите */}
             <div className="form-deposit-info">
-              <p>Required deposit: {depositLoading ? 'Loading...' : `${formatEther(requiredDeposit)} ${nativeToken.symbol}`}</p>
+              <p>Required deposit: {depositLoading ? 'Loading...' : `${formatUnits(requiredDeposit, 18)} ${nativeToken.symbol}`}</p>
             </div>
 
             {/* Кнопки */}
