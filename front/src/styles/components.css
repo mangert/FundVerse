@@ -1183,3 +1183,163 @@ textarea:disabled {
     margin-top: -40px;
   }
 }
+
+/* Стили для навигации */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.app-navigation {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-link {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+  background-color: #f5f5f5;
+  color: #333;
+}
+
+.nav-link.active {
+  background-color: #007bff;
+  color: white;
+}
+
+/* Адаптивность для навигации */
+@media (max-width: 768px) {
+  .header-left {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .app-navigation {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .nav-link {
+    flex: 1;
+    text-align: center;
+  }
+}
+
+/* Account Page Styles */
+.account-tabs {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  color: #666;
+  border-bottom: 2px solid transparent;
+}
+
+.tab:hover {
+  color: #333;
+}
+
+.tab.active {
+  color: #007bff;
+  border-bottom-color: #007bff;
+}
+
+.tab-content {
+  min-height: 300px;
+}
+
+.loyalty-section {
+  margin-top: 40px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+  .account-tabs {
+    flex-direction: column;
+  }
+  
+  .tab {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Account Campaign Card Styles */
+.account-campaign-card,
+.invested-campaign-card {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background-color: #fff;
+}
+
+.account-campaign-header,
+.invested-campaign-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.account-campaign-header h4,
+.invested-campaign-header h4 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.account-campaign-details,
+.invested-campaign-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.account-campaign-actions,
+.invested-campaign-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.account-campaigns-grid,
+.invested-campaigns-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .account-campaigns-grid,
+  .invested-campaigns-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .account-campaign-details,
+  .invested-campaign-details {
+    grid-template-columns: 1fr 1fr;
+  }
+}

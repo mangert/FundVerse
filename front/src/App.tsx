@@ -1,17 +1,19 @@
 import { useAccount, usePublicClient } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Dashboard } from './pages/Dashboard';
+import { Account } from './pages/Account'; 
 import { StatusBar } from './components/StatusBar';
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import { Toast } from './components/Toast';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { initEventService, stopEventService } from './services/eventService';
 import { tokenService } from './services/TokenService';
 
 const AppContent = () => {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const publicClient = usePublicClient();
   const { state, dispatch, addNotification } = useNotifications();
+  const [currentPage, setCurrentPage] = useState('dashboard'); // Состояние для текущей страницы
 
   // Инициализируем сервис токенов
   useEffect(() => {
@@ -43,13 +45,42 @@ const AppContent = () => {
     n => !n.isGlobal && n.account === address?.toLowerCase() && !n.persistent
   );
 
+  // Функция для переключения страниц
+  const navigateTo = (page: string) => {
+    setCurrentPage(page);
+  };
+
   return (
     <div className="app-container">
       <div className="app-header">
-        <h1 className="app-title">FundVerse</h1>
+        <div className="header-left">
+          <h1 className="app-title">FundVerse</h1>
+          <nav className="app-navigation">
+            <button 
+              className={`nav-link ${currentPage === 'dashboard' ? 'active' : ''}`}
+              onClick={() => navigateTo('dashboard')}
+            >
+              Dashboard
+            </button>
+            {isConnected && (
+              <button 
+                className={`nav-link ${currentPage === 'account' ? 'active' : ''}`}
+                onClick={() => navigateTo('account')}
+              >
+                My Account
+              </button>
+            )}
+          </nav>
+        </div>
         <ConnectButton />
-      </div>      
-      <Dashboard/>      
+      </div>
+      
+      {/* Отображаем текущую страницу */}
+      {currentPage === 'dashboard' && <Dashboard />}
+      {currentPage === 'account' && (
+        isConnected ? <Account /> : <div className="page-container">Please connect your wallet to access your account</div>
+      )}
+      
       {/* Toast уведомления */}
       {personalToasts.slice(0, 3).map((toast) => (
         <Toast
