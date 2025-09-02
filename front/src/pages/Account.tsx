@@ -90,10 +90,7 @@ export const Account = () => {
                   <InvestedCampaignCard
                     key={`invested-${investedCampaign.campaign.creator}-${investedCampaign.campaign.id}`}
                     investedCampaign={investedCampaign}
-                    onAction={() => {
-                      // TODO: Implement investment actions
-                      console.log('Investment action:', investedCampaign);
-                    }}
+                    onUpdate={refetchInvested}
                   />
                 ))}
               </div>

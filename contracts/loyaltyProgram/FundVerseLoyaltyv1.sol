@@ -9,6 +9,10 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract FundVerseLoyaltyv1 is ERC721, Ownable {
 
+    //метадата
+    //выложено на ipfs
+    string private constant _TOKEN_URI = "ipfs://bafkreih7bcghnbpsdx3ln4tsxrz7jcao5wnlqgfnqf3jji72eapo7osnde";
+    
     /// @notice ссылка на адрес платформы
     address public platform;    
 
@@ -82,6 +86,12 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
         tokenDiscount[counter] = feeDiscount;
     
     }
+
+    /// @notice функция возвращает ссылку json-файл с метаданными
+    function tokenURI(uint256) public pure override returns (string memory) {
+        return _TOKEN_URI;
+    }
+    
 
     /// @notice функция возвращает размер скидки фаундера (в вычитаемых из размера комиссии промилле)
     /// @param founder адрес фаундера, для которого возвращаем скидку

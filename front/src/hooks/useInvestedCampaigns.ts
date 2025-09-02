@@ -8,6 +8,7 @@ import type { CampaignSummary } from './useCampaign';
 export interface InvestedCampaign {
   campaign: CampaignSummary;
   contribution: bigint;
+  address: string;
 }
 
 export const useInvestedCampaigns = () => {
@@ -42,7 +43,12 @@ export const useInvestedCampaigns = () => {
                 args: [address as `0x${string}`],
               }) as bigint;
 
-              return { campaign, contribution };
+              // Возвращаем объект с адресом кампании
+              return { 
+                campaign, 
+                contribution, 
+                address: campaignAddress 
+              };
             } catch (err) {
               console.error(`Error fetching campaign ${campaignAddress}:`, err);
               return null;

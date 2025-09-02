@@ -136,22 +136,24 @@ describe("Platform main functionality tests", function() {
             const {ownerPlatform, user0, platform, tokenERC20Addr} = await loadFixture(deploy);            
             //формируем стандарный набор аргументов кампании
             const args0 = defaultCreateCampaignArgs();
+
+            //установим таймлок (стандартный - 0)
+            await platform.setDelay(60 * 60 * 24);            
             
             //создаем кампанию
-            const txCreate = await platform.connect(user0).createCampaign(...args0);
-            
+            const txCreate = await platform.connect(user0).createCampaign(...args0);            
             //смотрим, что получилось
             const timelock = await platform.getFounderTimelock(user0);
             const campaignAddress = await platform.getCampaignByIndex(0);            
             await expect(txCreate).to.emit(platform, "FVCampaignCreated")
                 .withArgs(campaignAddress, user0, ethers.ZeroAddress, args0[0]);            
             await expect(txCreate).to.emit(platform, "FVSetFounderTimelock")
-                .withArgs(user0, timelock);
+                .withArgs(user0, timelock);            
 
             //добавим наш токен в список
             (await platform.connect(ownerPlatform).addTokenToAllowed(tokenERC20Addr)).wait(1);
 
-            //а теперь пробуем создать новую кампанию (стандартный таймлок - двое суток)
+            //а теперь пробуем создать новую кампанию (таймлок установлен на сутки)
             const args1 = defaultCreateCampaignArgs({token: tokenERC20Addr});
             const txCreate1 = platform.connect(user0).createCampaign(...args1);
             //ожидаем, что ревертнется, так как таймлок еще не закончился
