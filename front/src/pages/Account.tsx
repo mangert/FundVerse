@@ -64,15 +64,12 @@ export const Account = () => {
               <p>You haven't created any campaigns yet.</p>
             ) : (
               <div className="account-campaigns-grid">
-                {createdCampaigns.map((campaign) => (
+                {createdCampaigns.map(({ summary, address }) => (
                   <AccountCampaignCard
-                    key={`created-${campaign.creator}-${campaign.id}`}
-                    campaign={campaign}
-                    showActions={true}
-                    onAction={() => {
-                      // TODO: Implement campaign management
-                      console.log('Manage campaign:', campaign);
-                    }}
+                    key={`created-${address}`}
+                    campaign={summary}
+                    campaignAddress={address}
+                    onUpdate={refetchCreated}
                   />
                 ))}
               </div>

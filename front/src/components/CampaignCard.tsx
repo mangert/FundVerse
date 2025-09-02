@@ -51,8 +51,8 @@ export const CampaignCard = ({ address, onUpdate }: CampaignCardProps) => {
         <p>ID: #{summary.id.toString()} • By: {summary.creator.slice(0, 8)}...</p>
         <p><strong>Currency:</strong> {displaySymbol}</p>
         
-        <div className="progress-bar">
-          <div style={{ width: `${Math.min(progress, 100)}%` }} />
+        <div className="progress-bar">          
+          <div className="progress-fill" style={{ width: `${Math.min(progress, 100)}%` }} />
         </div>      
         
         <div className="campaign-stats">

@@ -1,4 +1,4 @@
-//скрипт для тестирования в ноде - настройки платформы
+//скрипт для тестирования в ноде - настройки платформы (кулдаун)
 import { ethers } from 'hardhat';
 import { readFileSync } from 'fs';
 import { join } from 'path';

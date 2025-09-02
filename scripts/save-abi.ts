@@ -1,3 +1,4 @@
+//скрипт для записи ABI контрактов во фронтенд
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 

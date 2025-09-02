@@ -68,6 +68,11 @@ abstract contract DepositLogic is IPlatformCommon {
     function getRequiredDeposit() external view returns (uint256) {
         return PlatformStorageLib.layout().requiredDeposit;
     }            
+
+    /// @notice Получить информацию о сумме невозвращенного залога по конкретной кампании
+    function getCampaignDeposit(address campaign) external view returns (uint256) {
+        return PlatformStorageLib.layout().depositsByCampaigns[campaign];
+    }            
     
     // служебные функции
     /// @notice служебная функция - возвращает истину, если кампания тем или иным образом завершена 

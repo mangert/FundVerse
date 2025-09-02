@@ -1,4 +1,4 @@
-//скрипт для тестирования в ноде - создание тестовой кампании
+//скрипт для тестирования в ноде - создание тестовой кампании в токенах
 import { ethers } from 'hardhat';
 import { readFileSync } from 'fs';
 import { join } from 'path';
