@@ -51,10 +51,13 @@ const AppContent = () => {
   };
 
   return (
-    <div className="app-container">
-      <div className="app-header">
-        <div className="header-left">
+     <div className="app-container">
+    <div className="app-header">
+      <div className="header-left">
+        <div className="logo-title-container">
+          <img src="/images/logo.png" alt="FundVerse Logo" className="app-logo" />
           <h1 className="app-title">FundVerse</h1>
+          </div>
           <nav className="app-navigation">
             <button 
               className={`nav-link ${currentPage === 'dashboard' ? 'active' : ''}`}

@@ -33,11 +33,7 @@ export const Account = () => {
   return (
     <div className="page-container">
       <div className="page-header">
-        <h1>My Account</h1>
-        <p>Connected wallet: {address?.slice(0, 8)}...{address?.slice(-6)}</p>
-        <button className="btn btn-secondary" onClick={handleRefetch}>
-          Refresh
-        </button>
+        <h1>My Account</h1>        
       </div>
 
       <div className="account-tabs">
