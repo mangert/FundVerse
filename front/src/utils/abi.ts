@@ -1,6 +1,6 @@
 import PlatformABI_JSON from '../contracts/abis/Platform.json';
 import CampaignABI_JSON from '../contracts/abis/ICampaign.json';
-//import LoyaltyABI_JSON from '../contracts/abis/FundVerseLoyaltyv1.json';
+import LoyaltyABI_JSON from '../contracts/abis/FundVerseLoyaltyv1.json';
 
 export const getABI = (json: any) => {
   if (Array.isArray(json)) return json;
@@ -10,4 +10,4 @@ export const getABI = (json: any) => {
 
 export const PlatformABI = getABI(PlatformABI_JSON);
 export const CampaignABI = getABI(CampaignABI_JSON);
-//export const LoyaltyABI = getABI(LoyaltyABI_JSON);
+export const LoyaltyABI = getABI(LoyaltyABI_JSON);

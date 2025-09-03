@@ -7,11 +7,11 @@ async function main() {
   console.log('🚀 Creating test campaign...');
 
   // Загружаем ABI
-  const abiPath = join(__dirname, '../front/src/contracts/abis/Platform.json');
+  const abiPath = join(__dirname, './../../front/src/contracts/abis/Platform.json');
   const abi = JSON.parse(readFileSync(abiPath, 'utf8'));
   
   // Загружаем адреса
-  const addressesPath = join(__dirname, '../front/src/contracts/addresses.hardhat.json');
+  const addressesPath = join(__dirname, './../../front/src/contracts/addresses.hardhat.json');
   const addresses = JSON.parse(readFileSync(addressesPath, 'utf8'));
   
   const [deployer, user] = await ethers.getSigners();

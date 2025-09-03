@@ -103,6 +103,13 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
         }
         return 0;
     }
+
+    /// @notice внутренняя функция проверки, может ли фаундер получить NFT
+    /// @param founder адрес фаундера
+    function validateMintEligibility(address founder) external view returns (bool) {
+        return _validateMintEligibility(founder);
+    }
+    
     //функции установки настроек    
     
     /// @notice функция позволяет установить адрес платформы
@@ -131,8 +138,12 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
     /// @param founder адрес фаундера
     function _validateMintEligibility(address founder) internal view returns(bool){
         //сначала проверим - если раньше уже получал - не может, даже если продал
-        uint256 tokenId = foundersTokens[founder];
-        require(tokenId == 0, RepeatNFTRequest(founder, tokenId));
+        if(foundersTokens[founder] != 0) {
+            return false;
+        }
+        
+        //uint256 tokenId = foundersTokens[founder];        
+        //require(tokenId == 0, RepeatNFTRequest(founder, tokenId));
         
         //теперь проверим, какие у него есть кампании
         //и сначал получим их количество

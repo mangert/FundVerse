@@ -4,6 +4,7 @@ import { AccountCampaignCard } from '../components/AccountCampaignCard';
 import { InvestedCampaignCard } from '../components/InvestedCampaignCard';
 import { useState } from 'react';
 import { useAccount } from 'wagmi';
+import { LoyaltySection } from '../components/LoyaltySection';
 
 export const Account = () => {
   const { address, isConnected } = useAccount();
@@ -99,10 +100,11 @@ export const Account = () => {
         )}
       </div>
 
-      {/* Блок лояльности - будет добавлен позже */}
-      <div className="loyalty-section">
-        <h2>Loyalty Program</h2>
-        <p>This section will be implemented soon.</p>
+      {/* Блок лояльности */}
+      <div className="loyalty-section">      
+        <div>
+            <LoyaltySection />
+        </div>
       </div>
     </div>
   );
