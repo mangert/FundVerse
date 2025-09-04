@@ -311,7 +311,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
                 onClick={copyAddressToClipboard}
                 title="Copy campaign address"
               >
-                {copiedAddress ? '✓' : '📋'}
+                {copiedAddress ? '✓' : '📄'}
               </button>
             </div>
           </div>

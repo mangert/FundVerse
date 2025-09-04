@@ -365,7 +365,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
 
           <div className="modal-body">
             <div className="timelock-message">
-              <h3>⏰ Campaign Creation Cooldown</h3>
+              <h3>🔐 Campaign Creation Cooldown</h3>
               <p>
                 You recently created a campaign. Please wait before creating another one.
                 This helps prevent spam and ensures campaign quality.
@@ -454,7 +454,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
                       }}
                       title="Copy token address"
                     >
-                      📋
+                      📄
                     </button>
                   </div>
                 )}

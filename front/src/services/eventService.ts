@@ -87,7 +87,7 @@ export const initEventService = (publicClient: any, callback: (notification: any
           
           notificationCallback?.({
             type: 'success',
-            message: `🎉 New campaign created!`,
+            message: `💎 New campaign created!`,
             isGlobal: true,
             transactionHash: log.transactionHash
           });

@@ -13,7 +13,7 @@ export const getStatusText = (status: CampaignStatus): string => {
     case 1: return 'Stopped ⏸️';
     case 2: return 'Cancelled ❌';
     case 3: return 'Failed 😢';
-    case 4: return 'Successful 🎉';
+    case 4: return 'Successful 💎';
     default: return `Unknown (${status})`;
   }
 };

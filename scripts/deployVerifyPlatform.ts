@@ -25,7 +25,6 @@ async function main() {
     factory.waitForDeployment();
     const txFactory = factory.deploymentTransaction();
 
-
     //деплоим платформу через прокси    
     console.log("Platform DEPLOYING...");
     const platform_Fabric = await ethers.getContractFactory("Platform");        
@@ -44,8 +43,7 @@ async function main() {
     fs.appendFileSync(
         logPath,
         `[${new Date().toISOString()}] ${contractName} deployed at ${platformAddr} by ${deployer.address}\n`
-    );            
-    
+    );     
     
     //ждем подтверждений, чтобы верификация не отвалилась
     if(txFactory) {
@@ -54,8 +52,7 @@ async function main() {
 
     if(txPlatform) {
         await txPlatform.wait(5);
-    }
-    
+    }    
     
     // Верификация фабрики
     try {
@@ -85,8 +82,29 @@ async function main() {
         } else {
             console.error("Platform implementation:", e);
         }
-    }    
+    }
+    
+    // ---- запись адреса в .env ----
+    function updateEnv(envPath: string, key: string, value: string) {
+        let content = "";
+        if (fs.existsSync(envPath)) {
+            content = fs.readFileSync(envPath, "utf-8");
+            const regex = new RegExp(`^${key}=.*$`, "m");
+            if (regex.test(content)) {
+                content = content.replace(regex, `${key}=${value}`);
+            } else {
+                content += `\n${key}=${value}`;
+            }
+        } else {
+            content = `${key}=${value}`;
+        }
+        fs.writeFileSync(envPath, content, "utf-8");
+        console.log(`.env updated: ${key}=${value}`);
+    }
 
+    // путь до .env бэка
+    const backendEnvPath = path.join(__dirname, "../backend/.env");    
+    updateEnv(backendEnvPath, "PLATFORM_ADDRESS", platformAddr);    
     
 }
 
