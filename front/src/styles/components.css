@@ -400,7 +400,7 @@ body {
 
 .progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary-color), var(--accept-neon));
+  background: linear-gradient(90deg, var(--primary-color), var(--accent-neon));
   border-radius: 4px;
   transition: width 0.3s ease;
   box-shadow: 0 0 10px var(--primary-color);
@@ -1363,6 +1363,21 @@ textarea:disabled {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
+}
+
+.info-message {
+  padding: 10px;
+  background-color: rgba(0, 123, 255, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(0, 123, 255, 0.2);
+  text-align: center;
+  margin-top: 10px;
+}
+
+.info-message p {
+  margin: 0;
+  color: #a0a0b8;
+  font-size: 14px;
 }
 
 /* ===== LOYALTY SECTION ===== */

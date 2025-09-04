@@ -770,7 +770,7 @@ describe("Platform main functionality tests", function() {
 
             //4. Для пробы - еще раз (должно отвалиться)
             const mintTx2 = loyalty.connect(user0).safeMint(user0);
-            await expect(mintTx2).revertedWithCustomError(loyalty, "RepeatNFTRequest")
+            await expect(mintTx2).revertedWithCustomError(loyalty, "NotEligibilable")
                 .withArgs(user0, 1);
         });
 

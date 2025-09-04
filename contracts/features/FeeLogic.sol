@@ -3,7 +3,7 @@ pragma solidity ^0.8.30;
 
 import { PlatformStorageLib } from "../core/storage/PlatformStorageLib.sol";
 import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
-import { IFundVerseLoyaltyMinimal } from "../interfaces/IFundVerseLoyaltyMininal.sol";
+import { IFundVerseLoyaltyMinimal } from "../interfaces/IFundVerseLoyaltyMinimal.sol";
 
 /// @title Модуль рабрты с комиссиями платформы
 /// @notice содержит базовый функционал настройки и расчетов комисиий

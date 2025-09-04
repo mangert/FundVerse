@@ -26,6 +26,7 @@ front/src/contracts/addresses.*.json
 
 # Дополнительно
 front/src/contracts/abis/*.dbg.json
+backend/contracts-data/*.json
 
 # черновики, заметки и временные файлы
 data.txt

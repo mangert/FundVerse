@@ -157,13 +157,9 @@ export const InvestedCampaignCard = ({ investedCampaign, onUpdate }: InvestedCam
           )}
           
           {canContribute && (
-            <button 
-              className="btn btn-secondary"
-              onClick={handleContributeMore}
-              disabled={isLoading}
-            >
-              Contribute More
-            </button>
+            <div className="info-message">
+              <p>To contribute more, please visit the campaign details page</p>
+            </div>
           )}
         </div>
       )}

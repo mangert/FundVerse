@@ -10,7 +10,7 @@ import { ICampaign } from "../interfaces/ICampaign.sol"; //интерфейс к
 import {IFactoryCore} from "../interfaces/IFactoryCore.sol"; //интерфейс фабрики
 import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol"; //события и ошибки
 
-import { IFundVerseLoyaltyMinimal} from "../interfaces/IFundVerseLoyaltyMininal.sol"; //нужен для проверки прикрепления
+import { IFundVerseLoyaltyMinimal} from "../interfaces/IFundVerseLoyaltyMinimal.sol"; //нужен для проверки прикрепления
 
 import { Timelock } from "../features/Timelock.sol"; //функционал проверки таймлоков;
 import { FeeLogic } from "../features/FeeLogic.sol"; //функционал установки комиссий
