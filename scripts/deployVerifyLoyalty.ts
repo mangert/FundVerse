@@ -7,11 +7,11 @@ import { readJsonSafe, writeJsonPretty, deriveNetworkName } from "./utils";
 async function main() {
   const logPath = path.join(__dirname, "logs", "deploy-log.txt");
 
-  const platformAddr = ""; // ⚠️ сюда подставить адрес Platform
+  const platformAddr = "0xBd2FBB2958B6a1B53029bDFa7298F481AC902118"; // ⚠️ сюда подставить адрес Platform
   const [deployer] = await ethers.getSigners();
 
   console.log("Loyalty DEPLOYING...");
-  const loyalty_Factory = await ethers.getContractFactory("FundVerseLoyaltyv1");
+  const loyalty_Factory = await ethers.getContractFactory("FundVerseLoyaltyv1", deployer);
   const loyalty = await loyalty_Factory.deploy(deployer.address, platformAddr);
   await loyalty.waitForDeployment();
   const loyaltyAddr = await loyalty.getAddress();

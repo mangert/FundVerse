@@ -4,7 +4,7 @@ import { injected } from 'wagmi/connectors'
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 
 export const chains = [hardhat, sepolia] as const
-export const defaultChain = hardhat
+export const defaultChain = sepolia
 
 const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '';
 

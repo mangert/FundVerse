@@ -278,7 +278,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
   const isCancelled = summary.status === 2; // Status.Cancelled
   const canContribute = isLive && isConnected;
   const canClaimRefund = (isFailed || isCancelled) && userContribution > 0n;
-  const hasZeroBalance = userBalance === 0n;
+  const hasZeroBalance = userBalance === 0n;  
 
   // Форматируем большие числа для лучшего отображения
   const formatLargeNumber = (value: bigint, decimals = 4): string => {
@@ -435,7 +435,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
               )}
             </div>
           )}
-
+          
           {/* Блок возврата средств для Failed/Cancelled кампаний */}
           {canClaimRefund && (
             <div className="refund-section">
@@ -443,17 +443,12 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
               <p className="refund-amount">
                 You contributed: {formatLargeNumber(userContribution)} {displaySymbol}
               </p>
-              <button
-                type="button"
-                className="btn btn-primary"
-                // TODO: Implement claim refund functionality
-                onClick={() => {}}
-              >
-                Claim Refund
-              </button>
+              <div className="info-message">
+                <p>To claim your refund, please visit your <strong>Account page</strong> → <strong>Invested Campaigns</strong> tab</p>
+              </div>
             </div>
           )}
-
+          
           {/* Дополнительная информация */}
           {campaignMetaData.info && (
             <div className="additional-info">

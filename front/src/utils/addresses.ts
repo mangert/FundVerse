@@ -1,5 +1,6 @@
 import { useChainId } from 'wagmi';
 import addressesHardhat from '../contracts/addresses.hardhat.json';
+import addressesSepolia from '../contracts/addresses.sepolia.json';
 // позже добавить другие сети:
 // import addressesSepolia from './addresses.sepolia.json';
 
@@ -16,9 +17,8 @@ export const useContractAddresses = (): ContractAddresses => {
   switch (chainId) {
     case 31337: // Hardhat
       return addressesHardhat;
-    case 11155111: // Sepolia
-      // return addressesSepolia;
-      return addressesHardhat; // временно fallback
+    case 11155111: // Sepolia      
+      return addressesSepolia;
     default:
       // Fallback на hardhat для разработки
       console.warn(`Unknown chainId ${chainId}, using hardhat addresses`);
@@ -32,13 +32,12 @@ export const getContractAddresses = (chainId: number): ContractAddresses => {
     case 31337:
       return addressesHardhat;
     case 11155111:
-      // return addressesSepolia;
-      return addressesHardhat;
+      return addressesSepolia;      
     default:
       return addressesHardhat;
   }
 };
 
 // Экспортируем адреса по умолчанию для простых случаев
-export const PLATFORM_ADDRESS = addressesHardhat.platform as `0x${string}`;
-export const LOYALTY_NFT_ADDRESS = addressesHardhat.loyaltyNFT as `0x${string}`;
+export const PLATFORM_ADDRESS = addressesSepolia.platform as `0x${string}`;
+export const LOYALTY_NFT_ADDRESS = addressesSepolia.loyaltyNFT as `0x${string}`;

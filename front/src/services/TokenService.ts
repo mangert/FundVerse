@@ -14,7 +14,6 @@ export interface TokenInfo {
   removedAtBlock?: number;
 }
 
-// Простые интерфейсы для событий
 interface FVNewTokenAddedEvent extends Log {
   args: {
     token: string;
@@ -32,6 +31,12 @@ class TokenService {
   private tokens: Map<string, TokenInfo> = new Map();
   private publicClient: PublicClient | null = null;
   private currentChainId: number | null = null;
+  private lastProcessedBlock: bigint = 0n;
+  private pollingInterval: NodeJS.Timeout | null = null;
+  private readonly POLL_INTERVAL = 30000; // 30 секунд
+  private readonly MAX_BLOCK_RANGE = 100n; // Максимальный диапазон блоков за один опрос
+  private readonly PROVIDER_MAX_BLOCK_RANGE = 10n; // Ограничение Alchemy - 10 блоков за запрос
+  private readonly REQUEST_DELAY = 300; // Задержка между запросами в мс
 
   static getInstance(): TokenService {
     if (!TokenService.instance) {
@@ -49,14 +54,157 @@ class TokenService {
       return;
     }
 
+    console.log('Initializing TokenService for Alchemy (10 block limit)...');
+    
     // Загружаем базовые токены из конфига
     this.loadFromConfig();
     
-    // Загружаем актуальные события из блокчейна
-    await this.loadEventsFromBlockchain();
+    try {
+      // Получаем текущий блок
+      const currentBlock = await publicClient.getBlockNumber();
+      this.lastProcessedBlock = currentBlock;
+      console.log('Current block:', currentBlock.toString());
+      
+      // Загружаем актуальные события из блокчейна
+      await this.loadEventsFromBlockchain();
+      
+      // Запускаем polling вместо подписки на события
+      this.startPolling();
+      
+      console.log('TokenService initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize TokenService:', error);
+    }
+  }
+
+  private startPolling() {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+    }
+
+    this.pollingInterval = setInterval(() => {
+      this.pollNewEvents();
+    }, this.POLL_INTERVAL);
     
-    // Подписываемся на будущие события
-    await this.setupEventListeners();
+    console.log('Started polling for token events');
+  }
+
+  private async pollNewEvents() {
+    if (!this.publicClient) {
+      console.warn('Public client not available for polling');
+      return;
+    }
+
+    try {
+      const currentBlock = await this.publicClient.getBlockNumber();
+      
+      if (currentBlock <= this.lastProcessedBlock) {
+        console.log('No new blocks since last poll');
+        return;
+      }
+
+      // Ограничиваем диапазон блоков
+      let toBlock = currentBlock;
+      if (currentBlock - this.lastProcessedBlock > this.MAX_BLOCK_RANGE) {
+        toBlock = this.lastProcessedBlock + this.MAX_BLOCK_RANGE;
+        console.log(`Limiting block range to ${this.MAX_BLOCK_RANGE} blocks`);
+      }
+
+      console.log(`Polling token events from block ${this.lastProcessedBlock + 1n} to ${toBlock}`);
+
+      // Пагинация для провайдеров с ограничением
+      let fromBlock = this.lastProcessedBlock + 1n;
+      let allAddEvents: FVNewTokenAddedEvent[] = [];
+      let allRemoveEvents: FVTokenRemovedEvent[] = [];
+
+      while (fromBlock <= toBlock) {
+        const chunkToBlock = fromBlock + this.PROVIDER_MAX_BLOCK_RANGE - 1n > toBlock 
+          ? toBlock 
+          : fromBlock + this.PROVIDER_MAX_BLOCK_RANGE - 1n;
+
+        // Убедимся, что диапазон не превышает 10 блоков
+        const blockRange = chunkToBlock - fromBlock + 1n;
+        if (blockRange > 10n) {
+          console.error('Block range exceeds 10 blocks, adjusting...');
+          break;
+        }
+
+        console.log(`Fetching chunk: ${fromBlock} to ${chunkToBlock} (${blockRange} blocks)`);
+
+        try {
+          // Ищем события добавления токенов
+          const addEvents = await this.publicClient.getLogs({
+            address: PLATFORM_ADDRESS,
+            event: parseAbiItem('event FVNewTokenAdded(address token)'),
+            fromBlock: fromBlock,
+            toBlock: chunkToBlock
+          }) as FVNewTokenAddedEvent[];
+
+          // Ищем события удаления токенов
+          const removeEvents = await this.publicClient.getLogs({
+            address: PLATFORM_ADDRESS,
+            event: parseAbiItem('event FVTokenRemoved(address token)'),
+            fromBlock: fromBlock,
+            toBlock: chunkToBlock
+          }) as FVTokenRemovedEvent[];
+
+          allAddEvents = allAddEvents.concat(addEvents);
+          allRemoveEvents = allRemoveEvents.concat(removeEvents);
+
+          console.log(`Found ${addEvents.length} add events and ${removeEvents.length} remove events in chunk`);
+
+          // Добавляем задержку между запросами
+          await new Promise(resolve => setTimeout(resolve, this.REQUEST_DELAY));
+
+        } catch (error) {
+          console.error(`Error fetching blocks ${fromBlock}-${chunkToBlock}:`, error);
+          
+          // Обработка ошибки rate limiting
+          if (error instanceof Error && (error.message.includes('rate limit') || error.message.includes('429') || error.message.includes('10 block range'))) {
+            console.log('Rate limit or block range exceeded, waiting before next request...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+        }
+
+        fromBlock = chunkToBlock + 1n;
+      }
+
+      // Обрабатываем события добавления
+      for (const event of allAddEvents) {
+        const tokenAddress = event.args.token;
+        if (tokenAddress && !this.tokens.has(tokenAddress)) {
+          await this.handleTokenAdded(tokenAddress, Number(event.blockNumber));
+          console.log(`New token added: ${tokenAddress}`);
+        }
+      }
+
+      // Обрабатываем события удаления
+      for (const event of allRemoveEvents) {
+        const tokenAddress = event.args.token;
+        if (tokenAddress && this.tokens.has(tokenAddress)) {
+          this.handleTokenRemoved(tokenAddress, Number(event.blockNumber));
+          console.log(`Token removed: ${tokenAddress}`);
+        }
+      }
+
+      // Обновляем последний обработанный блок
+      this.lastProcessedBlock = toBlock;
+      console.log(`Finished processing events up to block ${toBlock}`);
+
+    } catch (error) {
+      console.error('Error polling token events:', error);
+      
+      // В случае ошибки пытаемся пропустить проблемный диапазон блоков
+      try {
+        if (this.publicClient) {
+          const currentBlock = await this.publicClient.getBlockNumber();
+          this.lastProcessedBlock = currentBlock;
+          console.log('Skipping problematic block range, moving to current block:', currentBlock.toString());
+        }
+      } catch (e) {
+        console.error('Failed to recover from error:', e);
+      }
+    }
   }
 
   private loadFromConfig() {
@@ -77,55 +225,108 @@ class TokenService {
       status: true
     });
 
+    console.log(`Added native token: ${config.native.symbol}`);
+
     // Добавляем токены из конфига
     config.tokens.forEach(token => {
       this.tokens.set(token.address, { ...token });
+      console.log(`Added token from config: ${token.symbol} (${token.address})`);
     });
   }
 
   private async loadEventsFromBlockchain() {
-    if (!this.publicClient || !this.currentChainId) return;
+    if (!this.publicClient || !this.currentChainId) {
+      console.warn('Public client or chain ID not available');
+      return;
+    }
 
     const config = BASE_TOKENS[this.currentChainId] as NetworkTokensConfig;
-    if (!config) return;
+    if (!config) {
+      console.warn(`No config found for chainId: ${this.currentChainId}`);
+      return;
+    }
 
     const fromBlock = BigInt(config.contractDeploymentBlock);
     const toBlock = await this.publicClient.getBlockNumber();
 
-    try {
-      // Загружаем события добавления токенов
-      const addEvents = await this.publicClient.getLogs({
-        address: PLATFORM_ADDRESS,
-        event: parseAbiItem('event FVNewTokenAdded(address token)'),
-        fromBlock,
-        toBlock
-      }) as FVNewTokenAddedEvent[];
+    console.log(`Loading historical events from block ${fromBlock} to ${toBlock}`);
+    console.log(`Contract address: ${PLATFORM_ADDRESS}`);
 
-      // Загружаем события удаления токенов
-      const removeEvents = await this.publicClient.getLogs({
-        address: PLATFORM_ADDRESS,
-        event: parseAbiItem('event FVTokenRemoved(address token)'),
-        fromBlock,
-        toBlock
-      }) as FVTokenRemovedEvent[];
+    // Пагинация для исторических событий
+    let currentFromBlock = fromBlock;
+    let allAddEvents: FVNewTokenAddedEvent[] = [];
+    let allRemoveEvents: FVTokenRemovedEvent[] = [];
 
-      // Обрабатываем события добавления
-      for (const event of addEvents) {
-        const tokenAddress = event.args.token;
-        if (tokenAddress && !this.tokens.has(tokenAddress)) {
-          await this.handleTokenAdded(tokenAddress, Number(event.blockNumber));
+    while (currentFromBlock <= toBlock) {
+      const chunkToBlock = currentFromBlock + this.PROVIDER_MAX_BLOCK_RANGE - 1n > toBlock 
+        ? toBlock 
+        : currentFromBlock + this.PROVIDER_MAX_BLOCK_RANGE - 1n;
+
+      // Убедимся, что диапазон не превышает 10 блоков
+      const blockRange = chunkToBlock - currentFromBlock + 1n;
+      if (blockRange > 10n) {
+        console.error('Block range exceeds 10 blocks, adjusting...');
+        break;
+      }
+
+      console.log(`Fetching historical chunk: ${currentFromBlock} to ${chunkToBlock} (${blockRange} blocks)`);
+
+      try {
+        // Загружаем события добавления токенов     
+        const addEvents = await this.publicClient.getLogs({
+          address: PLATFORM_ADDRESS,
+          event: parseAbiItem('event FVNewTokenAdded(address token)'),
+          fromBlock: currentFromBlock,
+          toBlock: chunkToBlock
+        }) as FVNewTokenAddedEvent[];
+
+        // Загружаем события удаления токенов
+        const removeEvents = await this.publicClient.getLogs({
+          address: PLATFORM_ADDRESS,
+          event: parseAbiItem('event FVTokenRemoved(address token)'),
+          fromBlock: currentFromBlock,
+          toBlock: chunkToBlock
+        }) as FVTokenRemovedEvent[];
+
+        allAddEvents = allAddEvents.concat(addEvents);
+        allRemoveEvents = allRemoveEvents.concat(removeEvents);
+
+        console.log(`Found ${addEvents.length} add events and ${removeEvents.length} remove events in historical chunk`);
+
+        // Добавляем задержку между запросами
+        await new Promise(resolve => setTimeout(resolve, this.REQUEST_DELAY));
+
+      } catch (error) {
+        console.error(`Error fetching historical blocks ${currentFromBlock}-${chunkToBlock}:`, error);
+        
+        // Обработка ошибки rate limiting
+        if (error instanceof Error && (error.message.includes('rate limit') || error.message.includes('429') || error.message.includes('10 block range'))) {
+          console.log('Rate limit or block range exceeded, waiting before next request...');
+          await new Promise(resolve => setTimeout(resolve, 2000));
         }
       }
 
-      // Обрабатываем события удаления
-      for (const event of removeEvents) {
-        const tokenAddress = event.args.token;
-        if (tokenAddress && this.tokens.has(tokenAddress)) {
-          this.handleTokenRemoved(tokenAddress, Number(event.blockNumber));
-        }
+      currentFromBlock = chunkToBlock + 1n;
+    }
+
+    console.log(`Total historical events: ${allAddEvents.length} add events, ${allRemoveEvents.length} remove events`);
+
+    // Обрабатываем события добавления
+    for (const event of allAddEvents) {
+      const tokenAddress = event.args.token;
+      console.log(`Processing historical add event for token: ${tokenAddress}`);
+      if (tokenAddress && !this.tokens.has(tokenAddress)) {
+        await this.handleTokenAdded(tokenAddress, Number(event.blockNumber));
       }
-    } catch (error) {
-      console.warn('Failed to load events from blockchain:', error);
+    }
+
+    // Обрабатываем события удаления
+    for (const event of allRemoveEvents) {
+      const tokenAddress = event.args.token;
+      console.log(`Processing historical remove event for token: ${tokenAddress}`);
+      if (tokenAddress && this.tokens.has(tokenAddress)) {
+        this.handleTokenRemoved(tokenAddress, Number(event.blockNumber));
+      }
     }
   }
 
@@ -139,6 +340,7 @@ class TokenService {
         status: true,
         addedAtBlock: blockNumber
       });
+      console.log(`Token added successfully: ${tokenAddress} (${tokenInfo.symbol})`);
     } catch (error) {
       console.warn(`Failed to fetch info for token ${tokenAddress}:`, error);
     }
@@ -149,6 +351,7 @@ class TokenService {
     if (token) {
       token.status = false;
       token.removedAtBlock = blockNumber;
+      console.log(`Token removed: ${tokenAddress}`);
     }
   }
 
@@ -220,44 +423,6 @@ class TokenService {
     }
   }
 
-  private async setupEventListeners() {
-    if (!this.publicClient) return;
-
-    try {
-      // Событие добавления токена
-      this.publicClient.watchContractEvent({
-        address: PLATFORM_ADDRESS,
-        abi: PlatformABI,
-        eventName: 'FVNewTokenAdded',
-        onLogs: (logs) => {
-          (logs as FVNewTokenAddedEvent[]).forEach(log => {
-            const tokenAddress = log.args.token;
-            if (tokenAddress) {
-              this.handleTokenAdded(tokenAddress, Number(log.blockNumber));
-            }
-          });
-        }
-      });
-
-      // Событие удаления токена
-      this.publicClient.watchContractEvent({
-        address: PLATFORM_ADDRESS,
-        abi: PlatformABI,
-        eventName: 'FVTokenRemoved',
-        onLogs: (logs) => {
-          (logs as FVTokenRemovedEvent[]).forEach(log => {
-            const tokenAddress = log.args.token;
-            if (tokenAddress) {
-              this.handleTokenRemoved(tokenAddress, Number(log.blockNumber));
-            }
-          });
-        }
-      });
-    } catch (error) {
-      console.warn('Failed to setup event listeners:', error);
-    }
-  }
-
   // Публичные методы для компонентов
   getTokenInfo(address: string): TokenInfo | undefined {
     return this.tokens.get(address);
@@ -273,6 +438,20 @@ class TokenService {
 
   getNativeToken(): TokenInfo {
     return this.tokens.get(zeroAddress)!;
+  }
+
+  // Метод для остановки polling
+  stopPolling() {
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
+      console.log('Token service polling stopped');
+    }
+  }
+
+  // Метод для принудительной проверки событий
+  forcePoll() {
+    this.pollNewEvents();
   }
 }
 

@@ -35,7 +35,7 @@ export const BASE_TOKENS: Record<number, NetworkTokensConfig> = {
   11155111: { //Sepolia
     native: { symbol: 'ETH', decimals: 18, name: 'Sepolia ETH' },
     tokens: [],
-    contractDeploymentBlock: 0
+    contractDeploymentBlock: 	9139180 //исправлять в случае нового деплоя
   },
   31337: { //hardhat
     native: { symbol: 'HETH', decimals: 18, name: 'Hardhat ETH' },

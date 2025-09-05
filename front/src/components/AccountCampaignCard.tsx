@@ -49,6 +49,8 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
       if (!publicClient || !isSuccessful || !address) return;
 
       try {
+        const currentBlock = await publicClient.getBlockNumber();
+        const _fromBlock = currentBlock - 10000n;
         // Ищем события вывода средств для этой кампании и этого создателя
         const withdrawalEvents = await publicClient.getLogs({
           address: campaignAddress as `0x${string}`,
@@ -60,7 +62,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
               { type: 'uint256', indexed: false, name: 'amount' }
             ]
           },
-          fromBlock: 0n,
+          fromBlock: _fromBlock,
           toBlock: 'latest'
         });
 
@@ -93,6 +95,8 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
 
       try {
         // Сначала проверяем событие возврата депозита
+        const currentBlock = await publicClient.getBlockNumber();
+        const _fromBlock = currentBlock - 10000n;
         const depositEvents = await publicClient.getLogs({
           address: PLATFORM_ADDRESS,
           event: {
@@ -104,7 +108,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
               { type: 'address', indexed: false, name: 'campaign' }
             ]
           },
-          fromBlock: 0n,
+          fromBlock: _fromBlock,
           toBlock: 'latest'
         });
 
