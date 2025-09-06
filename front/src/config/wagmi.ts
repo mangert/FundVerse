@@ -17,16 +17,3 @@ export const config = getDefaultConfig({
     [sepolia.id]: http(import.meta.env.VITE_ALCHEMY_API_KEY as string),
   },  
 });
-
-/*export const config = createConfig({
-  chains,
-  transports: {
-    [hardhat.id]: http('http://127.0.0.1:8545', {
-      // Добавляем таймауты для Hardhat
-      timeout: 5000,
-      retryCount: 2,
-    }),
-    [sepolia.id]: http(import.meta.env.VITE_ALCHEMY_API_KEY as string),
-  },
-  connectors: [injected()],
-})*/

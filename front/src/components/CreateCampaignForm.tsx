@@ -439,7 +439,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
                     {decimalsLoading ? (
                       <span className="decimals-info">Loading decimals...</span>
                     ) : (
-                      <span className="decimals-info">{tokenDecimals} decimals</span>
+                      <span className="decimals-info"> {tokenDecimals} decimals</span>
                     )}
                     <button 
                       type="button" 

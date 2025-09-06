@@ -72,6 +72,7 @@ platform.on(
 
     const campaign = new ethers.Contract(newCampaign, abi, provider);
     const summary = await campaign.getSummary();
+    const fee = await campaign.platformFee(); //добавила
     log(`ℹ️ Summary: ${JSON.stringify(summary)}`);
 
     const constructorArgs = [
@@ -80,7 +81,7 @@ platform.on(
       summary._goal,
       summary._deadline,
       summary._campaignMeta,
-      100,
+      fee, //изменила
       summary._token,
     ];
 

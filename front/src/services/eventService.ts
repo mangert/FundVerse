@@ -1,16 +1,19 @@
-import { PlatformABI } from '../utils/abi';
+// src/services/eventService.ts
+import { parseAbiItem } from 'viem';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
 
+const INDEXER_API_BASE = import.meta.env.VITE_INDEXER_API || ""; // e.g. "http://37.221.127.92:3001/api"
+
 let isPolling = false;
-let pollingInterval: NodeJS.Timeout | null = null;
+let pollingInterval: ReturnType<typeof setInterval> | null = null;
 let lastProcessedBlock = 0n;
 let notificationCallback: ((notification: any) => void) | null = null;
-const processedEvents = new Set<string>();
-const MAX_BLOCK_RANGE = 100n; // Максимальный диапазон блоков за один опрос
-const PROVIDER_MAX_BLOCK_RANGE = 10n; // Ограничение Alchemy - 10 блоков за запрос
-const POLL_INTERVAL = 30000; // 30 секунд между опросами
-const BLOCK_HISTORY_WINDOW = 2000n; // Окно истории блоков
-const REQUEST_DELAY = 300; // Задержка между запросами в мс
+const processedEvents = new Set<string>(); // будем хранить txHash и txHash-logIndex
+const MAX_BLOCK_RANGE = 100n; // максимальный диапазон (локально)
+const PROVIDER_MAX_BLOCK_RANGE = 10n; // Alchemy limit 10 blocks per request
+const POLL_INTERVAL = 30_000; // 30 сек
+const BLOCK_HISTORY_WINDOW = 2000n; // если indexer недоступен — стартуем отсюда
+const REQUEST_DELAY = 300; // ms
 
 // Инициализация сервиса
 export const initEventService = async (publicClient: any, callback: (notification: any) => void) => {
@@ -18,23 +21,54 @@ export const initEventService = async (publicClient: any, callback: (notificatio
 
   isPolling = true;
   notificationCallback = callback;
-  
-  try {
-    // Получаем текущий блок
-    const currentBlock = await publicClient.getBlockNumber();
-    
-    // Определяем начальный блок для опроса
-    lastProcessedBlock = currentBlock > BLOCK_HISTORY_WINDOW 
-      ? currentBlock - BLOCK_HISTORY_WINDOW
-      : 0n;
-    
-    console.log('Initializing event service for Alchemy (10 block limit)...');
-    console.log('Starting from block:', lastProcessedBlock.toString());
-    console.log('Current block:', currentBlock.toString());
 
-    // Запускаем опрос сразу и затем с интервалом
+  try {
+    console.log('Initializing event service...');
+
+    // 1) Попробуем получить статус/историю от indexer, если указан
+    if (INDEXER_API_BASE) {
+      try {
+        const statusRes = await fetch(`${INDEXER_API_BASE}/status`);
+        if (statusRes.ok) {
+          const statusJson = await statusRes.json();
+          if (statusJson?.events?.lastProcessedBlock) {
+            lastProcessedBlock = BigInt(statusJson.events.lastProcessedBlock);
+            console.log('Loaded lastProcessedBlock from indexer:', lastProcessedBlock.toString());
+          }
+        }
+
+        // Загрузим historical campaigns (чтобы пометить их как обработанные и не уведомлять)
+        const campaignsRes = await fetch(`${INDEXER_API_BASE}/campaigns`);
+        if (campaignsRes.ok) {
+          const campaigns = await campaignsRes.json();
+          if (Array.isArray(campaigns)) {
+            console.log(`Loaded ${campaigns.length} historical campaigns from indexer`);
+            for (const c of campaigns) {
+              // indexer сохраняет поле txHash; используем его для дедупликации
+              if (c?.txHash) {
+                processedEvents.add(c.txHash);
+              }
+              // если indexer хранит logIndex, можно добавить processedEvents.add(`${c.txHash}-${c.logIndex}`);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Indexer fetch failed — will fallback to local history scan:', err);
+      }
+    }
+
+    // 2) Если indexer не дал lastProcessedBlock, берём current - BLOCK_HISTORY_WINDOW
+    if (!lastProcessedBlock || lastProcessedBlock === 0n) {
+      const currentBlock = await publicClient.getBlockNumber();
+      lastProcessedBlock = currentBlock > BLOCK_HISTORY_WINDOW ? currentBlock - BLOCK_HISTORY_WINDOW : 0n;
+      console.log('No indexer info — starting from block:', lastProcessedBlock.toString());
+    }
+
+    // 3) Сразу делаем один цикл опроса, затем запускаем интервал
     await pollEvents(publicClient);
     pollingInterval = setInterval(() => pollEvents(publicClient), POLL_INTERVAL);
+
+    console.log('Event service initialized. Polling for new campaign events.');
 
   } catch (error) {
     console.error('Failed to initialize event service:', error);
@@ -42,49 +76,41 @@ export const initEventService = async (publicClient: any, callback: (notificatio
   }
 };
 
-// Функция для опроса новых событий
+// Основная функция опроса (ищет только новые события с lastProcessedBlock+1 до текущего)
 const pollEvents = async (publicClient: any) => {
   try {
     if (!publicClient || !notificationCallback) return;
 
-    // Получаем текущий блок
     const currentBlock = await publicClient.getBlockNumber();
-    
-    // Если нет новых блоков, выходим
+
     if (currentBlock <= lastProcessedBlock) {
-      console.log('No new blocks since last poll');
+      // нет новых блоков
       return;
     }
 
-    // Ограничиваем диапазон блоков для запроса
+    // ограничим общий диапазон (например, если долго не запускали)
     let toBlock = currentBlock;
     if (currentBlock - lastProcessedBlock > MAX_BLOCK_RANGE) {
       toBlock = lastProcessedBlock + MAX_BLOCK_RANGE;
-      console.log(`Limiting block range to ${MAX_BLOCK_RANGE} blocks (${lastProcessedBlock + 1n}-${toBlock})`);
+      console.log(`Limiting block range to ${MAX_BLOCK_RANGE} blocks (${lastProcessedBlock + 1n}..${toBlock})`);
     }
 
-    console.log(`Polling events from block ${lastProcessedBlock + 1n} to ${toBlock}`);
+    console.log(`Polling events from ${lastProcessedBlock + 1n} to ${toBlock}`);
 
-    // Пагинация для провайдеров с ограничением
     let fromBlock = lastProcessedBlock + 1n;
-    let allLogs: any[] = [];
+    const allLogs: any[] = [];
 
     while (fromBlock <= toBlock) {
-      const chunkToBlock = fromBlock + PROVIDER_MAX_BLOCK_RANGE - 1n > toBlock 
-        ? toBlock 
-        : fromBlock + PROVIDER_MAX_BLOCK_RANGE - 1n;
-
-      // Убедимся, что диапазон не превышает 10 блоков
+      const chunkToBlock = fromBlock + PROVIDER_MAX_BLOCK_RANGE - 1n > toBlock ? toBlock : fromBlock + PROVIDER_MAX_BLOCK_RANGE - 1n;
       const blockRange = chunkToBlock - fromBlock + 1n;
-      if (blockRange > 10n) {
-        console.error('Block range exceeds 10 blocks, adjusting...');
+      if (blockRange > PROVIDER_MAX_BLOCK_RANGE) {
+        console.warn('Chunk > PROVIDER_MAX_BLOCK_RANGE, skipping adjust (should not happen)');
         break;
       }
 
-      console.log(`Fetching chunk: ${fromBlock} to ${chunkToBlock} (${blockRange} blocks)`);
+      console.log(`Fetching chunk ${fromBlock}..${chunkToBlock} (${blockRange} blocks)`);
 
       try {
-        // Ищем события в новых блоках      
         const logs = await publicClient.getLogs({
           address: PLATFORM_ADDRESS,
           event: {
@@ -97,75 +123,77 @@ const pollEvents = async (publicClient: any) => {
               { type: 'uint256', name: 'goal' }
             ]
           },
-          fromBlock: fromBlock,
+          fromBlock,
           toBlock: chunkToBlock
         });
 
-        allLogs = allLogs.concat(logs);
-        console.log(`Found ${logs.length} events in chunk`);
-
-        // Добавляем задержку между запросами
-        await new Promise(resolve => setTimeout(resolve, REQUEST_DELAY));
-
-      } catch (error) {
-        console.error(`Error fetching blocks ${fromBlock}-${chunkToBlock}:`, error);
-        
-        // При ошибке пропускаем этот чанк и двигаемся дальше
-        if (error instanceof Error && (error.message.includes('rate limit') || error.message.includes('429') || error.message.includes('10 block range'))) {
-          console.log('Rate limit or block range exceeded, waiting before next request...');
-          await new Promise(resolve => setTimeout(resolve, 2000)); // Ждем 2 секунды при лимите
+        if (Array.isArray(logs) && logs.length) {
+          console.log(`Chunk has ${logs.length} logs`);
+          allLogs.push(...logs);
         }
+
+        // короткая пауза между запросами
+        await new Promise(r => setTimeout(r, REQUEST_DELAY));
+      } catch (err: any) {
+        console.error(`Error fetching logs ${fromBlock}-${chunkToBlock}:`, err?.message || err);
+        // при rate limit подождём и попробуем следующий chunk
+        await new Promise(r => setTimeout(r, 2000));
       }
 
       fromBlock = chunkToBlock + 1n;
     }
 
-    console.log(`Found ${allLogs.length} new events in blocks ${lastProcessedBlock + 1n}-${toBlock}`);
+    console.log(`Total new logs found: ${allLogs.length}`);
 
-    // Обрабатываем каждое найденное событие
+    // Обрабатываем новые логи — но не шлём нотификации для тех, что уже отмечены из indexer
     for (const log of allLogs) {
       try {
-        if (!log.transactionHash || !log.logIndex) continue;
+        if (!log.transactionHash) continue;
+        const txHash = log.transactionHash as string;
+        const logIndex = (log.logIndex !== undefined && log.logIndex !== null) ? String(log.logIndex) : '0';
+        const eventId = `${txHash}-${logIndex}`;
 
-        const eventId = `${log.transactionHash}-${log.logIndex}`;
-        
-        // Если событие уже обрабатывали - пропускаем
-        if (processedEvents.has(eventId)) {
+        // Если обработан txHash из indexer или конкретный лог — пропускаем
+        if (processedEvents.has(txHash) || processedEvents.has(eventId)) {
+          // пометим также конкретный eventId, чтобы дальнейшие проверки были надёжны
+          processedEvents.add(eventId);
           continue;
         }
 
+        // Отмечаем как обработанное (и по txHash и по eventId)
+        processedEvents.add(txHash);
         processedEvents.add(eventId);
-        
-        console.log('New campaign event:', eventId, log);
-        
+
+        console.log('New campaign event detected:', eventId, 'tx:', txHash);
+
+        // вызываем callback для уведомлений/обновлений UI
         notificationCallback({
           type: 'success',
           message: `💎 New campaign created!`,
           isGlobal: true,
-          transactionHash: log.transactionHash
+          transactionHash: txHash
         });
 
-      } catch (error) {
-        console.warn('Failed to process event:', error);
+      } catch (err) {
+        console.warn('Failed to process log entry:', err);
       }
     }
 
     // Обновляем последний обработанный блок
     lastProcessedBlock = toBlock;
-    console.log(`Finished processing events up to block ${toBlock}`);
+    console.log(`Finished processing up to block ${toBlock}`);
 
-  } catch (error) {
-    console.error('Error polling events:', error);
-    
-    // В случае ошибки, пытаемся пропустить проблемный диапазон блоков
-    if (publicClient) {
-      try {
+  } catch (err) {
+    console.error('Error in pollEvents:', err);
+    // в случае фатальной ошибки — сдвигаем lastProcessedBlock к текущему, чтобы не зацикливаться
+    try {
+      if (publicClient) {
         const currentBlock = await publicClient.getBlockNumber();
         lastProcessedBlock = currentBlock;
-        console.log('Skipping problematic block range, moving to current block:', currentBlock.toString());
-      } catch (e) {
-        console.error('Failed to recover from error:', e);
+        console.log('Recovered by moving lastProcessedBlock to current:', currentBlock.toString());
       }
+    } catch (e) {
+      console.error('Recovery failed:', e);
     }
   }
 };
@@ -177,10 +205,11 @@ export const stopEventService = () => {
     pollingInterval = null;
   }
   isPolling = false;
+  notificationCallback = null;
   console.log('Event service stopped');
 };
 
-// Очистка processed events
+// Очистка processed events (для переиндексации на клиенте)
 export const clearProcessedEvents = () => {
   processedEvents.clear();
   console.log('Cleared processed events');
