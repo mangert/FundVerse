@@ -2,9 +2,9 @@ import { ethers } from "ethers";
 import axios from "axios";
 import * as dotenv from "dotenv";
 import fs from "fs";
-import CampaignETH from "./contracts-data/CampaignNative.abi.json";
-import CampaignERC20 from "./contracts-data/CampaignToken.abi.json";
-import platformAbi from "./contracts-data/Platform.abi.json";
+import CampaignETH from "../contracts-data/CampaignNative.abi.json";
+import CampaignERC20 from "../contracts-data/CampaignToken.abi.json";
+import platformAbi from "../contracts-data/Platform.abi.json";
 import { getCompilerInput } from "./hardhat-reader";
 import { log } from "./logger";
 

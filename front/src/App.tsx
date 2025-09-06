@@ -18,7 +18,7 @@ const AppContent = () => {
   // Инициализируем сервис токенов
   useEffect(() => {
     if (publicClient) {
-      tokenService.init(publicClient);
+      tokenService.init();
     }
   }, [publicClient]);
   

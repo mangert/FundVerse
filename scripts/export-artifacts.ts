@@ -1,10 +1,10 @@
-//копируем артефакты для бекэнда
+//копируем артефакты для сервиса верификации
 import fs from "fs";
 import path from "path";
 import { artifacts } from "hardhat";
 
 async function main() {
-  const outDir = path.join(__dirname, "../backend/contracts-data");
+  const outDir = path.join(__dirname, "../backend/verifyService/contracts-data");
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
   }

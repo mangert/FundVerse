@@ -1,0 +1,29 @@
+{
+  "name": "verification-service",
+  "version": "1.0.0",
+  "description": "Smart contract verification service",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "ethers": "^6.8.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.0",
+    "typescript": "^5.2.0",
+    "ts-node-dev": "^2.0.0"
+  },
+  "keywords": [
+    "ethereum",
+    "smart-contracts",
+    "verification"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

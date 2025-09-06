@@ -1,3 +1,4 @@
+// backend/indexer/src/tokenIndexer.ts - обновленный
 import { ethers } from "ethers";
 import * as dotenv from "dotenv";
 import { saveState, loadState } from "./storage";
@@ -16,7 +17,17 @@ const platformIf = new ethers.Interface([
   "event FVTokenRemoved(address token)"
 ]);
 
-let tokens: Record<string, any> = {};
+interface TokenInfo {
+  address: string;
+  symbol: string;
+  decimals: number;
+  name: string;
+  status: boolean;
+  addedAtBlock?: number;
+  removedAtBlock?: number;
+}
+
+let tokens: Record<string, TokenInfo> = {};
 let lastProcessedBlock: bigint = START_BLOCK ?? 0n;
 let isRunning = false;
 
@@ -38,7 +49,11 @@ export async function initTokenIndexer() {
   await processRangeToLatest();
 
   setInterval(async () => {
-    try { await processRangeToLatest(); } catch (e) { console.error(e); }
+    try {
+      await processRangeToLatest();
+    } catch (e) {
+      console.error(e);
+    }
   }, POLL_INTERVAL);
 }
 
@@ -66,7 +81,7 @@ async function processRangeToLatest() {
         address: PLATFORM_ADDRESS,
         fromBlock: Number(from),
         toBlock: Number(to),
-        topics: [[addTopic, removeTopic]], // любое из событий
+        topics: [[addTopic, removeTopic]]
       });
 
       for (const log of logs) {
@@ -74,11 +89,47 @@ async function processRangeToLatest() {
         if (!parsed) continue;
 
         if (parsed.name === "FVNewTokenAdded") {
-          const token = parsed.args[0] as string;
-          tokens[token.toLowerCase()] = { address: token, addedAtBlock: log.blockNumber };
-          console.log("Token added:", token);
+          const token = parsed.args.token as string;
+          try {
+            const erc20 = new ethers.Contract(
+              token,
+              [
+                "function symbol() view returns (string)",
+                "function decimals() view returns (uint8)",
+                "function name() view returns (string)"
+              ],
+              provider
+            );
+
+            const [symbol, decimals, name] = await Promise.all([
+              erc20.symbol().catch(() => "UNKNOWN"),
+              erc20.decimals().catch(() => 18),
+              erc20.name().catch(() => "Unknown Token")
+            ]);
+
+            tokens[token.toLowerCase()] = {
+              address: token,
+              symbol,
+              decimals: Number(decimals),
+              name,
+              status: true,
+              addedAtBlock: log.blockNumber
+            };
+
+            console.log(`Token added: ${symbol} (${token})`);
+          } catch (e) {
+            console.error("Failed to fetch token info for", token, e);
+            tokens[token.toLowerCase()] = {
+              address: token,
+              symbol: "UNKNOWN",
+              decimals: 18,
+              name: "Unknown",
+              status: true,
+              addedAtBlock: log.blockNumber
+            };
+          }
         } else if (parsed.name === "FVTokenRemoved") {
-          const token = parsed.args[0] as string;
+          const token = parsed.args.token as string;
           if (tokens[token.toLowerCase()]) {
             tokens[token.toLowerCase()].removedAtBlock = log.blockNumber;
             tokens[token.toLowerCase()].status = false;
@@ -93,7 +144,12 @@ async function processRangeToLatest() {
 
     from = to + 1n;
     lastProcessedBlock = to;
-    saveState({ tokens: { lastProcessedBlock: lastProcessedBlock.toString(), tokens } });
+    saveState({
+      tokens: {
+        lastProcessedBlock: lastProcessedBlock.toString(),
+        tokens
+      }
+    });
   }
 }
 
