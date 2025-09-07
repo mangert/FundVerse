@@ -1,7 +1,8 @@
+//обновленная версия
 import { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { useCampaign } from '../hooks/useCampaign';
-import { formatEther, parseEther, zeroAddress } from 'viem';
+import { formatUnits, parseUnits, zeroAddress } from 'viem'; // Заменяем formatEther, parseEther на formatUnits, parseUnits
 import { tokenService } from '../services/TokenService';
 import { errorService } from '../services/ErrorService';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -28,6 +29,11 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
   const [userBalance, setUserBalance] = useState<bigint>(0n);
   const [tokenAllowance, setTokenAllowance] = useState<bigint>(0n);
   const [copiedAddress, setCopiedAddress] = useState(false);
+
+  // Получаем информацию о токене
+  const tokenInfo = summary ? tokenService.getTokenInfo(summary.token) : null;
+  const displaySymbol = tokenInfo?.symbol || 'ETH';
+  const decimals = tokenInfo?.decimals || 18; // Получаем decimals токена или используем 18 по умолчанию
 
   // Загрузка дополнительных данных
   useEffect(() => {
@@ -101,7 +107,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
   const handleContribute = async () => {
     if (!isConnected || !userAddress || !walletClient || !summary) return;
     
-    const amount = parseEther(contributionAmount);
+    const amount = parseUnits(contributionAmount, decimals); // Используем parseUnits с правильными decimals
     if (amount <= 0n) {
       addNotification({
         type: 'error',
@@ -185,7 +191,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
       // Показываем уведомление об успехе
       addNotification({
         type: 'success',
-        message: `Successfully contributed ${contributionAmount} ${tokenService.getTokenInfo(summary.token)?.symbol || 'ETH'}`,
+        message: `Successfully contributed ${contributionAmount} ${displaySymbol}`,
         isGlobal: false
       });
       
@@ -215,13 +221,13 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
     if (!summary) return;
     
     // Берем минимум из остатка до цели и баланса пользователя
-    const remainingGoal = Number(summary.goal) - Number(summary.raised);
-    const maxFromGoal = remainingGoal > 0 ? remainingGoal : 0;
-    const maxFromBalance = Number(userBalance);
+    const remainingGoal = summary.goal - summary.raised;
+    const maxFromGoal = remainingGoal > 0n ? remainingGoal : 0n;
+    const maxFromBalance = userBalance;
     
-    const maxAmount = Math.min(maxFromGoal, maxFromBalance);
+    const maxAmount = maxFromGoal < maxFromBalance ? maxFromGoal : maxFromBalance;
     
-    if (maxAmount <= 0) {
+    if (maxAmount <= 0n) {
       addNotification({
         type: 'warning',
         message: 'Not enough funds to contribute',
@@ -230,7 +236,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
       return;
     }
     
-    setContributionAmount(formatEther(BigInt(maxAmount)));
+    setContributionAmount(formatUnits(maxAmount, decimals)); // Используем formatUnits с правильными decimals
   };
 
   const copyAddressToClipboard = () => {
@@ -243,6 +249,15 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
       message: 'Campaign address copied to clipboard',
       isGlobal: false
     });
+  };
+
+  // Функция для форматирования больших чисел с учетом decimals
+  const formatTokenAmount = (value: bigint, maxDecimals: number = 4): string => {
+    const amount = Number(formatUnits(value, decimals));
+    if (amount >= 1000) {
+      return amount.toLocaleString(undefined, { maximumFractionDigits: maxDecimals });
+    }
+    return amount.toFixed(maxDecimals);
   };
 
   if (isLoading || !summary) {
@@ -263,8 +278,6 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
     );
   }
 
-  const tokenInfo = tokenService.getTokenInfo(summary.token);
-  const displaySymbol = tokenInfo?.symbol || 'ETH';
   const statusText = getStatusText(summary.status as CampaignStatus);
   const statusClass = getStatusClass(summary.status as CampaignStatus);
   const campaignName = getCampaignName(summary.campaignMeta);
@@ -279,15 +292,6 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
   const canContribute = isLive && isConnected;
   const canClaimRefund = (isFailed || isCancelled) && userContribution > 0n;
   const hasZeroBalance = userBalance === 0n;  
-
-  // Форматируем большие числа для лучшего отображения
-  const formatLargeNumber = (value: bigint, decimals = 4): string => {
-    const num = Number(formatEther(value));
-    if (num >= 1000) {
-      return num.toLocaleString(undefined, { maximumFractionDigits: decimals });
-    }
-    return num.toFixed(decimals);
-  };
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -350,13 +354,13 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
               <div className="financial-item">
                 <div className="financial-label">Funding Goal</div>
                 <div className="financial-value large">
-                  {formatLargeNumber(summary.goal)} {displaySymbol}
+                  {formatTokenAmount(summary.goal)} {displaySymbol}
                 </div>
               </div>
               <div className="financial-item">
                 <div className="financial-label">Raised</div>
                 <div className="financial-value large">
-                  {formatLargeNumber(summary.raised)} {displaySymbol}
+                  {formatTokenAmount(summary.raised)} {displaySymbol}
                 </div>
               </div>
               <div className="financial-item">
@@ -375,7 +379,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
               </div>
               <div className="progress-labels">
                 <span>0 {displaySymbol}</span>
-                <span>{formatLargeNumber(summary.goal)} {displaySymbol}</span>
+                <span>{formatTokenAmount(summary.goal)} {displaySymbol}</span>
               </div>
             </div>
           </div>
@@ -386,7 +390,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
               <div className="contribution-header">
                 <h3>Make a Contribution</h3>
                 <div className="balance-display">
-                  Balance: {formatLargeNumber(userBalance)} {displaySymbol}
+                  Balance: {formatTokenAmount(userBalance)} {displaySymbol}
                 </div>
               </div>
               
@@ -428,7 +432,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
                   </div>
                   {summary.token !== zeroAddress && tokenAllowance > 0n && (
                     <div className="allowance-info compact">
-                      Allowance: {formatLargeNumber(tokenAllowance)} {displaySymbol}
+                      Allowance: {formatTokenAmount(tokenAllowance)} {displaySymbol}
                     </div>
                   )}
                 </div>
@@ -441,7 +445,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
             <div className="refund-section">
               <h3>Your Contribution</h3>
               <p className="refund-amount">
-                You contributed: {formatLargeNumber(userContribution)} {displaySymbol}
+                You contributed: {formatTokenAmount(userContribution)} {displaySymbol}
               </p>
               <div className="info-message">
                 <p>To claim your refund, please visit your <strong>Account page</strong> → <strong>Invested Campaigns</strong> tab</p>

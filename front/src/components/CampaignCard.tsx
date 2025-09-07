@@ -1,6 +1,7 @@
+//обновленная
 import { useState } from 'react';
 import { useCampaign } from '../hooks/useCampaign';
-import { formatEther } from 'viem';
+import { formatEther, formatUnits } from 'viem';
 import { tokenService } from '../services/TokenService';
 import { getStatusText, getStatusClass, type CampaignStatus } from '../types/Campaign';
 import { getCampaignName } from '../utils/campaignMeta';
@@ -33,6 +34,7 @@ export const CampaignCard = ({ address, onUpdate }: CampaignCardProps) => {
 
   const tokenInfo = tokenService.getTokenInfo(summary.token);
   const displaySymbol = tokenInfo?.symbol || 'ETH';
+  const decimals = tokenInfo?.decimals || 18;
   const statusText = getStatusText(summary.status as CampaignStatus);
   const statusClass = getStatusClass(summary.status as CampaignStatus);
   const campaignName = getCampaignName(summary.campaignMeta);
@@ -56,8 +58,8 @@ export const CampaignCard = ({ address, onUpdate }: CampaignCardProps) => {
         </div>      
         
         <div className="campaign-stats">
-          <div><strong>Raised:</strong> {formatEther(summary.raised)} {displaySymbol}</div>
-          <div><strong>Goal:</strong> {formatEther(summary.goal)} {displaySymbol}</div>
+          <div><strong>Raised:</strong> {formatUnits(summary.raised, decimals)} {displaySymbol}</div>
+          <div><strong>Goal:</strong> {formatUnits(summary.goal, decimals)} {displaySymbol}</div>          
           <div><strong>Progress:</strong> {progress.toFixed(1)}%</div>
           <div><strong>Time left:</strong> {daysLeft} days</div>
         </div>

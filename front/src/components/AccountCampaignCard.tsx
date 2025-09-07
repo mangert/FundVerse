@@ -1,5 +1,6 @@
+//обновленная версия
 import { useState, useEffect } from 'react';
-import { formatEther } from 'viem';
+import { formatUnits } from 'viem'; // Заменяем formatEther на formatUnits
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { tokenService } from '../services/TokenService';
 import { getStatusText, getStatusClass, type CampaignStatus } from '../types/Campaign';
@@ -30,9 +31,19 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
 
   const tokenInfo = tokenService.getTokenInfo(campaign.token);
   const displaySymbol = tokenInfo?.symbol || 'ETH';
+  const decimals = tokenInfo?.decimals || 18; // Получаем decimals токена кампании
   const statusText = getStatusText(campaign.status as CampaignStatus);
   const statusClass = getStatusClass(campaign.status as CampaignStatus);
   const campaignName = getCampaignName(campaign.campaignMeta);
+
+  // Функция для форматирования суммы с учетом decimals
+  const formatTokenAmount = (value: bigint, maxDecimals: number = 4): string => {
+    const amount = Number(formatUnits(value, decimals));
+    if (amount >= 1000) {
+      return amount.toLocaleString(undefined, { maximumFractionDigits: maxDecimals });
+    }
+    return amount.toFixed(maxDecimals);
+  };
 
   const progress = Number(campaign.raised) / Number(campaign.goal) * 100;
   const daysLeft = Math.max(0, Math.ceil((campaign.deadline * 1000 - Date.now()) / (1000 * 60 * 60 * 24)));
@@ -418,13 +429,13 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
         <div>ID: #{campaign.id.toString()}</div>
         <div>Address: {campaignAddress.slice(0, 8)}...{campaignAddress.slice(-6)}</div>
         <div>Currency: {displaySymbol}</div>
-        <div>Goal: {formatEther(campaign.goal)} {displaySymbol}</div>
-        <div>Raised: {formatEther(campaign.raised)} {displaySymbol}</div>
+        <div>Goal: {formatTokenAmount(campaign.goal)} {displaySymbol}</div>
+        <div>Raised: {formatTokenAmount(campaign.raised)} {displaySymbol}</div>
         <div>Progress: {progress.toFixed(1)}%</div>
         <div>Time left: {daysLeft} days</div>
         <div>Deadline: {new Date(campaign.deadline * 1000).toLocaleDateString()}</div>
         {depositAmount > 0n && (
-          <div>Deposit: {formatEther(depositAmount)} ETH</div>
+          <div>Deposit: {formatUnits(depositAmount, 18)} ETH</div> // Депозит всегда в ETH (18 decimals)
         )}
       </div>
 
@@ -471,10 +482,10 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
             className="btn btn-warning"
             onClick={handleReturnDeposit}
           >
-            Return Deposit ({formatEther(depositAmount)} ETH)
+            Return Deposit ({formatUnits(depositAmount, 18)} ETH) {/* Депозит всегда в ETH */}
           </button>
           <p className="deposit-info">
-            You can now return your deposit of {formatEther(depositAmount)} ETH.
+            You can now return your deposit of {formatUnits(depositAmount, 18)} ETH.
           </p>
         </div>
       ) : isFundsWithdrawn || isDepositReturned ? (

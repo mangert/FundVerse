@@ -1,3 +1,4 @@
+//обновленная версия
 import { ethers } from "ethers";
 import axios from "axios";
 import * as dotenv from "dotenv";
@@ -18,6 +19,9 @@ const COMPILER_VERSION = "v0.8.30+commit.73712a01";
 // Подключение к провайдеру
 const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
 const platform = new ethers.Contract(PLATFORM_ADDRESS, platformAbi, provider);
+
+// Функция задержки
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Функция верификации
 async function verifyContract(
@@ -72,7 +76,7 @@ platform.on(
 
     const campaign = new ethers.Contract(newCampaign, abi, provider);
     const summary = await campaign.getSummary();
-    const fee = await campaign.platformFee(); //добавила
+    const fee = await campaign.platformFee();
     log(`ℹ️ Summary: ${JSON.stringify(summary)}`);
 
     const constructorArgs = [
@@ -81,11 +85,15 @@ platform.on(
       summary._goal,
       summary._deadline,
       summary._campaignMeta,
-      fee, //изменила
+      fee,
       summary._token,
     ];
 
     const inputJson = getCompilerInput(contractName);
+
+    // Добавляем задержку в 60 секунд перед верификацией
+    log(`⏳ Ожидаем 60 секунд перед верификацией...`);
+    await delay(60000);
 
     await verifyContract(newCampaign, contractName, inputJson, constructorArgs);
   }
