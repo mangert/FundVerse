@@ -1,3 +1,4 @@
+//в разработке
 import { ethers } from "ethers";
 import axios from "axios";
 import * as dotenv from "dotenv";
@@ -45,61 +46,113 @@ function encodeConstructorArgs(types: string[], values: any[]): string {
   );
 }
 
-// Функция верификации
-async function verifyContract(
+// Проверяем, доступен ли контракт на Etherscan
+async function isContractVerifiedOnEtherscan(address: string): Promise<boolean> {
+  try {
+    const response = await axios.get("https://api.etherscan.io/api", {
+      params: {
+        apikey: ETHERSCAN_API_KEY,
+        module: "contract",
+        action: "getsourcecode",
+        address: address,
+      },
+      timeout: 10000,
+    });
+    
+    return response.data.status === "1" && response.data.result[0].SourceCode !== "";
+  } catch (error : any) {
+    log(`❌ Ошибка при проверке статуса верификации: ${error.message}`);
+    return false;
+  }
+}
+
+// Функция верификации с повторными попытками
+async function verifyContractWithRetry(
   address: string,
   contractName: string,
   inputJson: any,
   constructorArgs: any[],
-  abi: any[]
+  abi: any[],
+  maxAttempts = 5,
+  initialDelay = 300000 // 5 минут
 ) {
-  try {
-    log(`📡 Верификация контракта: ${address} (${contractName})`);
+  let attempt = 1;
+  let delayMs = initialDelay;
 
-    const constructorTypes = getConstructorTypes(abi);
-    const encodedArgs = encodeConstructorArgs(constructorTypes, constructorArgs);
+  while (attempt <= maxAttempts) {
+    try {
+      log(`⏳ Попытка ${attempt}/${maxAttempts}. Ожидаем ${delayMs/1000} секунд...`);
+      await delay(delayMs);
 
-    const payload = {
-      apikey: ETHERSCAN_API_KEY,
-      module: "contract",
-      action: "verifysourcecode",
-      contractaddress: address,
-      sourceCode: safeStringify(inputJson),
-      codeformat: "solidity-standard-json-input",
-      contractname: contractName,
-      compilerversion: COMPILER_VERSION,
-      optimizationUsed: 1,
-      runs: 200,
-      constructorArguements: encodedArgs.replace(/^0x/, ""),
-    };
+      // Проверяем, доступен ли контракт на Etherscan
+      const isVerified = await isContractVerifiedOnEtherscan(address);
+      if (isVerified) {
+        log(`✅ Контракт уже верифицирован на Etherscan`);
+        return;
+      }
 
-    // Используем FormData вместо query-параметров для избежания ошибки 414
-    const formData = new URLSearchParams();
-    for (const [key, value] of Object.entries(payload)) {
-      formData.append(key, value as string);
+      log(`📡 Пытаемся верифицировать контракт: ${address} (${contractName})`);
+
+      const constructorTypes = getConstructorTypes(abi);
+      const encodedArgs = encodeConstructorArgs(constructorTypes, constructorArgs);
+
+      // Форматируем имя контракта для Etherscan (filename.sol:contractname)
+      const etherscanContractName = `${contractName}.sol:${contractName}`;
+
+      const payload = {
+        apikey: ETHERSCAN_API_KEY,
+        module: "contract",
+        action: "verifysourcecode",
+        contractaddress: address,
+        sourceCode: safeStringify(inputJson),
+        codeformat: "solidity-standard-json-input",
+        contractname: etherscanContractName,
+        compilerversion: COMPILER_VERSION,
+        optimizationUsed: 1,
+        runs: 200,
+        constructorArguements: encodedArgs.replace(/^0x/, ""),
+      };
+
+      // Используем FormData вместо query-параметров
+      const formData = new URLSearchParams();
+      for (const [key, value] of Object.entries(payload)) {
+        formData.append(key, value as string);
+      }
+
+      const response = await axios.post("https://api.etherscan.io/api", formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        timeout: 30000,
+      });
+
+      log(`✅ Ответ от Etherscan: ${safeStringify(response.data)}`);
+      
+      if (response.data.status === "1") {
+        log(`✅ Верификация отправлена успешно. GUID: ${response.data.result}`);
+        return;
+      } else {
+        log(`❌ Etherscan вернул ошибку: ${response.data.result}`);
+        
+        // Если это ошибка "Contract source code already verified", выходим
+        if (response.data.result.includes("already verified")) {
+          log(`✅ Контракт уже верифицирован`);
+          return;
+        }
+      }
+    } catch (err: any) {
+      log(`❌ Ошибка верификации ${address} (попытка ${attempt}): ${err.message}`);
+      if (err.response) {
+        log(`❌ Детали ошибки: ${JSON.stringify(err.response.data)}`);
+      }
     }
-
-    const response = await axios.post("https://api.etherscan.io/api", formData, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      timeout: 30000, // Увеличиваем таймаут
-    });
-
-    log(`✅ Ответ от Etherscan: ${safeStringify(response.data)}`);
     
-    // Проверяем статус ответа от Etherscan
-    if (response.data.status === "0") {
-      log(`❌ Etherscan вернул ошибку: ${response.data.result}`);
-    } else {
-      log(`✅ Верификация отправлена успешно. GUID: ${response.data.result}`);
-    }
-  } catch (err: any) {
-    log(`❌ Ошибка верификации ${address}: ${err.message}`);
-    if (err.response) {
-      log(`❌ Детали ошибки: ${JSON.stringify(err.response.data)}`);
-    }
+    // Увеличиваем задержку для следующей попытки (экспоненциальная backoff-стратегия)
+    delayMs *= 2;
+    attempt++;
   }
+  
+  log(`❌ Все попытки верификации не удались для контракта ${address}`);
 }
 
 // Обработчик события
@@ -147,11 +200,8 @@ platform.on(
 
     const inputJson = getCompilerInput(contractName);
 
-    // Добавляем задержку в 60 секунд перед верификацией
-    log(`⏳ Ожидаем 60 секунд перед верификацией...`);
-    await delay(60000);
-
-    await verifyContract(newCampaign, contractName, inputJson, constructorArgs, abi);
+    // Запускаем верификацию с повторными попытками
+    await verifyContractWithRetry(newCampaign, contractName, inputJson, constructorArgs, abi);
   }
 );
 

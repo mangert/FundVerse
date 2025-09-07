@@ -28,6 +28,9 @@ front/src/contracts/addresses.*.json
 front/src/contracts/abis/*.dbg.json
 backend/contracts-data/*.json
 
+# логи
+scripts/logs
+deploy-log.txt
 # черновики, заметки и временные файлы
 data.txt
 /contracts/examples
