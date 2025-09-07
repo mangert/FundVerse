@@ -1,6 +1,5 @@
-//обновленная версия
 import { useState, useEffect } from 'react';
-import { formatUnits } from 'viem'; // Заменяем formatEther на formatUnits
+import { formatUnits } from 'viem';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { tokenService } from '../services/TokenService';
 import { getStatusText, getStatusClass, type CampaignStatus } from '../types/Campaign';
@@ -18,7 +17,7 @@ interface AccountCampaignCardProps {
 }
 
 export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: AccountCampaignCardProps) => {
-  const { address } = useAccount();
+  const { address: userAddress } = useAccount();
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { addNotification } = useNotifications();
@@ -28,10 +27,11 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   const [isDepositReturned, setIsDepositReturned] = useState(false);
   const [depositAmount, setDepositAmount] = useState<bigint>(0n);
   const [isCheckingDeposit, setIsCheckingDeposit] = useState(true);
+  const [debugInfo, setDebugInfo] = useState<string>('');
 
   const tokenInfo = tokenService.getTokenInfo(campaign.token);
   const displaySymbol = tokenInfo?.symbol || 'ETH';
-  const decimals = tokenInfo?.decimals || 18; // Получаем decimals токена кампании
+  const decimals = tokenInfo?.decimals || 18;
   const statusText = getStatusText(campaign.status as CampaignStatus);
   const statusClass = getStatusClass(campaign.status as CampaignStatus);
   const campaignName = getCampaignName(campaign.campaignMeta);
@@ -57,7 +57,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   // Проверяем, были ли уже выведены средства через события
   useEffect(() => {
     const checkFundsWithdrawal = async () => {
-      if (!publicClient || !isSuccessful || !address) return;
+      if (!publicClient || !isSuccessful || !userAddress) return;
 
       try {
         const currentBlock = await publicClient.getBlockNumber();
@@ -79,7 +79,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
 
         // Проверяем, есть ли события для текущего создателя
         const hasWithdrawn = withdrawalEvents.some(event => 
-          event.args.recipient?.toLowerCase() === address.toLowerCase()
+          event.args.recipient?.toLowerCase() === userAddress.toLowerCase()
         );
 
         setIsFundsWithdrawn(hasWithdrawn);
@@ -87,55 +87,38 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
         console.error('Error checking funds withdrawal events:', error);
         
         // Fallback: проверяем через локальное хранилище
-        const localStorageKey = `withdrawn-${campaignAddress}-${address}`;
+        const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
         const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
         setIsFundsWithdrawn(locallyWithdrawn);
       }
     };
 
     checkFundsWithdrawal();
-  }, [publicClient, campaignAddress, isSuccessful, address]);
+  }, [publicClient, campaignAddress, isSuccessful, userAddress]);
 
   // Проверяем статус депозита
   useEffect(() => {
     const checkDepositStatus = async () => {
-      if (!publicClient || !address || !isFinished) {
+      if (!publicClient || !userAddress) {
         setIsCheckingDeposit(false);
         return;
       }
 
       try {
-        // Сначала проверяем событие возврата депозита
-        const currentBlock = await publicClient.getBlockNumber();
-        const _fromBlock = currentBlock - 10000n;
-        const depositEvents = await publicClient.getLogs({
-          address: PLATFORM_ADDRESS,
-          event: {
-            type: 'event',
-            name: 'FVDepositReturned',
-            inputs: [
-              { type: 'address', indexed: true, name: 'founder' },
-              { type: 'uint256', indexed: false, name: 'amount' },
-              { type: 'address', indexed: false, name: 'campaign' }
-            ]
-          },
-          fromBlock: _fromBlock,
-          toBlock: 'latest'
-        });
-
-        const hasDepositReturned = depositEvents.some(event => 
-          event.args.founder?.toLowerCase() === address.toLowerCase() &&
-          event.args.campaign?.toLowerCase() === campaignAddress.toLowerCase()
+        // Добавим отладочную информацию о вызове
+        setDebugInfo(`Calling getCampaignDeposit for ${campaignAddress} on platform ${PLATFORM_ADDRESS}`);
+        
+        // Проверим, что ABI содержит нужную функцию
+        const hasDepositFunction = PlatformABI.some(
+          (item: any) => item.type === 'function' && item.name === 'getCampaignDeposit'
         );
-
-        if (hasDepositReturned) {
-          setIsDepositReturned(true);
-          setDepositAmount(0n);
-          setIsCheckingDeposit(false);
+        
+        if (!hasDepositFunction) {
+          setDebugInfo('ERROR: getCampaignDeposit function not found in ABI');
           return;
         }
-
-        // Если событие не найдено, проверяем текущий депозит через геттер
+        
+        // Проверяем текущий депозит через геттер
         const deposit = await publicClient.readContract({
           address: PLATFORM_ADDRESS,
           abi: PlatformABI,
@@ -144,15 +127,68 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
         }) as bigint;
 
         setDepositAmount(deposit);
+        setDebugInfo(`Deposit result: ${deposit.toString()}`);
         
-        // Если депозит нулевой, считаем его возвращенным
+        // Если депозит нулевой, проверяем события возврата
         if (deposit === 0n) {
-          setIsDepositReturned(true);
+          setDebugInfo('Checking deposit return events...');
+          
+          const currentBlock = await publicClient.getBlockNumber();
+          const _fromBlock = currentBlock - 10000n;
+          const depositEvents = await publicClient.getLogs({
+            address: PLATFORM_ADDRESS,
+            event: {
+              type: 'event',
+              name: 'FVDepositReturned',
+              inputs: [
+                { type: 'address', indexed: true, name: 'founder' },
+                { type: 'uint256', indexed: false, name: 'amount' },
+                { type: 'address', indexed: false, name: 'campaign' }
+              ]
+            },
+            fromBlock: _fromBlock,
+            toBlock: 'latest'
+          });
+
+          const hasDepositReturned = depositEvents.some(event => 
+            event.args.founder?.toLowerCase() === userAddress.toLowerCase() &&
+            event.args.campaign?.toLowerCase() === campaignAddress.toLowerCase()
+          );
+
+          if (hasDepositReturned) {
+            setIsDepositReturned(true);
+            setDebugInfo('Deposit returned (from events)');
+          } else {
+            setDebugInfo('Deposit is 0 but no return events found');
+          }
+        } else {
+          setDebugInfo(`Deposit available: ${formatUnits(deposit, 18)} ETH`);
         }
       } catch (error) {
         console.error('Error checking deposit status:', error);
+        
+        // Безопасная обработка ошибки
+        let errorMessage = 'Unknown error occurred';
+        
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        } else if (error && typeof error === 'object') {
+          // Пытаемся извлечь сообщение из объекта ошибки
+          if ('message' in error) {
+            errorMessage = String(error.message);
+          } else if ('reason' in error) {
+            errorMessage = String(error.reason);
+          } else {
+            errorMessage = JSON.stringify(error);
+          }
+        }
+        
+        setDebugInfo(`Error: ${errorMessage}`);
+        
         // Fallback: проверяем через локальное хранилище
-        const localStorageKey = `deposit-returned-${campaignAddress}-${address}`;
+        const localStorageKey = `deposit-returned-${campaignAddress}-${userAddress}`;
         const locallyReturned = localStorage.getItem(localStorageKey) === 'true';
         setIsDepositReturned(locallyReturned);
       } finally {
@@ -161,7 +197,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
     };
 
     checkDepositStatus();
-  }, [publicClient, campaignAddress, address, isFinished]);
+  }, [publicClient, campaignAddress, userAddress]);
 
   // Определяем доступные действия в зависимости от статуса кампании
   const getAvailableActions = () => {
@@ -192,7 +228,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   };
 
   const handleStatusChange = async (newStatus: CampaignStatus, actionName: string) => {
-    if (!address || !walletClient) {
+    if (!userAddress || !walletClient) {
       addNotification({
         type: 'error',
         message: 'Please connect your wallet to manage campaigns',
@@ -256,7 +292,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   };
 
   const handleWithdrawFunds = async () => {
-    if (!address || !walletClient) {
+    if (!userAddress || !walletClient) {
       addNotification({
         type: 'error',
         message: 'Please connect your wallet to withdraw funds',
@@ -296,7 +332,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
         setIsFundsWithdrawn(true);
         
         // Сохраняем в локальное хранилище на случай, если запрос событий не сработает
-        const localStorageKey = `withdrawn-${campaignAddress}-${address}`;
+        const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
         localStorage.setItem(localStorageKey, 'true');
         
         // Ждем немного, чтобы блокчейн успел обновиться
@@ -320,7 +356,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
       if (decodedError.message.includes('already withdrawn') || 
           decodedError.message.includes('CampaignTwiceWithdraw')) {
         setIsFundsWithdrawn(true);
-        const localStorageKey = `withdrawn-${campaignAddress}-${address}`;
+        const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
         localStorage.setItem(localStorageKey, 'true');
       }
       
@@ -336,7 +372,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   };
 
   const handleReturnDeposit = async () => {
-    if (!address || !walletClient) {
+    if (!userAddress || !walletClient) {
       addNotification({
         type: 'error',
         message: 'Please connect your wallet to return deposit',
@@ -376,7 +412,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
         setIsDepositReturned(true);
         
         // Сохраняем в локальное хранилище
-        const localStorageKey = `deposit-returned-${campaignAddress}-${address}`;
+        const localStorageKey = `deposit-returned-${campaignAddress}-${userAddress}`;
         localStorage.setItem(localStorageKey, 'true');
         
         // Ждем немного, чтобы блокчейн успел обновиться
@@ -400,7 +436,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
       if (decodedError.message.includes('already returned') || 
           decodedError.message.includes('FVZeroWithdrawnAmount')) {
         setIsDepositReturned(true);
-        const localStorageKey = `deposit-returned-${campaignAddress}-${address}`;
+        const localStorageKey = `deposit-returned-${campaignAddress}-${userAddress}`;
         localStorage.setItem(localStorageKey, 'true');
       }
       
@@ -416,7 +452,10 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   };
 
   const availableActions = getAvailableActions();
-  const canReturnDeposit = isFinished && !isDepositReturned && depositAmount > 0n;
+  
+  // Упрощенное условие для возврата депозита
+  const canReturnDeposit = !isDepositReturned && depositAmount > 0n && 
+                          (isCancelled || isFailed || isSuccessful);
 
   return (
     <div className="account-campaign-card">
@@ -435,8 +474,9 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
         <div>Time left: {daysLeft} days</div>
         <div>Deadline: {new Date(campaign.deadline * 1000).toLocaleDateString()}</div>
         {depositAmount > 0n && (
-          <div>Deposit: {formatUnits(depositAmount, 18)} ETH</div> // Депозит всегда в ETH (18 decimals)
-        )}
+          <div>Deposit: {formatUnits(depositAmount, 18)} ETH</div>
+        )}       
+        
       </div>
 
       {isCheckingDeposit ? (
@@ -482,7 +522,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
             className="btn btn-warning"
             onClick={handleReturnDeposit}
           >
-            Return Deposit ({formatUnits(depositAmount, 18)} ETH) {/* Депозит всегда в ETH */}
+            Return Deposit ({formatUnits(depositAmount, 18)} ETH)
           </button>
           <p className="deposit-info">
             You can now return your deposit of {formatUnits(depositAmount, 18)} ETH.

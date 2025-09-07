@@ -1,5 +1,6 @@
+//обновленная
 import { useState } from 'react';
-import { formatEther } from 'viem';
+import { formatUnits } from 'viem'; // Заменяем formatEther на formatUnits
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { tokenService } from '../services/TokenService';
 import { getStatusText, getStatusClass, type CampaignStatus } from '../types/Campaign';
@@ -27,9 +28,19 @@ export const InvestedCampaignCard = ({ investedCampaign, onUpdate }: InvestedCam
 
   const tokenInfo = tokenService.getTokenInfo(campaign.token);
   const displaySymbol = tokenInfo?.symbol || 'ETH';
+  const decimals = tokenInfo?.decimals || 18; // Добавляем получение decimals
   const statusText = getStatusText(campaign.status as CampaignStatus);
   const statusClass = getStatusClass(campaign.status as CampaignStatus);
   const campaignName = getCampaignName(campaign.campaignMeta);
+
+  // Функция для форматирования суммы с учетом decimals
+  const formatTokenAmount = (value: bigint, maxDecimals: number = 4): string => {
+    const amount = Number(formatUnits(value, decimals));
+    if (amount >= 1000) {
+      return amount.toLocaleString(undefined, { maximumFractionDigits: maxDecimals });
+    }
+    return amount.toFixed(maxDecimals);
+  };
 
   const progress = Number(campaign.raised) / Number(campaign.goal) * 100;
   const daysLeft = Math.max(0, Math.ceil((campaign.deadline * 1000 - Date.now()) / (1000 * 60 * 60 * 24)));
@@ -126,9 +137,9 @@ export const InvestedCampaignCard = ({ investedCampaign, onUpdate }: InvestedCam
         <div>ID: #{campaign.id.toString()}</div>
         <div>Address: {campaignAddress.slice(0, 8)}...{campaignAddress.slice(-6)}</div>
         <div>Currency: {displaySymbol}</div>
-        <div>Your contribution: {formatEther(contribution)} {displaySymbol}</div>
-        <div>Goal: {formatEther(campaign.goal)} {displaySymbol}</div>
-        <div>Raised: {formatEther(campaign.raised)} {displaySymbol}</div>
+        <div>Your contribution: {formatTokenAmount(contribution)} {displaySymbol}</div>
+        <div>Goal: {formatTokenAmount(campaign.goal)} {displaySymbol}</div>
+        <div>Raised: {formatTokenAmount(campaign.raised)} {displaySymbol}</div>
         <div>Progress: {progress.toFixed(1)}%</div>
         <div>Time left: {daysLeft} days</div>
         <div>Deadline: {new Date(campaign.deadline * 1000).toLocaleDateString()}</div>
@@ -142,7 +153,7 @@ export const InvestedCampaignCard = ({ investedCampaign, onUpdate }: InvestedCam
       ) : isRefundClaimed ? (
         <div className="refund-success-message">
           <p>✅ Refund successfully claimed!</p>
-          <p>Your contribution of {formatEther(contribution)} {displaySymbol} has been returned to your wallet.</p>
+          <p>Your contribution of {formatTokenAmount(contribution)} {displaySymbol} has been returned to your wallet.</p>
         </div>
       ) : (
         <div className="invested-campaign-actions">
