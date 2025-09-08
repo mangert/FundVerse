@@ -16,7 +16,7 @@ class TokenService {
   private tokens: Map<string, TokenInfo> = new Map();
   private pollingInterval: NodeJS.Timeout | null = null;
   private readonly POLL_INTERVAL = 30_000; // 30 секунд
-  private readonly API_BASE = import.meta.env.VITE_INDEXER_API || "http://localhost:4000/api";
+  private readonly API_BASE = import.meta.env.VITE_INDEXER_API || "/api";
 
   static getInstance(): TokenService {
     if (!TokenService.instance) {
