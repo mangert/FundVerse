@@ -16,7 +16,12 @@ class TokenService {
   private tokens: Map<string, TokenInfo> = new Map();
   private pollingInterval: NodeJS.Timeout | null = null;
   private readonly POLL_INTERVAL = 30_000; // 30 секунд
-  private readonly API_BASE = import.meta.env.VITE_INDEXER_API || "/api";
+  //private readonly API_BASE = import.meta.env.VITE_INDEXER_API || "/api";
+
+  // Для любого IP-адреса используем прямой доступ, для домена - прокси
+  private readonly API_BASE = window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/) 
+  ? `http://${window.location.hostname}:3001/api`
+  : '/api';
 
   static getInstance(): TokenService {
     if (!TokenService.instance) {

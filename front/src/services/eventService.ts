@@ -2,7 +2,10 @@
 import { parseAbiItem } from 'viem';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
 
-const INDEXER_API_BASE = import.meta.env.VITE_INDEXER_API || ""; // e.g. "http://37.221.127.92:3001/api"
+//const INDEXER_API_BASE = import.meta.env.VITE_INDEXER_API || ""; // e.g. "http://37.221.127.92:3001/api"
+const INDEXER_API_BASE = window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/) 
+  ? `http://${window.location.hostname}:3001/api`
+  : '/api';
 
 let isPolling = false;
 let pollingInterval: ReturnType<typeof setInterval> | null = null;
