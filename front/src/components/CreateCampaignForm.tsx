@@ -577,7 +577,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
                 className="btn btn-primary"
                 title={!isConnected ? "Connect your wallet to create a campaign" : ""}
               >
-                {isLoading ? 'Submitting...' : 'Create Campaign'}
+                {isLoading ? 'Submitting...' : 'Submit'}
               </button>
             </div>
             

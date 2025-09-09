@@ -51,7 +51,7 @@ const AppContent = () => {
   };
 
   return (
-     <div className="app-container">
+    <div className="app-container">
     <div className="app-header">
       <div className="header-left">
         <div className="logo-title-container">
@@ -76,7 +76,8 @@ const AppContent = () => {
           </nav>
         </div>
         <ConnectButton />
-      </div>
+    
+    </div>
       
       {/* Отображаем текущую страницу */}
       {currentPage === 'dashboard' && <Dashboard />}

@@ -1,8 +1,7 @@
-//обновленная версия
 import { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { useCampaign } from '../hooks/useCampaign';
-import { formatUnits, parseUnits, zeroAddress } from 'viem'; // Заменяем formatEther, parseEther на formatUnits, parseUnits
+import { formatUnits, parseUnits, zeroAddress } from 'viem';
 import { tokenService } from '../services/TokenService';
 import { errorService } from '../services/ErrorService';
 import { useNotifications } from '../contexts/NotificationContext';
@@ -30,18 +29,15 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
   const [tokenAllowance, setTokenAllowance] = useState<bigint>(0n);
   const [copiedAddress, setCopiedAddress] = useState(false);
 
-  // Получаем информацию о токене
   const tokenInfo = summary ? tokenService.getTokenInfo(summary.token) : null;
   const displaySymbol = tokenInfo?.symbol || 'ETH';
-  const decimals = tokenInfo?.decimals || 18; // Получаем decimals токена или используем 18 по умолчанию
+  const decimals = tokenInfo?.decimals || 18;
 
-  // Загрузка дополнительных данных
   useEffect(() => {
     const loadAdditionalData = async () => {
       if (!summary || !userAddress || !publicClient) return;
 
       try {
-        // Загрузка взноса пользователя
         const contribution = await publicClient.readContract({
           address: address as `0x${string}`,
           abi: CampaignABI,
@@ -51,17 +47,11 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
         
         setUserContribution(contribution);
 
-        // Загрузка баланса пользователя
         if (summary.token === zeroAddress) {
-          // Нативная валюта
-          const balance = await publicClient.getBalance({ 
-            address: userAddress as `0x${string}` 
-          });
+          const balance = await publicClient.getBalance({ address: userAddress as `0x${string}` });
           setUserBalance(balance);
         } else {
-          // ERC20 токен
           const tokenAddress = summary.token as `0x${string}`;
-          
           const [balance, allowance] = await Promise.all([
             publicClient.readContract({
               address: tokenAddress,
@@ -107,13 +97,9 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
   const handleContribute = async () => {
     if (!isConnected || !userAddress || !walletClient || !summary) return;
     
-    const amount = parseUnits(contributionAmount, decimals); // Используем parseUnits с правильными decimals
+    const amount = parseUnits(contributionAmount, decimals);
     if (amount <= 0n) {
-      addNotification({
-        type: 'error',
-        message: 'Please enter a valid amount',
-        isGlobal: false
-      });
+      addNotification({ type: 'error', message: 'Please enter a valid amount', isGlobal: false });
       return;
     }
 
@@ -123,30 +109,20 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
       const campaignAddress = address as `0x${string}`;
       
       if (summary.token === zeroAddress) {
-        // Взнос нативной валютой
         const hash = await walletClient.writeContract({
-            address: campaignAddress,
-            abi: CampaignABI,
-            functionName: 'contribute',
-            value: amount,
-            args: []
+          address: campaignAddress,
+          abi: CampaignABI,
+          functionName: 'contribute',
+          value: amount,
+          args: []
         });
         
-        addNotification({
-          type: 'info',
-          message: 'Contribution sent! Waiting for confirmation...',
-          isGlobal: false,
-          transactionHash: hash
-        });
-        
+        addNotification({ type: 'info', message: 'Contribution sent! Waiting for confirmation...', isGlobal: false, transactionHash: hash });
         await publicClient?.waitForTransactionReceipt({ hash });
       } else {
-        // Взнос ERC20 токеном
         const tokenAddress = summary.token as `0x${string}`;
         
-        // Сначала проверяем allowance
         if (tokenAllowance < amount) {
-          // Нужно approve
           const approveHash = await walletClient.writeContract({
             address: tokenAddress,
             abi: [{
@@ -167,7 +143,6 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
           setTokenAllowance(amount);
         }
         
-        // Теперь вносим средства
         const contributeHash = await walletClient.writeContract({
           address: campaignAddress,
           abi: CampaignABI,
@@ -175,43 +150,19 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
           args: [amount]
         });
         
-        addNotification({
-          type: 'info',
-          message: 'Contribution sent! Waiting for confirmation...',
-          isGlobal: false,
-          transactionHash: contributeHash
-        });
-        
+        addNotification({ type: 'info', message: 'Contribution sent! Waiting for confirmation...', isGlobal: false, transactionHash: contributeHash });
         await publicClient?.waitForTransactionReceipt({ hash: contributeHash });
       }
       
-      // Обновляем данные кампании
       await refetchCampaign();
-      
-      // Показываем уведомление об успехе
-      addNotification({
-        type: 'success',
-        message: `Successfully contributed ${contributionAmount} ${displaySymbol}`,
-        isGlobal: false
-      });
-      
+      addNotification({ type: 'success', message: `Successfully contributed ${contributionAmount} ${displaySymbol}`, isGlobal: false });
       setContributionAmount('');
-      
-      // Обновляем родительский компонент
-      if (onUpdate) {
-        onUpdate();
-      }
-      
-      // Закрываем модальное окно
+      if (onUpdate) onUpdate();
       onClose();
       
     } catch (err) {
       const decodedError = errorService.decodeContractError(err);
-      addNotification({
-        type: decodedError.type as any,
-        message: decodedError.message,
-        isGlobal: false
-      });
+      addNotification({ type: decodedError.type as any, message: decodedError.message, isGlobal: false });
     } finally {
       setIsContributing(false);
     }
@@ -219,39 +170,24 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
 
   const handleMaxContribution = () => {
     if (!summary) return;
-    
-    // Берем минимум из остатка до цели и баланса пользователя
     const remainingGoal = summary.goal - summary.raised;
     const maxFromGoal = remainingGoal > 0n ? remainingGoal : 0n;
     const maxFromBalance = userBalance;
-    
     const maxAmount = maxFromGoal < maxFromBalance ? maxFromGoal : maxFromBalance;
-    
     if (maxAmount <= 0n) {
-      addNotification({
-        type: 'warning',
-        message: 'Not enough funds to contribute',
-        isGlobal: false
-      });
+      addNotification({ type: 'warning', message: 'Not enough funds to contribute', isGlobal: false });
       return;
     }
-    
-    setContributionAmount(formatUnits(maxAmount, decimals)); // Используем formatUnits с правильными decimals
+    setContributionAmount(formatUnits(maxAmount, decimals));
   };
 
   const copyAddressToClipboard = () => {
     navigator.clipboard.writeText(address);
     setCopiedAddress(true);
     setTimeout(() => setCopiedAddress(false), 2000);
-    
-    addNotification({
-      type: 'info',
-      message: 'Campaign address copied to clipboard',
-      isGlobal: false
-    });
+    addNotification({ type: 'info', message: 'Campaign address copied to clipboard', isGlobal: false });
   };
 
-  // Функция для форматирования больших чисел с учетом decimals
   const formatTokenAmount = (value: bigint, maxDecimals: number = 4): string => {
     const amount = Number(formatUnits(value, decimals));
     if (amount >= 1000) {
@@ -286,10 +222,12 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
 
   const progress = Number(summary.raised) / Number(summary.goal) * 100;
   const daysLeft = Math.max(0, Math.ceil((summary.deadline * 1000 - Date.now()) / (1000 * 60 * 60 * 24)));
-  const isLive = summary.status === 0; // Status.Live
-  const isFailed = summary.status === 3; // Status.Failed
-  const isCancelled = summary.status === 2; // Status.Cancelled
-  const canContribute = isLive && isConnected;
+  const isLive = summary.status === 0;
+  const isFailed = summary.status === 3;
+  const isCancelled = summary.status === 2;
+  const isDeadlinePassed = Date.now() >= summary.deadline * 1000;
+
+  const canContribute = isLive && isConnected && !isDeadlinePassed;
   const canClaimRefund = (isFailed || isCancelled) && userContribution > 0n;
   const hasZeroBalance = userBalance === 0n;  
 
@@ -305,37 +243,33 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
         </div>
 
         <div className="modal-body">
-          {/* Адрес контракта кампании */}
           <div className="campaign-address-section">
             <div className="campaign-address-label">Campaign Address:</div>
             <div className="campaign-address-value">
               {address.slice(0, 8)}...{address.slice(-6)}
-              <button 
-                className="copy-address-btn"
-                onClick={copyAddressToClipboard}
-                title="Copy campaign address"
-              >
+              <button className="copy-address-btn" onClick={copyAddressToClipboard} title="Copy campaign address">
                 {copiedAddress ? '✓' : '📄'}
               </button>
             </div>
           </div>
 
-          {/* Статус и время */}
           <div className="campaign-status-row">
-            <span className={`status-badge large ${statusClass}`}>{statusText}</span>
+            <span className={`status-badge large ${statusClass}`}>
+              {statusText}
+              {isDeadlinePassed && isLive && (
+                <span className="deadline-warning"> (deadline passed)</span>
+              )}
+            </span>
             <div className="campaign-time-info">
               <div className="deadline-date">
                 Deadline: {new Date(summary.deadline * 1000).toLocaleDateString()}
               </div>
               {daysLeft > 0 && (
-                <div className="days-left">
-                  {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
-                </div>
+                <div className="days-left">{daysLeft} day{daysLeft !== 1 ? 's' : ''} left</div>
               )}
             </div>
           </div>
 
-          {/* Описание кампании */}
           {campaignDesc && (
             <div className="campaign-description">
               <h3>Description</h3>
@@ -343,7 +277,6 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
             </div>
           )}
 
-          {/* Финансовая информация */}
           <div className="financial-section">
             <h3>Financial Information</h3>
             <div className="financial-grid">
@@ -369,13 +302,9 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
               </div>
             </div>
 
-            {/* Прогресс-бар */}
             <div className="progress-container">
               <div className="progress-bar">
-                <div 
-                  className="progress-fill"
-                  style={{ width: `${Math.min(progress, 100)}%` }} 
-                />
+                <div className="progress-fill" style={{ width: `${Math.min(progress, 100)}%` }} />
               </div>
               <div className="progress-labels">
                 <span>0 {displaySymbol}</span>
@@ -384,7 +313,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
             </div>
           </div>
 
-          {/* Блок взноса для Live кампаний */}
+          {/* Взносы только если Live и дедлайн не истёк */}
           {canContribute && (
             <div className="contribution-section compact">
               <div className="contribution-header">
@@ -439,8 +368,14 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
               )}
             </div>
           )}
+
+          {/* Если Live, но дедлайн прошёл */}
+          {isLive && isDeadlinePassed && (
+            <div className="contribution-closed-message">
+              <p>Contributions are closed. The campaign deadline has passed.</p>
+            </div>
+          )}
           
-          {/* Блок возврата средств для Failed/Cancelled кампаний */}
           {canClaimRefund && (
             <div className="refund-section">
               <h3>Your Contribution</h3>
@@ -453,17 +388,11 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
             </div>
           )}
           
-          {/* Дополнительная информация */}
           {campaignMetaData.info && (
             <div className="additional-info">
               <h3>Additional Information</h3>
               <div className="external-link-container">
-                <a
-                  href={campaignMetaData.info}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="external-link"
-                >
+                <a href={campaignMetaData.info} target="_blank" rel="noopener noreferrer" className="external-link">
                   View campaign documentation ↗
                 </a>
                 <div className="external-link-disclaimer">

@@ -23,6 +23,8 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   const { addNotification } = useNotifications();
   const [isLoading, setIsLoading] = useState(false);
   const [currentAction, setCurrentAction] = useState<string | null>(null);
+
+  // CHG: теперь эти флаги вычисляем глобально (по цепочке), а не по текущему кошельку
   const [isFundsWithdrawn, setIsFundsWithdrawn] = useState(false);
   const [isDepositReturned, setIsDepositReturned] = useState(false);
   const [depositAmount, setDepositAmount] = useState<bigint>(0n);
@@ -36,7 +38,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   const statusClass = getStatusClass(campaign.status as CampaignStatus);
   const campaignName = getCampaignName(campaign.campaignMeta);
 
-  // Функция для форматирования суммы с учетом decimals
+  // formatting helper (unchanged)
   const formatTokenAmount = (value: bigint, maxDecimals: number = 4): string => {
     const amount = Number(formatUnits(value, decimals));
     if (amount >= 1000) {
@@ -54,15 +56,22 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   const isFailed = campaign.status === 3; // Status.Failed
   const isFinished = isSuccessful || isCancelled || isFailed;
 
-  // Проверяем, были ли уже выведены средства через события
+  // ---------------------------------------------------------------------
+  // CHG: Проверяем вывод средств глобально — ищем событие CampaignFundsClaimed
+  // Раньше проверяли по текущему кошельку, теперь проверяем для создателя (campaign.creator)
+  // ---------------------------------------------------------------------
   useEffect(() => {
     const checkFundsWithdrawal = async () => {
-      if (!publicClient || !isSuccessful || !userAddress) return;
+      if (!publicClient || !isSuccessful) {
+        // если кампания не успешна — нет смысла проверять
+        return;
+      }
 
       try {
         const currentBlock = await publicClient.getBlockNumber();
-        const _fromBlock = currentBlock - 10000n;
-        // Ищем события вывода средств для этой кампании и этого создателя
+        // CHG: ищем в пределах разумного окна (можно увеличить, если нужно)
+        const _fromBlock = currentBlock > 20000n ? currentBlock - 20000n : 0n;
+
         const withdrawalEvents = await publicClient.getLogs({
           address: campaignAddress as `0x${string}`,
           event: {
@@ -77,169 +86,171 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
           toBlock: 'latest'
         });
 
-        // Проверяем, есть ли события для текущего создателя
-        const hasWithdrawn = withdrawalEvents.some(event => 
-          event.args.recipient?.toLowerCase() === userAddress.toLowerCase()
+        // CHG: считаем, что funds withdrawn, если есть событие с recipient == creator
+        const creator = (campaign.creator ?? '').toLowerCase();
+        const hasWithdrawn = withdrawalEvents.some(event =>
+          !!event.args?.recipient && (String(event.args.recipient).toLowerCase() === creator)
         );
 
         setIsFundsWithdrawn(hasWithdrawn);
+
+        // Fallback: если нет событий, оставляем локальное хранение как дополнительную подсказку
+        if (!hasWithdrawn && userAddress) {
+          const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
+          const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
+          if (locallyWithdrawn) setIsFundsWithdrawn(true);
+        }
       } catch (error) {
         console.error('Error checking funds withdrawal events:', error);
-        
-        // Fallback: проверяем через локальное хранилище
-        const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
-        const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
-        setIsFundsWithdrawn(locallyWithdrawn);
+        // локальный fallback
+        if (userAddress) {
+          const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
+          const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
+          setIsFundsWithdrawn(locallyWithdrawn);
+        }
       }
     };
 
     checkFundsWithdrawal();
-  }, [publicClient, campaignAddress, isSuccessful, userAddress]);
+    // CHG: зависим от campaign.creator, т.к. проверяем, выводил ли creator фонды
+  }, [publicClient, campaignAddress, isSuccessful, campaign.creator, userAddress]);
 
-  // Проверяем статус депозита
+  // ---------------------------------------------------------------------
+  // CHG: Проверяем статус депозита глобально — НЕ зависит от userAddress
+  // - читаем getCampaignDeposit (если есть)
+  // - если deposit === 0, ищем FVDepositReturned для данной кампании (по campaign поле)
+  // ---------------------------------------------------------------------
   useEffect(() => {
     const checkDepositStatus = async () => {
-      if (!publicClient || !userAddress) {
+      if (!publicClient) {
         setIsCheckingDeposit(false);
         return;
       }
 
       try {
-        // Добавим отладочную информацию о вызове
         setDebugInfo(`Calling getCampaignDeposit for ${campaignAddress} on platform ${PLATFORM_ADDRESS}`);
-        
-        // Проверим, что ABI содержит нужную функцию
+
+        // проверим наличие функции в ABI
         const hasDepositFunction = PlatformABI.some(
           (item: any) => item.type === 'function' && item.name === 'getCampaignDeposit'
         );
-        
-        if (!hasDepositFunction) {
-          setDebugInfo('ERROR: getCampaignDeposit function not found in ABI');
-          return;
+
+        let deposit = 0n;
+        if (hasDepositFunction) {
+          try {
+            deposit = await publicClient.readContract({
+              address: PLATFORM_ADDRESS,
+              abi: PlatformABI,
+              functionName: 'getCampaignDeposit',
+              args: [campaignAddress as `0x${string}`]
+            }) as bigint;
+          } catch (err) {
+            console.warn('readContract getCampaignDeposit failed:', err);
+            deposit = 0n;
+          }
+        } else {
+          // если геттера нет — считаем deposit = 0 (и будем полагаться на события)
+          deposit = 0n;
         }
-        
-        // Проверяем текущий депозит через геттер
-        const deposit = await publicClient.readContract({
-          address: PLATFORM_ADDRESS,
-          abi: PlatformABI,
-          functionName: 'getCampaignDeposit',
-          args: [campaignAddress as `0x${string}`]
-        }) as bigint;
 
         setDepositAmount(deposit);
         setDebugInfo(`Deposit result: ${deposit.toString()}`);
-        
-        // Если депозит нулевой, проверяем события возврата
+
         if (deposit === 0n) {
-          setDebugInfo('Checking deposit return events...');
-          
-          const currentBlock = await publicClient.getBlockNumber();
-          const _fromBlock = currentBlock - 10000n;
-          const depositEvents = await publicClient.getLogs({
-            address: PLATFORM_ADDRESS,
-            event: {
-              type: 'event',
-              name: 'FVDepositReturned',
-              inputs: [
-                { type: 'address', indexed: true, name: 'founder' },
-                { type: 'uint256', indexed: false, name: 'amount' },
-                { type: 'address', indexed: false, name: 'campaign' }
-              ]
-            },
-            fromBlock: _fromBlock,
-            toBlock: 'latest'
-          });
+          setDebugInfo('Deposit is zero — checking FVDepositReturned events for this campaign');
 
-          const hasDepositReturned = depositEvents.some(event => 
-            event.args.founder?.toLowerCase() === userAddress.toLowerCase() &&
-            event.args.campaign?.toLowerCase() === campaignAddress.toLowerCase()
-          );
+          try {
+            const currentBlock = await publicClient.getBlockNumber();
+            const _fromBlock = currentBlock > 20000n ? currentBlock - 20000n : 0n;
 
-          if (hasDepositReturned) {
-            setIsDepositReturned(true);
-            setDebugInfo('Deposit returned (from events)');
-          } else {
-            setDebugInfo('Deposit is 0 but no return events found');
+            const depositEvents = await publicClient.getLogs({
+              address: PLATFORM_ADDRESS,
+              event: {
+                type: 'event',
+                name: 'FVDepositReturned',
+                inputs: [
+                  { type: 'address', indexed: true, name: 'founder' },
+                  { type: 'uint256', indexed: false, name: 'amount' },
+                  { type: 'address', indexed: false, name: 'campaign' }
+                ]
+              },
+              fromBlock: _fromBlock,
+              toBlock: 'latest'
+            });
+
+            // CHG: ищем событие по campaign (глобально), не фильтруя по текущему пользователю
+            const hasDepositReturned = depositEvents.some(event =>
+              !!event.args?.campaign && (String(event.args.campaign).toLowerCase() === campaignAddress.toLowerCase())
+            );
+
+            setIsDepositReturned(hasDepositReturned);
+
+            if (!hasDepositReturned) {
+              setDebugInfo('No FVDepositReturned event found for this campaign');
+            } else {
+              setDebugInfo('Deposit returned (found FVDepositReturned event)');
+            }
+          } catch (err) {
+            console.warn('Failed to fetch FVDepositReturned events:', err);
+            setDebugInfo('Error while checking FVDepositReturned events');
+            setIsDepositReturned(false);
           }
         } else {
+          // deposit > 0 => очевидно не возвращён
+          setIsDepositReturned(false);
           setDebugInfo(`Deposit available: ${formatUnits(deposit, 18)} ETH`);
         }
       } catch (error) {
         console.error('Error checking deposit status:', error);
-        
-        // Безопасная обработка ошибки
-        let errorMessage = 'Unknown error occurred';
-        
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        } else if (typeof error === 'string') {
-          errorMessage = error;
-        } else if (error && typeof error === 'object') {
-          // Пытаемся извлечь сообщение из объекта ошибки
-          if ('message' in error) {
-            errorMessage = String(error.message);
-          } else if ('reason' in error) {
-            errorMessage = String(error.reason);
-          } else {
-            errorMessage = JSON.stringify(error);
-          }
+        setDebugInfo('Error while checking deposit status');
+
+        // fallback по локальному хранилищу — если нужно
+        if (userAddress) {
+          const localStorageKey = `deposit-returned-${campaignAddress}-${userAddress}`;
+          const locallyReturned = localStorage.getItem(localStorageKey) === 'true';
+          setIsDepositReturned(locallyReturned);
         }
-        
-        setDebugInfo(`Error: ${errorMessage}`);
-        
-        // Fallback: проверяем через локальное хранилище
-        const localStorageKey = `deposit-returned-${campaignAddress}-${userAddress}`;
-        const locallyReturned = localStorage.getItem(localStorageKey) === 'true';
-        setIsDepositReturned(locallyReturned);
       } finally {
         setIsCheckingDeposit(false);
       }
     };
 
     checkDepositStatus();
-  }, [publicClient, campaignAddress, userAddress]);
+  }, [publicClient, campaignAddress]); // CHG: убрали зависимость от userAddress, делаем глобально
 
-  // Определяем доступные действия в зависимости от статуса кампании
+  // ---------------------------------------------------------------------
+  // Управление статусами — восстановлена логика Stop/Cancel/Resume как была
+  // CHG: убрал некорректный блок для Status.Failed (Mark as Failed) — это делается через checkDeadlineStatus
+  // ---------------------------------------------------------------------
   const getAvailableActions = () => {
-    const actions = [];
+    const actions: { label: string; status: number; action: string }[] = [];
     const currentStatus = campaign.status as CampaignStatus;
 
-    // Live кампании можно остановить или отменить
-    if (currentStatus === 0) { // Status.Live
+    if (currentStatus === 0) { // Live
       if (!isDeadlineExpired && !isGoalReached) {
-        actions.push({ label: 'Stop', status: 1, action: 'stopping' }); // Status.Stopped
-        actions.push({ label: 'Cancel', status: 2, action: 'cancelling' }); // Status.Cancelled
+        actions.push({ label: 'Stop', status: 1, action: 'stopping' }); // Stopped
+        actions.push({ label: 'Cancel', status: 2, action: 'cancelling' }); // Cancelled
       }
-    }
-    // Stopped кампании можно возобновить
-    else if (currentStatus === 1) { // Status.Stopped
+    } else if (currentStatus === 1) { // Stopped
       if (!isDeadlineExpired && !isGoalReached) {
-        actions.push({ label: 'Resume', status: 0, action: 'resuming' }); // Status.Live
+        actions.push({ label: 'Resume', status: 0, action: 'resuming' }); // Live
       }
     }
-    // Failed кампании можно отметить как проваленные (если срок истек и цель не достигнута)
-    else if (currentStatus === 3) { // Status.Failed
-      if (isDeadlineExpired && !isGoalReached) {
-        actions.push({ label: 'Mark as Failed', status: 3, action: 'marking-failed' }); // Status.Failed
-      }
-    }
+    // CHG: больше не добавляем Mark as Failed здесь
 
     return actions;
   };
 
+  // ------------------ Handlers (write) ------------------
   const handleStatusChange = async (newStatus: CampaignStatus, actionName: string) => {
     if (!userAddress || !walletClient) {
-      addNotification({
-        type: 'error',
-        message: 'Please connect your wallet to manage campaigns',
-        isGlobal: false
-      });
+      addNotification({ type: 'error', message: 'Please connect your wallet to manage campaigns', isGlobal: false });
       return;
     }
 
     setIsLoading(true);
     setCurrentAction(actionName);
-    
+
     try {
       const hash = await walletClient.writeContract({
         address: campaignAddress as `0x${string}`,
@@ -248,43 +259,24 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
         args: [newStatus]
       });
 
-      addNotification({
-        type: 'info',
-        message: 'Transaction sent! Waiting for confirmation...',
-        isGlobal: false,
-        transactionHash: hash
-      });
+      addNotification({ type: 'info', message: 'Transaction sent! Waiting for confirmation...', isGlobal: false, transactionHash: hash });
 
-      const receipt = await publicClient?.waitForTransactionReceipt({ hash });
+      // FIX: приводим тип hash к `0x${string}` для viem/wagmi wait
+      const receipt = await publicClient?.waitForTransactionReceipt({ hash: hash as `0x${string}` });
       
       if (receipt?.status === 'success') {
-        addNotification({
-          type: 'success',
-          message: 'Campaign status updated successfully!',
-          isGlobal: false
-        });
-        
-        // Ждем немного, чтобы блокчейн успел обновиться
+        addNotification({ type: 'success', message: 'Campaign status updated successfully!', isGlobal: false });
+
+        // Ждём, чтобы индексы/логи успели обновиться
         await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Принудительно обновляем данные
-        if (onUpdate) {
-          await onUpdate();
-        }
+
+        if (onUpdate) await onUpdate();
       } else {
-        addNotification({
-          type: 'error',
-          message: 'Transaction failed',
-          isGlobal: false
-        });
+        addNotification({ type: 'error', message: 'Transaction failed', isGlobal: false });
       }
     } catch (err) {
       const decodedError = errorService.decodeContractError(err);
-      addNotification({
-        type: decodedError.type as any,
-        message: decodedError.message,
-        isGlobal: false
-      });
+      addNotification({ type: decodedError.type as any, message: decodedError.message, isGlobal: false });
     } finally {
       setIsLoading(false);
       setCurrentAction(null);
@@ -293,17 +285,13 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
 
   const handleWithdrawFunds = async () => {
     if (!userAddress || !walletClient) {
-      addNotification({
-        type: 'error',
-        message: 'Please connect your wallet to withdraw funds',
-        isGlobal: false
-      });
+      addNotification({ type: 'error', message: 'Please connect your wallet to withdraw funds', isGlobal: false });
       return;
     }
 
     setIsLoading(true);
     setCurrentAction('withdrawing');
-    
+
     try {
       const hash = await walletClient.writeContract({
         address: campaignAddress as `0x${string}`,
@@ -312,59 +300,38 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
         args: []
       });
 
-      addNotification({
-        type: 'info',
-        message: 'Withdrawal transaction sent! Waiting for confirmation...',
-        isGlobal: false,
-        transactionHash: hash
-      });
+      addNotification({ type: 'info', message: 'Withdrawal transaction sent! Waiting for confirmation...', isGlobal: false, transactionHash: hash });
 
-      const receipt = await publicClient?.waitForTransactionReceipt({ hash });
-      
+      const receipt = await publicClient?.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+
       if (receipt?.status === 'success') {
-        addNotification({
-          type: 'success',
-          message: 'Funds withdrawn successfully! Wallet balance will update shortly.',
-          isGlobal: false
-        });
-        
-        // Обновляем статус вывода средств
+        addNotification({ type: 'success', message: 'Funds withdrawn successfully! Wallet balance will update shortly.', isGlobal: false });
+
+        // CHG: обновляем глобальный флаг — funds withdrawn (по creator)
         setIsFundsWithdrawn(true);
-        
-        // Сохраняем в локальное хранилище на случай, если запрос событий не сработает
-        const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
-        localStorage.setItem(localStorageKey, 'true');
-        
-        // Ждем немного, чтобы блокчейн успел обновиться
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Принудительно обновляем данные
-        if (onUpdate) {
-          await onUpdate();
+
+        // сохраняем локально на всякий случай (fallback)
+        if (userAddress) {
+          const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
+          localStorage.setItem(localStorageKey, 'true');
         }
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (onUpdate) await onUpdate();
       } else {
-        addNotification({
-          type: 'error',
-          message: 'Withdrawal transaction failed',
-          isGlobal: false
-        });
+        addNotification({ type: 'error', message: 'Withdrawal transaction failed', isGlobal: false });
       }
     } catch (err) {
       const decodedError = errorService.decodeContractError(err);
-      
-      // Если ошибка связана с повторным выводом средств, помечаем как уже выведенные
-      if (decodedError.message.includes('already withdrawn') || 
-          decodedError.message.includes('CampaignTwiceWithdraw')) {
+      // Если контракт говорит, что уже выведено — пометим так
+      if (decodedError.message.includes('already withdrawn') || decodedError.message.includes('CampaignTwiceWithdraw')) {
         setIsFundsWithdrawn(true);
-        const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
-        localStorage.setItem(localStorageKey, 'true');
+        if (userAddress) {
+          const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
+          localStorage.setItem(localStorageKey, 'true');
+        }
       }
-      
-      addNotification({
-        type: decodedError.type as any,
-        message: decodedError.message,
-        isGlobal: false
-      });
+      addNotification({ type: decodedError.type as any, message: decodedError.message, isGlobal: false });
     } finally {
       setIsLoading(false);
       setCurrentAction(null);
@@ -373,17 +340,13 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
 
   const handleReturnDeposit = async () => {
     if (!userAddress || !walletClient) {
-      addNotification({
-        type: 'error',
-        message: 'Please connect your wallet to return deposit',
-        isGlobal: false
-      });
+      addNotification({ type: 'error', message: 'Please connect your wallet to return deposit', isGlobal: false });
       return;
     }
 
     setIsLoading(true);
     setCurrentAction('returning-deposit');
-    
+
     try {
       const hash = await walletClient.writeContract({
         address: PLATFORM_ADDRESS,
@@ -392,59 +355,73 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
         args: [campaignAddress as `0x${string}`]
       });
 
-      addNotification({
-        type: 'info',
-        message: 'Deposit return transaction sent! Waiting for confirmation...',
-        isGlobal: false,
-        transactionHash: hash
-      });
+      addNotification({ type: 'info', message: 'Deposit return transaction sent! Waiting for confirmation...', isGlobal: false, transactionHash: hash });
 
-      const receipt = await publicClient?.waitForTransactionReceipt({ hash });
-      
+      const receipt = await publicClient?.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+
       if (receipt?.status === 'success') {
-        addNotification({
-          type: 'success',
-          message: 'Deposit returned successfully!',
-          isGlobal: false
-        });
-        
-        // Обновляем статус возврата депозита
+        addNotification({ type: 'success', message: 'Deposit returned successfully!', isGlobal: false });
+
+        // CHG: обновляем global flag
         setIsDepositReturned(true);
-        
-        // Сохраняем в локальное хранилище
-        const localStorageKey = `deposit-returned-${campaignAddress}-${userAddress}`;
-        localStorage.setItem(localStorageKey, 'true');
-        
-        // Ждем немного, чтобы блокчейн успел обновиться
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Принудительно обновляем данные
-        if (onUpdate) {
-          await onUpdate();
+        if (userAddress) {
+          const localStorageKey = `deposit-returned-${campaignAddress}-${userAddress}`;
+          localStorage.setItem(localStorageKey, 'true');
         }
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (onUpdate) await onUpdate();
       } else {
-        addNotification({
-          type: 'error',
-          message: 'Deposit return transaction failed',
-          isGlobal: false
-        });
+        addNotification({ type: 'error', message: 'Deposit return transaction failed', isGlobal: false });
       }
     } catch (err) {
       const decodedError = errorService.decodeContractError(err);
-      
-      // Если ошибка связана с повторным возвратом депозита, помечаем как уже возвращенный
-      if (decodedError.message.includes('already returned') || 
-          decodedError.message.includes('FVZeroWithdrawnAmount')) {
+      if (decodedError.message.includes('already returned') || decodedError.message.includes('FVZeroWithdrawnAmount')) {
         setIsDepositReturned(true);
-        const localStorageKey = `deposit-returned-${campaignAddress}-${userAddress}`;
-        localStorage.setItem(localStorageKey, 'true');
+        if (userAddress) {
+          const localStorageKey = `deposit-returned-${campaignAddress}-${userAddress}`;
+          localStorage.setItem(localStorageKey, 'true');
+        }
       }
-      
-      addNotification({
-        type: decodedError.type as any,
-        message: decodedError.message,
-        isGlobal: false
+      addNotification({ type: decodedError.type as any, message: decodedError.message, isGlobal: false });
+    } finally {
+      setIsLoading(false);
+      setCurrentAction(null);
+    }
+  };
+
+  // CHG: Новая отдельная кнопка для дедлайна — вызывает checkDeadlineStatus()
+  const handleCheckDeadlineStatus = async () => {
+    if (!userAddress || !walletClient) {
+      addNotification({ type: 'error', message: 'Please connect your wallet to perform this action', isGlobal: false });
+      return;
+    }
+
+    setIsLoading(true);
+    setCurrentAction('checking-deadline');
+
+    try {
+      const hash = await walletClient.writeContract({
+        address: campaignAddress as `0x${string}`,
+        abi: CampaignABI,
+        functionName: 'checkDeadlineStatus',
+        args: []
       });
+
+      addNotification({ type: 'info', message: 'Checking deadline status on-chain...', isGlobal: false, transactionHash: hash });
+
+      const receipt = await publicClient?.waitForTransactionReceipt({ hash: hash as `0x${string}` });
+
+      if (receipt?.status === 'success') {
+        addNotification({ type: 'success', message: 'Deadline check executed', isGlobal: false });
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        if (onUpdate) await onUpdate();
+      } else {
+        addNotification({ type: 'error', message: 'Deadline check transaction failed', isGlobal: false });
+      }
+    } catch (err) {
+      const decodedError = errorService.decodeContractError(err);
+      addNotification({ type: decodedError.type as any, message: decodedError.message, isGlobal: false });
     } finally {
       setIsLoading(false);
       setCurrentAction(null);
@@ -452,18 +429,27 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   };
 
   const availableActions = getAvailableActions();
-  
-  // Упрощенное условие для возврата депозита
-  const canReturnDeposit = !isDepositReturned && depositAmount > 0n && 
-                          (isCancelled || isFailed || isSuccessful);
+
+  // CHG: Условие для возврата депозита — показываем только если депозит есть, он не возвращён и кампания finished
+  const canReturnDeposit = !isDepositReturned && depositAmount > 0n && (isCancelled || isFailed || isSuccessful);
+
+  // CHG: Withdraw доступен только создателю и если ещё не выведены фонды
+  const isCreator = !!(campaign.creator && userAddress && campaign.creator.toLowerCase() === userAddress.toLowerCase());
+  const canWithdrawFunds = isSuccessful && !isFundsWithdrawn && isCreator;
 
   return (
     <div className="account-campaign-card">
       <div className="account-campaign-header">
         <h4>{campaignName}</h4>
-        <span className={`status-badge ${statusClass}`}>{statusText}</span>
+        <span className={`status-badge ${statusClass}`}>
+          {statusText}
+          {/* CHG: если Live и дедлайн прошёл, добавляем пометку */}
+          {campaign.status === 0 && isDeadlineExpired && (
+            <span className="deadline-warning">(deadline passed)</span>
+          )}
+        </span>
       </div>
-      
+
       <div className="account-campaign-details">
         <div>ID: #{campaign.id.toString()}</div>
         <div>Address: {campaignAddress.slice(0, 8)}...{campaignAddress.slice(-6)}</div>
@@ -475,8 +461,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
         <div>Deadline: {new Date(campaign.deadline * 1000).toLocaleDateString()}</div>
         {depositAmount > 0n && (
           <div>Deposit: {formatUnits(depositAmount, 18)} ETH</div>
-        )}       
-        
+        )}
       </div>
 
       {isCheckingDeposit ? (
@@ -502,7 +487,14 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
             </button>
           ))}
         </div>
-      ) : isSuccessful && !isFundsWithdrawn ? (
+      ) : ( (campaign.status === 0 || campaign.status === 1) && isDeadlineExpired ) ? (
+        // CHG: для Live/Stopped с прошедшим дедлайном показываем кнопку проверки дедлайна
+        <div className="account-campaign-actions">
+          <button className="btn btn-warning" onClick={handleCheckDeadlineStatus}>
+            Check Deadline Status
+          </button>
+        </div>
+      ) : canWithdrawFunds ? (
         <div className="account-campaign-actions">
           <h5>Campaign Successful!</h5>
           <button
