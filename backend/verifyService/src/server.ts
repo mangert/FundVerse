@@ -71,7 +71,7 @@ function readFlatContract(contractName: string): string {
 // Проверяем, доступен ли контракт на Etherscan
 async function isContractVerifiedOnEtherscan(address: string): Promise<boolean> {
   try {
-    const response = await axios.get("https://api.etherscan.io/api", {
+    const response = await axios.get("https://api.etherscan.io/v2/api?chainid=11155111", {
       params: {
         apikey: ETHERSCAN_API_KEY,
         module: "contract",

@@ -3,6 +3,7 @@ import cors from "cors";
 import * as dotenv from "dotenv";
 import { initEventIndexer, getCampaigns, getStatus as getEventStatus } from "./eventIndexer";
 import { initTokenIndexer, getTokens, getStatus as getTokenStatus } from "./tokenIndexer";
+import { initFundsIndexer, getFundsEvents, getStatus as getFundsStatus } from "./fundsIndexer";
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ async function main() {
   // Инициализация индексеров (они стартуют обработку истории при инициализации)
   await initEventIndexer();
   await initTokenIndexer();
+  await initFundsIndexer([], getCampaigns);
 
   // API
   app.get("/api/campaigns", (req, res) => {
@@ -26,10 +28,15 @@ async function main() {
     res.json(getTokens());
   });
 
+  app.get("/api/funds", (req, res) => {
+    res.json(getFundsEvents());
+  });
+
   app.get("/api/status", (req, res) => {
     res.json({
       events: getEventStatus(),
-      tokens: getTokenStatus()
+      tokens: getTokenStatus(),
+      funds: getFundsStatus()
     });
   });
 
