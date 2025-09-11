@@ -3,7 +3,11 @@ import { PlatformABI } from '../utils/abi';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
 import { useMemo, useCallback } from 'react';
 
-export const useCampaigns = () => {
+interface UseCampaignsOptions {
+  latestFirst?: boolean; // CHG: добавлен флаг для переворота списка
+}
+
+export const useCampaigns = ({ latestFirst = true }: UseCampaignsOptions = {}) => {
   // Получаем общее количество кампаний
   const { 
     data: totalCampaigns, 
@@ -42,10 +46,13 @@ export const useCampaigns = () => {
   // Преобразуем данные в массив адресов
   const campaignAddresses = useMemo(() => {
     if (!campaignsData) return [];
-    return campaignsData
+    const addresses = campaignsData
       .map(item => item.status === 'success' ? item.result as string : null)
       .filter(Boolean) as string[];
-  }, [campaignsData]);
+
+    // CHG: переворачиваем массив, если latestFirst = true
+    return latestFirst ? addresses.slice().reverse() : addresses;
+  }, [campaignsData, latestFirst]);
 
   // Функция для полного обновления
   const refetch = useCallback(async () => {    

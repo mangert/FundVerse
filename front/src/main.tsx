@@ -25,6 +25,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           modalSize="compact"
           initialChain={sepolia}
           locale="en-US"
+          coolMode
           theme={midnightTheme({
             accentColor: '#7928CA',
             accentColorForeground: 'white',

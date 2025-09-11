@@ -96,8 +96,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
 
   // ---------------------------------------------------------------------
   // CHG: Проверяем статус депозита глобально — НЕ зависит от userAddress
-  // - читаем getCampaignDeposit (если есть)
-  // - если deposit === 0, ищем FVDepositReturned для данной кампании (по campaign поле)
+  // - читаем getCampaignDeposit
   // ---------------------------------------------------------------------
   useEffect(() => {
     const checkDepositStatus = async () => {
@@ -109,96 +108,36 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
       try {
         setDebugInfo(`Calling getCampaignDeposit for ${campaignAddress} on platform ${PLATFORM_ADDRESS}`);
 
-        // проверим наличие функции в ABI
-        const hasDepositFunction = PlatformABI.some(
-          (item: any) => item.type === 'function' && item.name === 'getCampaignDeposit'
-        );
-
-        let deposit = 0n;
-        if (hasDepositFunction) {
-          try {
-            deposit = await publicClient.readContract({
-              address: PLATFORM_ADDRESS,
-              abi: PlatformABI,
-              functionName: 'getCampaignDeposit',
-              args: [campaignAddress as `0x${string}`]
-            }) as bigint;
-          } catch (err) {
-            console.warn('readContract getCampaignDeposit failed:', err);
-            deposit = 0n;
-          }
-        } else {
-          // если геттера нет — считаем deposit = 0 (и будем полагаться на события)
+        
+        let deposit = 0n;        
+        try {
+          deposit = await publicClient.readContract({
+          address: PLATFORM_ADDRESS,
+          abi: PlatformABI,
+          functionName: 'getCampaignDeposit',
+          args: [campaignAddress as `0x${string}`]
+        }) as bigint;
+        } catch (err) {
+          console.warn('readContract getCampaignDeposit failed:', err);
           deposit = 0n;
-        }
-
+        }        
         setDepositAmount(deposit);
         setDebugInfo(`Deposit result: ${deposit.toString()}`);
-
-        if (deposit === 0n) {
-          setDebugInfo('Deposit is zero — checking FVDepositReturned events for this campaign');
-
-          try {
-            const currentBlock = await publicClient.getBlockNumber();
-            const _fromBlock = currentBlock > 20000n ? currentBlock - 20000n : 0n;
-
-            const depositEvents = await publicClient.getLogs({
-              address: PLATFORM_ADDRESS,
-              event: {
-                type: 'event',
-                name: 'FVDepositReturned',
-                inputs: [
-                  { type: 'address', indexed: true, name: 'founder' },
-                  { type: 'uint256', indexed: false, name: 'amount' },
-                  { type: 'address', indexed: false, name: 'campaign' }
-                ]
-              },
-              fromBlock: _fromBlock,
-              toBlock: 'latest'
-            });
-
-            // CHG: ищем событие по campaign (глобально), не фильтруя по текущему пользователю
-            const hasDepositReturned = depositEvents.some(event =>
-              !!event.args?.campaign && (String(event.args.campaign).toLowerCase() === campaignAddress.toLowerCase())
-            );
-
-            setIsDepositReturned(hasDepositReturned);
-
-            if (!hasDepositReturned) {
-              setDebugInfo('No FVDepositReturned event found for this campaign');
-            } else {
-              setDebugInfo('Deposit returned (found FVDepositReturned event)');
-            }
-          } catch (err) {
-            console.warn('Failed to fetch FVDepositReturned events:', err);
-            setDebugInfo('Error while checking FVDepositReturned events');
-            setIsDepositReturned(false);
-          }
-        } else {
-          // deposit > 0 => очевидно не возвращён
-          setIsDepositReturned(false);
-          setDebugInfo(`Deposit available: ${formatUnits(deposit, 18)} ETH`);
-        }
+        
       } catch (error) {
         console.error('Error checking deposit status:', error);
-        setDebugInfo('Error while checking deposit status');
-
-        // fallback по локальному хранилищу — если нужно
-        if (userAddress) {
-          const localStorageKey = `deposit-returned-${campaignAddress}-${userAddress}`;
-          const locallyReturned = localStorage.getItem(localStorageKey) === 'true';
-          setIsDepositReturned(locallyReturned);
-        }
+        setDebugInfo('Error while checking deposit status');        
+      
       } finally {
         setIsCheckingDeposit(false);
       }
     };
 
     checkDepositStatus();
-  }, [publicClient, campaignAddress]); // CHG: убрали зависимость от userAddress, делаем глобально
+  }, [publicClient, campaignAddress]);
 
   // ---------------------------------------------------------------------
-  // Управление статусами — восстановлена логика Stop/Cancel/Resume как была
+  // Управление статусами — логика Stop/Cancel/Resume
   // CHG: убрал некорректный блок для Status.Failed (Mark as Failed) — это делается через checkDeadlineStatus
   // ---------------------------------------------------------------------
   const getAvailableActions = () => {
