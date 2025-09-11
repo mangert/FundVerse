@@ -20,11 +20,18 @@ class FundsService {
     : '/api';
 
   async isFundsWithdrawn(campaignAddress: string): Promise<boolean> {
-    const res = await fetch(`${this.API_BASE}/funds/events`);
+    const res = await fetch(`${this.API_BASE}/funds`);
+
+    const data = await res.json(); // читаем один раз
+
+    console.log(res.status, data); // можно отлаживать здесь
+
     if (!res.ok) throw new Error('Failed to fetch funds events');
-    const events = await res.json();
-    return events.some((e: any) => e.campaignAddress.toLowerCase() === campaignAddress.toLowerCase());
-  }  
+
+    return data.some((e: any) => e.campaignAddress.toLowerCase() === campaignAddress.toLowerCase());
+  }
+
+ 
 
   async getFunds(): Promise<FundEvent[]> {
     try {

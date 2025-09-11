@@ -154,10 +154,6 @@ body {
   }
 
   /* Адаптивность для мобильных */
-  /* Адаптивность для мобильных */
-@media (max-width: 768px) {
-  
-}
   
   @media (max-width: 768px) {
     .app-container {
@@ -165,32 +161,32 @@ body {
     }
   
     .app-header {
-      padding: 8px 12px; /* Уменьшаем внутренние отступы */
+      padding: 6px 10px; /* Уменьшаем внутренние отступы */
       top: 10px;
-      gap: 8px; /* Уменьшаем расстояние между элементами */
+      gap: 4px; /* Уменьшаем расстояние между элементами */
     }
 
     .logo-title-container {
-      gap: 8px;
+      gap: 3px;
     }
 
     .app-logo {
-      width: 32px; /* Уменьшаем размер лого */
-      height: 32px;
+      width: 25px; /* Уменьшаем размер лого */
+      height: 25px;
     }
 
     .app-title {
-      font-size: 1.2rem; /* Уменьшаем размер текста */
+      font-size: 0.5rem; /* Уменьшаем размер текста */
     }
       
     .page-header {
       flex-direction: column;
       align-items: flex-start;
-      gap: 10px;
+      gap: 3px;
     }
     
     .page-header h1 {
-      font-size: 1.5rem;
+      font-size: 0.5rem;
     }
   }
 

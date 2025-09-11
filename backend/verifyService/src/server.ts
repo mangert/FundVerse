@@ -139,7 +139,7 @@ async function verifyContract(
       log(`✅ Верификация отправлена успешно. GUID: ${response.data.result}`);
       
       // Проверяем статус верификации через некоторое время
-      await delay(30000); // 30 секунд
+      await delay(60000); // 30 секунд
       const isVerified = await isContractVerifiedOnEtherscan(address);
       
       if (isVerified) {
@@ -171,8 +171,8 @@ async function verifyContractWithRetry(
   contractName: string,
   constructorArgs: any[],
   abi: any[],
-  maxAttempts = 3,
-  initialDelay = 30000 // 30 секунд
+  maxAttempts = 5,
+  initialDelay = 60000 // 30 секунд
 ) {
   let attempt = 1;
   let delayMs = initialDelay;

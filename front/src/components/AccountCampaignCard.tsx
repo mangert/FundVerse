@@ -59,58 +59,40 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   const isFinished = isSuccessful || isCancelled || isFailed;
 
   // ---------------------------------------------------------------------
-  // CHG: Проверяем вывод средств глобально — напрямую читаем контракт
-  // вместо поиска событий CampaignFundsClaimed
+  // CHG: Проверяем вывод средств глобально — читаем через сервис  // 
   // ---------------------------------------------------------------------
   useEffect(() => {
-    const checkFundsWithdrawal = async () => {
-      if (!publicClient || !isSuccessful) {
-        // если кампания не успешна — нет смысла проверять
-        return;
+  const checkFundsWithdrawal = async (): Promise<void> => {
+    if (!isSuccessful) {
+      // если кампания не успешна — нет смысла проверять
+      return;
+    }
+
+    try {
+      const address = campaignAddress as `0x${string}`;
+      const withdrawn = await fundsService.isFundsWithdrawn(address);
+      setIsFundsWithdrawn(withdrawn);
+
+      // fallback на локальное хранилище, если нужно
+      if (!withdrawn && userAddress) {
+        const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
+        const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
+        if (locallyWithdrawn) setIsFundsWithdrawn(true);
       }
-
-      try {
-        const hasFunction = CampaignABI.some(
-          (item: any) => item.type === 'function' && item.name === 'fundsWithdrawn'
-        );
-
-        if (hasFunction) {
-          const withdrawn = await publicClient.readContract({
-            address: campaignAddress as `0x${string}`,
-            abi: CampaignABI,
-            functionName: 'fundsWithdrawn',
-            args: []
-          }) as boolean;
-
-          setIsFundsWithdrawn(withdrawn);
-
-          // fallback для локального хранения
-          if (!withdrawn && userAddress) {
-            const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
-            const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
-            if (locallyWithdrawn) setIsFundsWithdrawn(true);
-          }
-        } else {
-          // если функции нет — оставляем fallback на локальное хранилище
-          if (userAddress) {
-            const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
-            const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
-            setIsFundsWithdrawn(locallyWithdrawn);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking fundsWithdrawn():', error);
-        // fallback на локальное хранилище
-        if (userAddress) {
-          const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
-          const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
-          setIsFundsWithdrawn(locallyWithdrawn);
-        }
+      console.log('Funds withdrawn for', campaignAddress, ':', withdrawn); //отладочный - удалить
+    } catch (error) {
+      console.error('Error checking funds withdrawal via service:', error);
+      if (userAddress) {
+        const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
+        const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
+        setIsFundsWithdrawn(locallyWithdrawn);
       }
-    };
+    }
+  };
+  
+  checkFundsWithdrawal();
+}, [campaignAddress, isSuccessful, userAddress]); // publicClient убран, так как больше не используется
 
-    checkFundsWithdrawal();
-  }, [publicClient, campaignAddress, isSuccessful, userAddress]);
 
   // ---------------------------------------------------------------------
   // CHG: Проверяем статус депозита глобально — НЕ зависит от userAddress
@@ -491,7 +473,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
             Check Deadline Status
           </button>
         </div>
-      ) : canWithdrawFunds ? (
+      ) : (!isFundsWithdrawn && canWithdrawFunds) ? (
         <div className="account-campaign-actions">
           <h5>Campaign Successful!</h5>
           <button
