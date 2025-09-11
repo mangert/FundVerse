@@ -75,8 +75,11 @@ const AppContent = () => {
             )}
           </nav>
         </div>
-        <ConnectButton />
-    
+        <ConnectButton 
+          showBalance={{
+            smallScreen: false,
+            largeScreen: true,
+          }}/>    
     </div>
       
       {/* Отображаем текущую страницу */}

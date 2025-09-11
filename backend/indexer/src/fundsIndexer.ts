@@ -11,7 +11,7 @@ const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS!;
 const START_BLOCK = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : undefined;
 
 const CHUNK = 10n; // Alchemy: максимум ~10 блоков в одном запросе — оставляем 10
-const BATCH_ADDRESSES = 20; // сколько адресов кампаний отправлять в одном getLogs (подбирай: 10-50)
+const BATCH_ADDRESSES = 20; // сколько адресов кампаний отправлять в одном getLogs
 const DELAY_BETWEEN_BATCHES_MS = 200; // пауза между батчами (throttling)
 const POLL_INTERVAL = 30_000;
 const MAX_RETRIES = 5;

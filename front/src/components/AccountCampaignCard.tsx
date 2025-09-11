@@ -9,6 +9,7 @@ import { CampaignABI, PlatformABI } from '../utils/abi';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
 import { errorService } from '../services/ErrorService';
 import { useNotifications } from '../contexts/NotificationContext';
+import { fundsService } from '../services/fudnsService';
 
 interface AccountCampaignCardProps {
   campaign: CampaignSummary;
@@ -25,7 +26,8 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   const [currentAction, setCurrentAction] = useState<string | null>(null);
 
   // CHG: теперь эти флаги вычисляем глобально (по цепочке), а не по текущему кошельку
-  const [isFundsWithdrawn, setIsFundsWithdrawn] = useState(false);
+  const [isFundsWithdrawn, setIsFundsWithdrawn] = useState(false);  
+
   const [isDepositReturned, setIsDepositReturned] = useState(false);
   const [depositAmount, setDepositAmount] = useState<bigint>(0n);
   const [isCheckingDeposit, setIsCheckingDeposit] = useState(true);
@@ -57,8 +59,8 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   const isFinished = isSuccessful || isCancelled || isFailed;
 
   // ---------------------------------------------------------------------
-  // CHG: Проверяем вывод средств глобально — ищем событие CampaignFundsClaimed
-  // Раньше проверяли по текущему кошельку, теперь проверяем для создателя (campaign.creator)
+  // CHG: Проверяем вывод средств глобально — напрямую читаем контракт
+  // вместо поиска событий CampaignFundsClaimed
   // ---------------------------------------------------------------------
   useEffect(() => {
     const checkFundsWithdrawal = async () => {
@@ -68,41 +70,37 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
       }
 
       try {
-        const currentBlock = await publicClient.getBlockNumber();
-        // CHG: ищем в пределах разумного окна (можно увеличить, если нужно)
-        const _fromBlock = currentBlock > 20000n ? currentBlock - 20000n : 0n;
-
-        const withdrawalEvents = await publicClient.getLogs({
-          address: campaignAddress as `0x${string}`,
-          event: {
-            type: 'event',
-            name: 'CampaignFundsClaimed',
-            inputs: [
-              { type: 'address', indexed: true, name: 'recipient' },
-              { type: 'uint256', indexed: false, name: 'amount' }
-            ]
-          },
-          fromBlock: _fromBlock,
-          toBlock: 'latest'
-        });
-
-        // CHG: считаем, что funds withdrawn, если есть событие с recipient == creator
-        const creator = (campaign.creator ?? '').toLowerCase();
-        const hasWithdrawn = withdrawalEvents.some(event =>
-          !!event.args?.recipient && (String(event.args.recipient).toLowerCase() === creator)
+        const hasFunction = CampaignABI.some(
+          (item: any) => item.type === 'function' && item.name === 'fundsWithdrawn'
         );
 
-        setIsFundsWithdrawn(hasWithdrawn);
+        if (hasFunction) {
+          const withdrawn = await publicClient.readContract({
+            address: campaignAddress as `0x${string}`,
+            abi: CampaignABI,
+            functionName: 'fundsWithdrawn',
+            args: []
+          }) as boolean;
 
-        // Fallback: если нет событий, оставляем локальное хранение как дополнительную подсказку
-        if (!hasWithdrawn && userAddress) {
-          const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
-          const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
-          if (locallyWithdrawn) setIsFundsWithdrawn(true);
+          setIsFundsWithdrawn(withdrawn);
+
+          // fallback для локального хранения
+          if (!withdrawn && userAddress) {
+            const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
+            const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
+            if (locallyWithdrawn) setIsFundsWithdrawn(true);
+          }
+        } else {
+          // если функции нет — оставляем fallback на локальное хранилище
+          if (userAddress) {
+            const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
+            const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
+            setIsFundsWithdrawn(locallyWithdrawn);
+          }
         }
       } catch (error) {
-        console.error('Error checking funds withdrawal events:', error);
-        // локальный fallback
+        console.error('Error checking fundsWithdrawn():', error);
+        // fallback на локальное хранилище
         if (userAddress) {
           const localStorageKey = `withdrawn-${campaignAddress}-${userAddress}`;
           const locallyWithdrawn = localStorage.getItem(localStorageKey) === 'true';
@@ -112,8 +110,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
     };
 
     checkFundsWithdrawal();
-    // CHG: зависим от campaign.creator, т.к. проверяем, выводил ли creator фонды
-  }, [publicClient, campaignAddress, isSuccessful, campaign.creator, userAddress]);
+  }, [publicClient, campaignAddress, isSuccessful, userAddress]);
 
   // ---------------------------------------------------------------------
   // CHG: Проверяем статус депозита глобально — НЕ зависит от userAddress
