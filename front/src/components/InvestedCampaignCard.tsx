@@ -47,8 +47,25 @@ export const InvestedCampaignCard = ({ investedCampaign, onUpdate }: InvestedCam
   const isDeadlineExpired = Date.now() > campaign.deadline * 1000;
   const isGoalReached = Number(campaign.raised) >= Number(campaign.goal);
 
-  const canClaimRefund = (campaign.status === 2 || campaign.status === 3) && !isRefundClaimed; // Cancelled or Failed
-  const canContribute = campaign.status === 0; // Live
+  /*========CHG========*/
+  //const canClaimRefund = (campaign.status === 2 || campaign.status === 3) && !isRefundClaimed; // Cancelled or Failed
+  // determine whether the investor has a non-zero contribution
+  const hasContribution = (typeof contribution === 'bigint')
+    ? contribution > 0n
+    : Number(contribution) > 0;
+
+  // если дедлайн прошёл, цель не достигнута, а статус ещё Live/Stopped — считаем это потенциальным случайом возврата
+  const isPendingDeadlineRefund = isDeadlineExpired && !isGoalReached && campaign.status === 0;
+
+  // можно требовать подтверждение, что вкладчик действительно что-то вложил
+  const canClaimRefund = hasContribution && !isRefundClaimed && (
+    campaign.status === 2 || // Cancelled
+    campaign.status === 3 || // Failed
+    isPendingDeadlineRefund   // deadline passed & goal not reached, but status not updated
+  );
+  /*========END CHG========*/
+
+  const canContribute = campaign.status === 0 && !isDeadlineExpired; // Live
 
   const handleClaimRefund = async () => {
     if (!address || !walletClient) {
@@ -130,7 +147,12 @@ export const InvestedCampaignCard = ({ investedCampaign, onUpdate }: InvestedCam
     <div className="invested-campaign-card">
       <div className="invested-campaign-header">
         <h4>{campaignName}</h4>
-        <span className={`status-badge ${statusClass}`}>{statusText}</span>
+        <span className={`status-badge ${statusClass}`}>{statusText}
+          {/* CHG: если Live и дедлайн прошёл, добавляем пометку */}
+          {campaign.status === 0 && isDeadlineExpired && (
+            <span className="deadline-warning">(deadline passed)</span>
+          )}
+        </span>
       </div>
       
       <div className="invested-campaign-details">

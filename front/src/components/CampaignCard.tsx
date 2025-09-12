@@ -41,13 +41,19 @@ export const CampaignCard = ({ address, onUpdate }: CampaignCardProps) => {
 
   const progress = Number(summary.raised) / Number(summary.goal) * 100;
   const daysLeft = Math.max(0, Math.ceil((summary.deadline * 1000 - Date.now()) / (1000 * 60 * 60 * 24)));
+  const isDeadlineExpired = Date.now() > summary.deadline * 1000;
 
   return (
     <>
       <div className="card">
         <div className="card-header">
           <h3>{campaignName}</h3> 
-          <span className={`status-badge ${statusClass}`}>{statusText}</span>
+          <span className={`status-badge ${statusClass}`}>{statusText}
+          {/* CHG: если Live и дедлайн прошёл, добавляем пометку */}
+          {summary.status === 0 && isDeadlineExpired && (
+            <span className="deadline-warning">(deadline passed)</span>
+          )}
+        </span>
         </div>
         
         <p>ID: #{summary.id.toString()} • By: {summary.creator.slice(0, 8)}...</p>

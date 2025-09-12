@@ -8,7 +8,7 @@ import { LoyaltySection } from '../components/LoyaltySection';
 
 export const Account = () => {
   const { address, isConnected } = useAccount();
-  const [activeTab, setActiveTab] = useState<'created' | 'invested'>('created');
+  const [activeTab, setActiveTab] = useState<'created' | 'invested' | 'loyalty'>('created');
   
   const { createdCampaigns, isLoading: isLoadingCreated, refetch: refetchCreated } = useCreatedCampaigns();
   const { investedCampaigns, isLoading: isLoadingInvested, refetch: refetchInvested } = useInvestedCampaigns();
@@ -16,7 +16,7 @@ export const Account = () => {
   const handleRefetch = () => {
     if (activeTab === 'created') {
       refetchCreated();
-    } else {
+    } else if (activeTab === 'invested') {
       refetchInvested();
     }
   };
@@ -48,6 +48,13 @@ export const Account = () => {
           onClick={() => setActiveTab('invested')}
         >
           My Investments ({investedCampaigns.length})
+        </button>
+
+        <button 
+          className={`tab ${activeTab === 'loyalty' ? 'active' : ''}`}
+          onClick={() => setActiveTab('loyalty')}
+        >
+          Loyalty program
         </button>
       </div>
 
@@ -94,13 +101,14 @@ export const Account = () => {
             )}
           </div>
         )}
-      </div>
-
-      {/* Блок лояльности */}
-      <div className="loyalty-section">      
-        <div>
-            <LoyaltySection />
+        {/* Блок лояльности */}
+        {activeTab === 'loyalty' && (
+          <div className="loyalty-section">      
+            <div>
+                <LoyaltySection />
+            </div>
         </div>
+        )}
       </div>
     </div>
   );
