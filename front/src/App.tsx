@@ -74,12 +74,15 @@ const AppContent = () => {
               </button>
             )}
           </nav>
-        </div>
-        <ConnectButton 
-          showBalance={{
+        </div>        
+        <div className="rk-connect-wrapper">
+          <ConnectButton 
+            showBalance={{
             smallScreen: false,
             largeScreen: true,
-          }}/>    
+            }}
+          />
+        </div>      
     </div>
       
       {/* Отображаем текущую страницу */}

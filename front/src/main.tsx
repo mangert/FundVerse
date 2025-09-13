@@ -25,11 +25,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           modalSize="compact"
           initialChain={sepolia}
           locale="en-US"
-          coolMode
+          coolMode          
           theme={midnightTheme({
             accentColor: '#7928CA',
             accentColorForeground: 'white',
-            borderRadius: 'large',
+            borderRadius: 'large',            
           })}
         >
           <App />

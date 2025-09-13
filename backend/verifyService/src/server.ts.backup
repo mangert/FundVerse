@@ -1,0 +1,195 @@
+import { ethers } from "ethers";
+import axios from "axios";
+import * as dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
+import CampaignETH from "../contracts-data/CampaignNative.abi.json";
+import CampaignERC20 from "../contracts-data/CampaignToken.abi.json";
+import platformAbi from "../contracts-data/Platform.abi.json";
+import { log } from "./logger";
+
+dotenv.config();
+
+const PROVIDER_URL = process.env.PROVIDER_URL!;
+const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY!;
+const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS!;
+const COMPILER_VERSION = "v0.8.30+commit.73712a01";
+
+const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
+const platform = new ethers.Contract(PLATFORM_ADDRESS, platformAbi, provider);
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function safeStringify(obj: any) {
+  return JSON.stringify(obj, (_, value) =>
+    typeof value === "bigint" ? value.toString() : value
+  );
+}
+
+function getConstructorTypes(abi: any[]): string[] {
+  const constructorAbi = abi.find((item: any) => item.type === "constructor");
+  if (!constructorAbi) return [];
+  return constructorAbi.inputs.map((input: any) => input.type);
+}
+
+function encodeConstructorArgs(types: string[], values: any[]): string {
+  return ethers.AbiCoder.defaultAbiCoder().encode(
+    types,
+    values.map(v => typeof v === "bigint" ? v.toString() : v)
+  );
+}
+
+function readBuildJson(contractPath: string) {
+  const fullPath = path.join(__dirname, "../artifacts", contractPath);
+  if (!fs.existsSync(fullPath)) throw new Error(`Build JSON not found: ${fullPath}`);
+  return JSON.parse(fs.readFileSync(fullPath, "utf8"));
+}
+
+async function isContractVerifiedOnEtherscan(address: string): Promise<boolean> {
+  try {
+    const response = await axios.get("https://api.etherscan.io/v2/api?chainid=11155111", {
+      params: {
+        module: "contract",
+        action: "getsourcecode",
+        address,
+        apikey: ETHERSCAN_API_KEY
+      },
+      timeout: 10000
+    });
+
+    return response.data.status === "1" &&
+           response.data.result[0]?.SourceCode &&
+           response.data.result[0].SourceCode !== "";
+  } catch (err: any) {
+    log(`❌ Ошибка проверки верификации на Etherscan: ${err.message}`);
+    return false;
+  }
+}
+
+async function submitVerification(
+  address: string,
+  contractPath: string,
+  contractName: string,
+  abi: any[],
+  constructorArgs: any[]
+): Promise<string> {
+  const buildJson = readBuildJson(contractPath);
+  const sourceCode = JSON.stringify(buildJson.input); 
+  const constructorTypes = getConstructorTypes(abi);
+  const encodedArgs = encodeConstructorArgs(constructorTypes, constructorArgs);
+
+  const formData = new URLSearchParams();
+  formData.append("apikey", ETHERSCAN_API_KEY);
+  formData.append("module", "contract");
+  formData.append("action", "verifysourcecode");
+  formData.append("contractaddress", address);
+  formData.append("sourceCode", sourceCode);
+  formData.append("codeformat", "solidity-standard-json-input");
+  formData.append("contractname", contractName); 
+  formData.append("compilerversion", COMPILER_VERSION);
+  formData.append("optimizationUsed", "1");
+  formData.append("runs", "200");
+  formData.append("constructorArguements", encodedArgs.replace(/^0x/, ""));
+
+  const response = await axios.post(
+    "https://api.etherscan.io/v2/api?chainid=11155111",
+    formData.toString(),
+    { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 60000 }
+  );
+
+  log(`✅ submitVerification response: ${safeStringify(response.data)}`);
+  return response.data.result;
+}
+
+async function checkVerificationStatus(guid: string) {
+  const formData = new URLSearchParams();
+  formData.append("apikey", ETHERSCAN_API_KEY);
+  formData.append("module", "contract");
+  formData.append("action", "checkverifystatus");
+  formData.append("guid", guid);
+
+  const response = await axios.post(
+    "https://api.etherscan.io/v2/api?chainid=11155111",
+    formData.toString(),
+    { headers: { "Content-Type": "application/x-www-form-urlencoded" }, timeout: 30000 }
+  );
+
+  log(`ℹ️ checkverifystatus response: ${safeStringify(response.data)}`);
+  return response.data;
+}
+
+async function verifyContractWithRetry(
+  address: string,
+  contractPath: string,
+  contractName: string,
+  abi: any[],
+  constructorArgs: any[],
+  maxAttempts = 5,
+  initialDelay = 60000
+) {
+  // Проверяем заранее
+  const alreadyVerified = await isContractVerifiedOnEtherscan(address);
+  if (alreadyVerified) {
+    log(`✅ Контракт ${address} уже верифицирован на Etherscan`);
+    return;
+  }
+
+  let attempt = 1;
+  let delayMs = initialDelay;
+
+  while (attempt <= maxAttempts) {
+    try {
+      log(`⏳ Попытка ${attempt}/${maxAttempts} верификации контракта ${address}`);
+      const guid = await submitVerification(address, contractPath, contractName, abi, constructorArgs);
+
+      await delay(delayMs);
+
+      const status = await checkVerificationStatus(guid);
+      if (status.status === "1") {
+        log(`✅ Контракт успешно верифицирован после попытки ${attempt}`);
+        return;
+      } else {
+        log(`⚠️ Верификация не завершена: ${status.result}`);
+      }
+
+      delayMs *= 2;
+      attempt++;
+    } catch (err: any) {
+      log(`❌ Ошибка верификации (попытка ${attempt}): ${err.message}`);
+      delayMs *= 2;
+      attempt++;
+    }
+  }
+
+  log(`❌ Все ${maxAttempts} попытки верификации не удались для контракта ${address}`);
+}
+
+// Обработчик события
+platform.on("FVCampaignCreated", async (newCampaign: string, founder: string, token: string, goal: bigint) => {
+  log(`🎉 Новая кампания: ${newCampaign} (token=${token})`);
+
+  const isEth = token === ethers.ZeroAddress;
+  const abi = isEth ? CampaignETH : CampaignERC20;
+  const contractPath = isEth 
+    ? "contracts/modules/campaigns/CampaignNative.sol/CampaignNative.json"
+    : "contracts/modules/campaigns/CampaignToken.sol/CampaignToken.json";
+  const contractName = isEth 
+    ? "contracts/modules/campaigns/CampaignNative.sol:CampaignNative"
+    : "contracts/modules/campaigns/CampaignToken.sol:CampaignToken";
+
+  try {
+    const campaign = new ethers.Contract(newCampaign, abi, provider);
+    const summary = await campaign.getSummary();
+    const fee = await campaign.platformFee();
+
+    const constructorArgs = isEth
+      ? [PLATFORM_ADDRESS, summary._creator, summary._id, summary._goal, summary._deadline, summary._campaignMeta, fee]
+      : [PLATFORM_ADDRESS, summary._creator, summary._id, summary._goal, summary._deadline, summary._campaignMeta, fee, summary._token];
+
+    await verifyContractWithRetry(newCampaign, contractPath, contractName, abi, constructorArgs);
+  } catch (err: any) {
+    log(`❌ Ошибка при обработке контракта ${newCampaign}: ${err.message}`);
+  }
+});
+
+log("🚀 Verification server started. Listening for FVCampaignCreated...");
