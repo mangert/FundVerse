@@ -36,3 +36,6 @@ data.txt
 /contracts/examples
 commands.txt
 front/src/experimentals
+
+backend/verifyService/artifacts
+
