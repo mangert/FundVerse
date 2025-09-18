@@ -1,6 +1,6 @@
-//обновленная
+// компонент для карточки кампнаний донора в личном кабинете
 import { useState } from 'react';
-import { formatUnits } from 'viem'; // Заменяем formatEther на formatUnits
+import { formatUnits } from 'viem'; 
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { tokenService } from '../services/TokenService';
 import { getStatusText, getStatusClass, type CampaignStatus } from '../types/Campaign';
@@ -47,9 +47,6 @@ export const InvestedCampaignCard = ({ investedCampaign, onUpdate }: InvestedCam
   const isDeadlineExpired = Date.now() > campaign.deadline * 1000;
   const isGoalReached = Number(campaign.raised) >= Number(campaign.goal);
 
-  /*========CHG========*/
-  //const canClaimRefund = (campaign.status === 2 || campaign.status === 3) && !isRefundClaimed; // Cancelled or Failed
-  // determine whether the investor has a non-zero contribution
   const hasContribution = (typeof contribution === 'bigint')
     ? contribution > 0n
     : Number(contribution) > 0;
@@ -62,8 +59,7 @@ export const InvestedCampaignCard = ({ investedCampaign, onUpdate }: InvestedCam
     campaign.status === 2 || // Cancelled
     campaign.status === 3 || // Failed
     isPendingDeadlineRefund   // deadline passed & goal not reached, but status not updated
-  );
-  /*========END CHG========*/
+  );  
 
   const canContribute = campaign.status === 0 && !isDeadlineExpired; // Live
 
@@ -148,7 +144,7 @@ export const InvestedCampaignCard = ({ investedCampaign, onUpdate }: InvestedCam
       <div className="invested-campaign-header">
         <h4>{campaignName}</h4>
         <span className={`status-badge ${statusClass}`}>{statusText}
-          {/* CHG: если Live и дедлайн прошёл, добавляем пометку */}
+          {/* если Live и дедлайн прошёл, добавляем пометку */}
           {campaign.status === 0 && isDeadlineExpired && (
             <span className="deadline-warning">(deadline passed)</span>
           )}

@@ -1,3 +1,6 @@
+//использовать для тестирования фронта в hardhat-ноде. 
+// Не содержит верификации
+// записывает результат в json для hardhat
 import { upgrades } from "hardhat";
 
 const { ethers, hre } = require('hardhat');

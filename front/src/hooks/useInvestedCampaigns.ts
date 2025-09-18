@@ -1,3 +1,4 @@
+// хук для получения списка кампаний, в которые пользлватель инвестировал
 import { useState, useEffect } from 'react';
 import { useAccount, usePublicClient } from 'wagmi';
 import { useCampaigns } from './useCampaigns';

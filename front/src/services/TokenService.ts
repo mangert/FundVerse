@@ -1,4 +1,5 @@
-// src/services/TokenService.ts
+// сервис получения данных о добавленных / удаленных токенах
+// прокладка между бэкендом и компонентами
 import { zeroAddress } from "viem";
 
 export interface TokenInfo {
@@ -15,10 +16,9 @@ class TokenService {
   private static instance: TokenService;
   private tokens: Map<string, TokenInfo> = new Map();
   private pollingInterval: NodeJS.Timeout | null = null;
-  private readonly POLL_INTERVAL = 30_000; // 30 секунд
-  //private readonly API_BASE = import.meta.env.VITE_INDEXER_API || "/api";
+  private readonly POLL_INTERVAL = 30_000; // 30 секунд  
 
-  // Для любого IP-адреса используем прямой доступ, для домена - прокси
+  // Для любого IP-адреса используем прямой доступ, для домена - прокси  
   private readonly API_BASE = window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/) 
   ? `http://${window.location.hostname}:3001/api`
   : '/api';

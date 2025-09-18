@@ -1,8 +1,11 @@
-// src/services/eventService.ts
+// сервис получения данных о создаваемых кампаниях
+// прокладка между бэкендом и компонентами
 import { parseAbiItem } from 'viem';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
 
-//const INDEXER_API_BASE = import.meta.env.VITE_INDEXER_API || ""; // e.g. "http://37.221.127.92:3001/api"
+// подключение к бэкенду
+// Такое замороченное, чтобы можно было видеть и при использовании доменного имени
+// и при подключении к приложению по прямому ip 
 const INDEXER_API_BASE = window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/) 
   ? `http://${window.location.hostname}:3001/api`
   : '/api';

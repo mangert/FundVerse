@@ -1,3 +1,4 @@
+// компонент для вывода на дашборд информации о платформе
 import { formatEther } from 'viem';
 import { useState, useEffect } from 'react';
 import { usePublicClient } from 'wagmi';

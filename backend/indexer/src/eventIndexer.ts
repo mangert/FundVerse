@@ -1,3 +1,4 @@
+//индексер ловит события создания кампаний
 import { ethers } from "ethers";
 import * as dotenv from "dotenv";
 import { saveState, loadState } from "./storage";
@@ -5,48 +6,51 @@ import CampaignABI from "./abi/ICampaign.json";
 
 dotenv.config();
 
-const PROVIDER_URL = process.env.PROVIDER_URL!;
-const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS!;
-const START_BLOCK = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : undefined;
-const CHUNK = 10n; 
-const DELAY_MS = 300; 
-const POLL_INTERVAL = 30_000;
+const PROVIDER_URL = process.env.PROVIDER_URL!; // ключ Alchemy
+const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS!; // адрес платформы
+const START_BLOCK = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : undefined; //берем блок деплоя контракта платформы
+const CHUNK = 10n; // алхимия разрешает 10 блоков за запрос
+const DELAY_MS = 300;  // задержка между запросами
+const POLL_INTERVAL = 30_000; //интервал опроса
 
 const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
 const platformIf = new ethers.Interface([
   "event FVCampaignCreated(address indexed NewCampaignAddress, address indexed founder, address indexed token, uint256 goal)"
 ]);
 
-let campaigns: any[] = [];
+let campaigns: any[] = []; //список кампаний
 let lastProcessedBlock: bigint = START_BLOCK ?? 0n;
 let isRunning = false;
 
+//функция инициализации
 export async function initEventIndexer() {
   if (isRunning) return;
   isRunning = true;
 
-  const persisted = loadState();
+  const persisted = loadState(); //считываем данные из хранилища
   if (persisted?.events?.lastProcessedBlock) {
     lastProcessedBlock = BigInt(persisted.events.lastProcessedBlock);
-    campaigns = persisted.events.campaigns || [];
+    campaigns = persisted.events.campaigns || []; // забираем список кампаний
     console.log("Loaded persisted event state. lastProcessedBlock=", lastProcessedBlock.toString());
   } else {
     const current = BigInt(await provider.getBlockNumber());
-    lastProcessedBlock = START_BLOCK ?? (current > 2000n ? current - 2000n : 0n);
+    lastProcessedBlock = START_BLOCK ?? (current > 2000n ? current - 2000n : 0n); // запоминаем последний обработанный блок
     console.log("Starting event index from block", lastProcessedBlock.toString());
   }
 
-  await processRangeToLatest();
+  await processRangeToLatest(); //первый проход
 
-  setInterval(async () => {
+  setInterval(async () => { //периодическая обработка
     try { await processRangeToLatest(); } catch (e) { console.error(e); }
   }, POLL_INTERVAL);
 }
 
+//функция обработки данных
 async function processRangeToLatest() {
   const current = BigInt(await provider.getBlockNumber());
   if (current <= lastProcessedBlock) return;
 
+  //формируем интервал обрабатываемых блоков
   let from = lastProcessedBlock + 1n;
   while (from <= current) {
     let to = from + CHUNK - 1n;
@@ -64,6 +68,7 @@ async function processRangeToLatest() {
       topics: [topic]
     };
 
+    //считываем логи и забираем данные
     try {
       const logs = await provider.getLogs(filter);
       for (const log of logs) {
@@ -78,6 +83,7 @@ async function processRangeToLatest() {
         const blockNumber = BigInt(log.blockNumber);
         console.log("Found campaign:", newCampaign);
 
+        //считываем данные из пойманной кампании
         let summary = null;
         try {
           const campaignContract = new ethers.Contract(newCampaign, CampaignABI, provider);
@@ -96,6 +102,7 @@ async function processRangeToLatest() {
           console.warn("Failed to read getSummary for", newCampaign, e);
         }
 
+        //записываем кампанию в список
         campaigns.push({
           campaignAddress: newCampaign,
           founder,
@@ -119,10 +126,13 @@ async function processRangeToLatest() {
   }
 }
 
+//функции для API
+//функция возвращает кампании
 export function getCampaigns() {
   return campaigns.slice().reverse(); 
 }
 
+//функция возвращает статус работы сервиса
 export function getStatus() {
   return { lastProcessedBlock: lastProcessedBlock.toString(), count: campaigns.length };
 }

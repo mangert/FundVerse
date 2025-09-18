@@ -1,3 +1,4 @@
+// сервис обработки ошибок
 import { BaseError, ContractFunctionRevertedError } from 'viem';
 
 export interface DecodedError {
@@ -109,7 +110,7 @@ export class ErrorService {
             details: 'Please select a valid token'
           };
         
-        // Добавьте другие кастомные ошибки здесь
+        // Добавить другие кастомные ошибки
         
         default:
           return {

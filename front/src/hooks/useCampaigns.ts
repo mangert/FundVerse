@@ -1,10 +1,11 @@
+// хук для получения списка кампаний
 import { useReadContract, useReadContracts } from 'wagmi';
 import { PlatformABI } from '../utils/abi';
 import { PLATFORM_ADDRESS } from '../utils/addresses';
 import { useMemo, useCallback } from 'react';
 
 interface UseCampaignsOptions {
-  latestFirst?: boolean; // CHG: добавлен флаг для переворота списка
+  latestFirst?: boolean; //флаг для переворота списка
 }
 
 export const useCampaigns = ({ latestFirst = true }: UseCampaignsOptions = {}) => {

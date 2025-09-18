@@ -1,3 +1,4 @@
+// компонет формы создания кампаний
 import { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { PlatformABI } from '../utils/abi';
@@ -55,7 +56,7 @@ export const CreateCampaignForm = ({ onSuccess, onClose }: CreateCampaignFormPro
   useEffect(() => {
     const fetchTokenDecimals = async () => {
       if (formData.token === zeroAddress) {
-        setTokenDecimals(18); // Для нативной валюты всегда 18 decimals
+        setTokenDecimals(18); // Для нативной валюты 18 decimals (если подключать в другой сети - улучшить)
         return;
       }
 

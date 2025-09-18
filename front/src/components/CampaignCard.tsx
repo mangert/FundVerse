@@ -1,4 +1,4 @@
-//обновленная
+// компонент карточки кампаний на дашборде
 import { useState } from 'react';
 import { useCampaign } from '../hooks/useCampaign';
 import { formatEther, formatUnits } from 'viem';
@@ -49,7 +49,7 @@ export const CampaignCard = ({ address, onUpdate }: CampaignCardProps) => {
         <div className="card-header">
           <h3>{campaignName}</h3> 
           <span className={`status-badge ${statusClass}`}>{statusText}
-          {/* CHG: если Live и дедлайн прошёл, добавляем пометку */}
+          {/*если Live и дедлайн прошёл, добавляем пометку */}
           {summary.status === 0 && isDeadlineExpired && (
             <span className="deadline-warning">(deadline passed)</span>
           )}

@@ -1,3 +1,4 @@
+//главная страница
 import { useCampaigns } from '../hooks/useCampaigns';
 import { CampaignCard } from '../components/CampaignCard';
 import { PlatformInfo } from '../components/PlatformInfo';

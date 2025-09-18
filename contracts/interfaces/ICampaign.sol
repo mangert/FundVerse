@@ -31,11 +31,6 @@ interface ICampaign {
     /// @param amount сумма возврата
     /// @param token валюта возврата (address(0) для нативной валюты)    
     event CampaignRefunded(address indexed donor, uint256 amount, address token);
-
-    /// @notice сообщает об успешном выводе фондов из камиании
-    /// @param recipient адрес вывода
-    /// @param amount сумма вывода  
-    event FundsWithdrawn(address indexed recipient, uint256 amount);
     
     /// @notice порождается, когда контракт не может перевести пользователю деньги 
     ///(при рефанде излишков, вкладов или истребовании средств фаундером)

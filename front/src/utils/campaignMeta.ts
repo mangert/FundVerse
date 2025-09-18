@@ -1,3 +1,4 @@
+//парсер для метаданных кампании
 export interface CampaignMeta {
   name?: string;
   desc?: string;

@@ -1,9 +1,11 @@
+//организация хранилища для списка кампаний
 import fs from "fs";
 import path from "path";
 
 const DATA_DIR = path.join(__dirname, "..", "data");
 const STATE_FILE = path.join(DATA_DIR, "state.json");
 
+//функция записывает данные в хранилище
 export function saveState(obj: any) {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -12,7 +14,7 @@ export function saveState(obj: any) {
     console.warn("Failed to persist state:", e);
   }
 }
-
+// функция загружает данные из хранилища
 export function loadState() {
   try {
     if (!fs.existsSync(STATE_FILE)) return null;

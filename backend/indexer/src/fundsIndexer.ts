@@ -1,4 +1,4 @@
-// backend/indexer/src/fundsIndexer.ts
+//индексер ловит вывод собранных средств
 import { ethers } from "ethers";
 import * as dotenv from "dotenv";
 import { saveState, loadState } from "./storage";
@@ -6,8 +6,8 @@ import CampaignABI from "./abi/ICampaign.json";
 
 dotenv.config();
 
-const PROVIDER_URL = process.env.PROVIDER_URL!;
-const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS!;
+const PROVIDER_URL = process.env.PROVIDER_URL!; //ключ Alchemy
+const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS!; // адрес платформы
 const START_BLOCK = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : undefined;
 
 const CHUNK = 10n; // Alchemy: максимум ~10 блоков в одном запросе — оставляем 10
@@ -25,7 +25,6 @@ const campaignIf = new ethers.Interface([
 
 type Campaign = {
   campaignAddress: string;
-  // ... прочие поля, которые у тебя есть
 };
 
 type FundsEvent = {
@@ -42,12 +41,6 @@ let lastProcessedBlock: bigint = START_BLOCK ?? 0n;
 let processedCampaigns: Set<string> = new Set();
 let isRunning = false;
 
-/**
- * initFundsIndexer(existingCampaignsArray?, getCampaignsFn?)
- * - existingCampaignsArray: одноразовый snapshot кампаний (опционально)
- * - getCampaignsFn: функция () => Campaign[] — индексер будет вызывать её перед каждой итерацией,
- *                   чтобы подтянуть новые кампании динамически (рекомендовано передать getCampaigns из eventIndexer)
- */
 export async function initFundsIndexer(existingCampaigns: Campaign[] = [], getCampaignsFn?: () => Campaign[]) {
   if (isRunning) return;
   isRunning = true;
@@ -64,7 +57,7 @@ export async function initFundsIndexer(existingCampaigns: Campaign[] = [], getCa
     console.log(`[FundsIndexer] Starting indexer from block ${lastProcessedBlock.toString()}`);
   }
 
-  // инициализация campaigns: приоритет — переданный snapshot, иначе пусто (будем подтягивать через getCampaignsFn если он есть)
+  // инициализация campaigns: приоритет — переданный snapshot, иначе пусто
   if (existingCampaigns && existingCampaigns.length > 0) {
     campaigns = existingCampaigns.slice();
     console.log(`[FundsIndexer] Initialized with ${campaigns.length} campaigns (snapshot)`);
@@ -126,7 +119,7 @@ async function fetchLogsWithRetries(filter: any) {
 }
 
 async function processRangeToLatest(getCampaignsFn?: () => Campaign[]) {
-  // обновляем список кампаний динамически, если есть функция
+  // обновляем список кампаний динамически
   if (getCampaignsFn) {
     try {
       const fresh = getCampaignsFn();
@@ -243,11 +236,12 @@ async function processRangeToLatest(getCampaignsFn?: () => Campaign[]) {
     await sleep(120);
   } // end while
 }
-
+//функции для API
+//функция возращает данные о событиях вывода фондов
 export function getFundsEvents() {
   return fundsEvents.slice().reverse();
 }
-
+//функция возвращает статус работы сервиса
 export function getStatus() {
   return { lastProcessedBlock: lastProcessedBlock.toString(), count: fundsEvents.length, tracked: processedCampaigns.size };
 }

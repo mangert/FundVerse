@@ -1,3 +1,4 @@
+// компонент детальной картотчки кампания (модальное окно)
 import { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { useCampaign } from '../hooks/useCampaign';

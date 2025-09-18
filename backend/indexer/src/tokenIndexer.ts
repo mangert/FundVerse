@@ -1,4 +1,4 @@
-// backend/indexer/src/tokenIndexer.ts - обновленный
+// индексер для отслеживания списка действующих токенов
 import { ethers } from "ethers";
 import * as dotenv from "dotenv";
 import { saveState, loadState } from "./storage";
@@ -8,7 +8,7 @@ dotenv.config();
 const PROVIDER_URL = process.env.PROVIDER_URL!;
 const PLATFORM_ADDRESS = process.env.PLATFORM_ADDRESS!;
 const START_BLOCK = process.env.START_BLOCK ? BigInt(process.env.START_BLOCK) : undefined;
-const CHUNK = 10n;
+const CHUNK = 10n; //алхимия разрешает 10 блоков за запрос
 const POLL_INTERVAL = 30_000;
 
 const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
@@ -17,6 +17,7 @@ const platformIf = new ethers.Interface([
   "event FVTokenRemoved(address token)"
 ]);
 
+//интерфейс для собираемых данных
 interface TokenInfo {
   address: string;
   symbol: string;
@@ -153,10 +154,12 @@ async function processRangeToLatest() {
   }
 }
 
+//функции для API
+//функция возвращает данные о токенах
 export function getTokens() {
   return Object.values(tokens);
 }
-
+//функция возвращает статус работы сервиса
 export function getStatus() {
   return { lastProcessedBlock: lastProcessedBlock.toString(), count: Object.keys(tokens).length };
 }

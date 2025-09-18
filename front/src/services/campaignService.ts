@@ -1,3 +1,4 @@
+// сервис получения данных о кампании (прокладка между хуком и компонентами)
 import type { PublicClient } from 'viem';
 import { CampaignABI } from '../utils/abi';
 import type { CampaignSummary } from '../hooks/useCampaign';

@@ -1,3 +1,4 @@
+// хук для получения данных о кампании
 import { useReadContract } from 'wagmi';
 import { CampaignABI } from '../utils/abi';
 
@@ -49,6 +50,6 @@ export const useCampaign = (address: string) => {
     data: summary,
     isLoading: false,
     error: null,
-    refetch // Добавляем refetch
+    refetch
   };
 };

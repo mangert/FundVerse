@@ -1,3 +1,5 @@
+//проверочный
+//скрипт для проверки соответствия флэт-контракта задеплоенному
 import { ethers } from "ethers";
 import * as dotenv from "dotenv";
 import fs from "fs";
@@ -13,7 +15,7 @@ const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
 const CONTRACT_NAME = "CampaignNative"; // Имя контракта (без .sol)
 const CONTRACT_FILE = "CampaignNative.sol"; // Имя файла во flattend/
 const COMPILER_VERSION = "0.8.30"; // версия без commit
-const ADDRESS = "0xcEcE852915bdF37eA780058861B621465469e3D6"; // адрес твоего деплойнутого контракта
+const ADDRESS = "0xcEcE852915bdF37eA780058861B621465469e3D6"; // адрес деплойнутого контракта
 // ==============
 
 // Читаем flatten-исходник

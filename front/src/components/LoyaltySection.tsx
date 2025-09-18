@@ -1,3 +1,4 @@
+// компонент для отображения информации о программе лояльности
 import { useState, useEffect } from 'react';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { PlatformABI, LoyaltyABI } from '../utils/abi';

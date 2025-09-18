@@ -1,3 +1,4 @@
+// контескт для уведомления
 import React, { createContext, useContext, useReducer, type ReactNode } from 'react';
 
 export type NotificationType = 'success' | 'error' | 'info' | 'warning';

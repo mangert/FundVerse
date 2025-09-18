@@ -1,3 +1,4 @@
+// личный кабинет пользователя
 import { useCreatedCampaigns } from '../hooks/useCreatedCampaigns';
 import { useInvestedCampaigns } from '../hooks/useInvestedCampaigns';
 import { AccountCampaignCard } from '../components/AccountCampaignCard';

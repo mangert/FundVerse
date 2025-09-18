@@ -1,5 +1,5 @@
-// src/services/fundsService.ts
-
+// сервис получения данных о выведенных из успешных кампаний сборов
+// прокладка между бэкендом и компонентами
 export interface FundEvent {
   campaignAddress: string;
   recipient: string;

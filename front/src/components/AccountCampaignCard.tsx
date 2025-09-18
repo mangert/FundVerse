@@ -1,3 +1,4 @@
+// компонент карточки кампаний фаундера в личном кабинете
 import { useState, useEffect } from 'react';
 import { formatUnits } from 'viem';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
@@ -25,7 +26,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
   const [isLoading, setIsLoading] = useState(false);
   const [currentAction, setCurrentAction] = useState<string | null>(null);
 
-  // CHG: теперь эти флаги вычисляем глобально (по цепочке), а не по текущему кошельку
+  //Флаги вычисляем глобально (по цепочке), а не по текущему кошельку
   const [isFundsWithdrawn, setIsFundsWithdrawn] = useState(false);  
 
   const [isDepositReturned, setIsDepositReturned] = useState(false);
@@ -95,7 +96,7 @@ export const AccountCampaignCard = ({ campaign, campaignAddress, onUpdate }: Acc
 
 
   // ---------------------------------------------------------------------
-  // CHG: Проверяем статус депозита глобально — НЕ зависит от userAddress
+  //  Проверяем статус депозита глобально — НЕ зависит от userAddress
   // - читаем getCampaignDeposit
   // ---------------------------------------------------------------------
   useEffect(() => {

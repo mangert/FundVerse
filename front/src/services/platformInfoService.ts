@@ -1,3 +1,6 @@
+// сервис для сбора данных о характеристиках платформы
+// используется в компонентах
+// обращается к контракту, бэкенд не нужен
 import { type PublicClient } from 'viem';
 import { PlatformABI } from '../utils/abi';
 import { PLATFORM_ADDRESS } from '../utils/addresses';

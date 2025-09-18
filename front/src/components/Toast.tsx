@@ -1,3 +1,4 @@
+// компонент всплывающих уведомлений
 import { useEffect, useState } from 'react';
 import type { NotificationType } from '../contexts/NotificationContext';
 

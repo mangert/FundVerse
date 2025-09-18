@@ -1,3 +1,4 @@
+// компонент строки состояния
 import { useAccount } from 'wagmi';
 import { useNotifications, type NotificationType } from '../contexts/NotificationContext';
 import { useState } from 'react';
