@@ -2,6 +2,7 @@
 //Утилита для вызова Hardhat через subprocess:
 import { exec } from "child_process";
 import { NETWORK } from "./setup";
+import path from "path";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -17,13 +18,22 @@ export async function runVerify(
   let attempt = 1;
   let delayMs = initialDelay;
 
+  const projectRoot = path.resolve(__dirname, "../../");
+
+
   while (attempt <= maxAttempts) {
     console.log(`⏳ Попытка ${attempt}/${maxAttempts} верификации ${address}`);
 
     try {
-      await execPromise(
-        `npx hardhat run src/utils/verify-wrapper.ts --network ${NETWORK} --address ${address} --args '${JSON.stringify(constructorArgs)}' --contract ${contractName}`
+      // ✅ Добавлено: безопасное преобразование BigInt → string
+      const safeArgs = constructorArgs.map((arg) =>
+        typeof arg === "bigint" ? arg.toString() : arg
       );
+      const jsonArgs = JSON.stringify(safeArgs);
+
+      const cmd = `npx hardhat run src/utils/verify-wrapper.ts --config hardhat.config.cjs --network ${NETWORK} --address ${address} --args '${jsonArgs}' --contract ${contractName}`;
+      
+      await execPromise(cmd, projectRoot);      
 
       console.log(`✅ Контракт ${address} верифицирован на попытке ${attempt}`);
       return true;
@@ -42,7 +52,7 @@ export async function runVerify(
   return false;
 }
 
-function execPromise(cmd: string): Promise<void> {
+function execPromise(cmd: string, projectRoot?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     exec(cmd, (error, stdout, stderr) => {
       if (error) {

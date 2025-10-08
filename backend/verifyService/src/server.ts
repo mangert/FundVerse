@@ -1,16 +1,26 @@
 //в разработке - не доделано!
+import fs from "fs";
+import path from "path";
 import { ethers } from "ethers";
-import * as dotenv from "dotenv";
-import platformArtifact from "../artifacts/contracts/core/Platform.sol/Platform.json";
-import CampaignETH from "../artifacts/contracts/modules/campaigns/CampaignNative.sol/CampaignNative.json";
-import CampaignERC20 from "../artifacts/contracts/modules/campaigns/CampaignToken.sol/CampaignToken.json";
+import dotenv from "dotenv";
 import { CONTRACTS, PLATFORM_ADDRESS, PROVIDER_URL } from "./utils/setup";
 import { runVerify } from "./utils/verify-util";
 import { log } from "./logger";
 
 dotenv.config();
 
-const provider = new ethers.providers.JsonRpcProvider(PROVIDER_URL);
+// __dirname доступен в CommonJS — тут всё ок
+const platformArtifact = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "../artifacts/contracts/core/Platform.sol/Platform.json"), "utf8")
+);
+const CampaignETH = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "../artifacts/contracts/modules/campaigns/CampaignNative.sol/CampaignNative.json"), "utf8")
+);
+const CampaignERC20 = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "../artifacts/contracts/modules/campaigns/CampaignToken.sol/CampaignToken.json"), "utf8")
+);
+
+const provider = new ethers.JsonRpcProvider(PROVIDER_URL);
 const platform = new ethers.Contract(PLATFORM_ADDRESS, platformArtifact.abi, provider);
 
 log("🚀 Verification server started. Listening for FVCampaignCreated...");

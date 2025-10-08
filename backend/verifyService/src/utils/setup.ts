@@ -11,7 +11,7 @@ export const CONTRACTS = {
   },
 };
 
-export const PLATFORM_ADDRESS = "0xBd2FBB2958B6a1B53029bDFa7298F481AC9021";
+export const PLATFORM_ADDRESS = "0xBd2FBB2958B6a1B53029bDFa7298F481AC902118";                               
 
 export const PROVIDER_URL = "https://eth-sepolia.g.alchemy.com/v2/wOEG993moYW9FOEOKbWeq";
 
