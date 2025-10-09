@@ -13,7 +13,7 @@ module.exports = {
   },
   networks: {
     sepolia: {
-      url: process.env.ALCHEMY_API_URL || "",
+      url: process.env.PROVIDER_URL || "",
       accounts: process.env.PRIVATE_KEY ? [`0x${process.env.PRIVATE_KEY}`] : [],
       chainId: 11155111,
     },

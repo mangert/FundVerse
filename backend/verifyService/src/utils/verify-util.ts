@@ -31,9 +31,20 @@ export async function runVerify(
       );
       const jsonArgs = JSON.stringify(safeArgs);
 
-      const cmd = `npx hardhat run src/utils/verify-wrapper.ts --config hardhat.config.cjs --network ${NETWORK} --address ${address} --args '${jsonArgs}' --contract ${contractName}`;
-      
-      await execPromise(cmd, projectRoot);      
+      //const cmd = `npx hardhat run src/utils/verify-wrapper.ts --config hardhat.config.cjs --network ${NETWORK} -- --address ${address} --args '${jsonArgs}' --contract ${contractName}`;
+      //const cmd = `npx hardhat run --config hardhat.config.cjs --network ${NETWORK} -- src/utils/utils/verify-wrapper.ts --address ${address} --args '${jsonArgs}' --contract ${contractName}`;
+
+      await execPromise(`npx hardhat run src/utils/verify-wrapper.ts --config hardhat.config.cjs --network ${NETWORK}`, {
+        cwd: projectRoot,
+        env: {
+          ...process.env,
+          VERIFY_ADDRESS: address,
+          VERIFY_ARGS: jsonArgs,
+          VERIFY_CONTRACT: contractName,
+        },
+      });
+
+      //await execPromise(cmd, projectRoot);      
 
       console.log(`✅ Контракт ${address} верифицирован на попытке ${attempt}`);
       return true;
@@ -52,11 +63,32 @@ export async function runVerify(
   return false;
 }
 
-function execPromise(cmd: string, projectRoot?: string): Promise<void> {
+
+/* function execPromise(cmd: string, projectRoot?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     exec(cmd, (error, stdout, stderr) => {
       if (error) {
         reject(new Error(stderr || stdout || error.message));
+      } else {
+        console.log(stdout);
+        resolve();
+      }
+    });
+  });
+}
+ */
+
+function execPromise(
+  cmd: string,
+  options?: { cwd?: string; env?: NodeJS.ProcessEnv }
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    exec(cmd, options, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(
+          (stderr?.toString() || stdout?.toString() || error.message)
+        ));
+
       } else {
         console.log(stdout);
         resolve();
