@@ -14,6 +14,9 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     /// @notice адрес платформы краудфандинга (для получения комиссии)
     address internal immutable platformAddress;
     
+    /// @notice адрес контракта-диспетчера для перевода статуса по дедлайну
+    address public immutable statusDispatcher;
+    
     /// @notice создатель, он же владелец
     address public immutable creator;
 
@@ -77,7 +80,9 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         uint32 _deadline,
         string memory _campaignMeta,
         uint128 _platformFee, 
-        address _token
+        address _token,
+        address _statusDispatcher
+
     ) {
         platformAddress= _platformAddress;
         creator = _creator;        
@@ -89,6 +94,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
 
         status = Status.Live; //для ясности - можно убрать
         token = _token; // address(0) — для ETH, иначе — адрес ERC20 токена
+        statusDispatcher = _statusDispatcher;
     }
 
     //общие для обеих версий геттеры        

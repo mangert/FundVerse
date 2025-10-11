@@ -17,6 +17,9 @@ library PlatformStorageLib {
         //адрес контракта программы лояльности
         address loyaltyProgram;       
 
+        //адрес диспетчера для автоперевода статусов
+        address campaignStatusDispatcher;
+
         //общий счетчик кампаний
         uint32 totalCounter;
         // переменная задержки для таймлоков

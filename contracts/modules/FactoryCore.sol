@@ -23,7 +23,8 @@ contract FactoryCore is IFactoryCore{
         uint32 _deadline, 
         string calldata _campaignMeta, 
         uint128 _platformFee, 
-        address _token 
+        address _token,
+        address _campaignStatusDispatcher
         ) external returns(ICampaign) { 
         
         address platform = msg.sender;        
@@ -38,7 +39,8 @@ contract FactoryCore is IFactoryCore{
                 _goal,
                 _deadline,
                 _campaignMeta,
-                _platformFee                 
+                _platformFee,
+                _campaignStatusDispatcher                
             ); 
         }
         else { //если переменная токен содержит ненулевой адрес, выбираем вариант кампании в токенах
@@ -50,10 +52,10 @@ contract FactoryCore is IFactoryCore{
                 _deadline,
                 _campaignMeta,
                 _platformFee, 
-                _token
+                _token,
+                _campaignStatusDispatcher
             );         
         }              
         return newCampaign;
-    }    
-    
+    }        
 }

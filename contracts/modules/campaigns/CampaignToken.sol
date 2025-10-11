@@ -19,7 +19,8 @@ contract CampaignToken is ICampaign, CampaignBase {
         uint32 _deadline,
         string memory _campaignMeta,
         uint128 _platformFee,
-        address _token
+        address _token,
+        address _statusDispatcher
     ) CampaignBase (
         _platformAddress,
         _creator,        
@@ -28,7 +29,8 @@ contract CampaignToken is ICampaign, CampaignBase {
         _deadline,
         _campaignMeta,
         _platformFee,
-        _token
+        _token,
+        _statusDispatcher
     ) {}    
 
     // Основные функции взаимодействия

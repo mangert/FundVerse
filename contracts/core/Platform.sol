@@ -90,7 +90,7 @@ contract Platform is
             uint128 _goal,
             uint32 _deadline,
             string calldata _campaignMeta,            
-            address _token
+            address _token            
         ) external payable {            
             require(_goal > 0, FVErrorZeroGoal()); //проверяем, что цель не нулевая
             require(isAllowedToken(_token), FVUnsupportedToken(_token)); //проверяем, что валюта кампании поддерживается
@@ -118,7 +118,8 @@ contract Platform is
                 _deadline, 
                 _campaignMeta, 
                 _platformFee, 
-                _token
+                _token,
+                s.campaignStatusDispatcher
                 );    
             
             //проверим на всякий случай, что то-то вернулось

@@ -14,7 +14,8 @@ contract CampaignNative is ICampaign, CampaignBase {
         uint128 _goal,
         uint32 _deadline,
         string memory _campaignMeta,
-        uint128 _platformFee
+        uint128 _platformFee,
+        address _statusDispatcher
     ) CampaignBase (
         _platformAddress,
         _creator,        
@@ -23,7 +24,8 @@ contract CampaignNative is ICampaign, CampaignBase {
         _deadline,
         _campaignMeta,
         _platformFee,
-        address(0)
+        address(0),
+        _statusDispatcher
     ) {}    
 
     // Основные функции взаимодействия

@@ -143,6 +143,9 @@ interface ICampaign {
     /// @notice создатель, он же владелец
     function creator() external view returns (address);
 
+    /// @notice адрес контракта-диспетчера, переводящего статус по дедлайну
+    function statusDispatcher() external view returns (address);
+
     /// @notice 0x0 для ETH (для совместимости)
     function token() external view returns (address);
 

@@ -21,6 +21,8 @@ interface IFactoryCore {
         uint32 _deadline, 
         string calldata _campaignMeta, 
         uint128 _platformFee, 
-        address _token 
+        address _token,
+        address _campaignStatusDispatcher
+
         ) external returns(ICampaign); 
 }
