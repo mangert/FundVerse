@@ -1,3 +1,4 @@
+//утилита для запуска верификации
 import hre from "hardhat";
 
 async function main() {

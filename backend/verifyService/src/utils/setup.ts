@@ -1,4 +1,4 @@
-// src/utils/setup.ts
+// константы с адресами и ключами
 
 export const CONTRACTS = {
   native: {
