@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "../../interfaces/ICampaign.sol";
+import { ICampaign } from "../../interfaces/ICampaign.sol";
+import { IStatusDispatcher } from "../../interfaces/IStatusDispatcher.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /**
@@ -72,6 +73,15 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         _;
     }   
 
+    /// @notice конструктор
+    /// @param _platformAddress адрес платформы
+    /// @param _creator создатель кампании
+    /// @param _id идентификатор кампании
+    /// @param _goal целевая сумма сборов
+    /// @param _deadline срок действия кампании
+    /// @param _campaignMeta метаданные (название, описание, ссылка на ресурсы и т.д.)
+    /// @param _platformFee комиссия платформы    
+    /// @param _statusDispatcher адрес контракта диспетчера для автоперевода статуса
     constructor(
         address _platformAddress,        
         address _creator,        
@@ -95,6 +105,8 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         status = Status.Live; //для ясности - можно убрать
         token = _token; // address(0) — для ETH, иначе — адрес ERC20 токена
         statusDispatcher = _statusDispatcher;
+
+        register(); // регистрируем нашу кампанию в диспетчере
     }
 
     //общие для обеих версий геттеры        
@@ -205,7 +217,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
 
     /// @notice функция для владельца    
     /// @notice установить новый статус
-    function setCampaignStatus(Status newStatus) external onlyCreator {
+    /* function setCampaignStatus(Status newStatus) external onlyCreator {
         Status oldStatus = status; //запоминаем текущий статус        
         
         require(
@@ -238,13 +250,58 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         
         status = newStatus;
         emit CampaignStatusChanged(oldStatus, newStatus, block.timestamp); 
-    }   
+    }    */
+    
+    /// @notice функция отменяет кампанию
+    function cancelCampaign() external onlyCreator override {
+        require(
+            (status == Status.Live || status == Status.Stopped) 
+            && block.timestamp < deadline,
+            CampaignInvalidChandgedStatus(Status.Cancelled)
+        );        
+
+        status = Status.Cancelled;
+        emit CampaignStatusChanged(Status.Live, Status.Cancelled, block.timestamp);
+        unregister();
+    }
+
+    /// @notice функция приостанавливает кампанию
+    function stopCampaign() external onlyCreator override {
+        require(status == Status.Live && block.timestamp < deadline,
+            CampaignInvalidChandgedStatus(Status.Stopped));        
+
+        status = Status.Stopped;
+        emit CampaignStatusChanged(Status.Live, Status.Stopped, block.timestamp);
+    }
+
+    /// @notice функция запускает приостановленную кампанию
+    function resumeCampaign() external onlyCreator override {
+        require(status == Status.Stopped && block.timestamp < deadline, 
+        CampaignInvalidChandgedStatus(Status.Live));        
+
+        status = Status.Live;
+        emit CampaignStatusChanged(Status.Stopped, Status.Live, block.timestamp);
+    }
+
 
     //служебные функции
-     /**
-     * @notice функция автоматически актуализирует статус контракта при истекшем дедлайне
-     * @dev вызывается внутри функции вывода взносов, но может быть вызвана снаружи
-     */
+
+    /// @notice функция регистрирует кампанию в диспетчере статусов
+    function register() internal virtual {
+        if(statusDispatcher != address(0)) {
+            IStatusDispatcher(statusDispatcher).registerCampaign();
+        }
+    }
+
+    /// @notice функция отменяет регистрацию кампании в диспетчере статусов
+    function unregister() internal virtual {
+        if(statusDispatcher != address(0)) {
+            IStatusDispatcher(statusDispatcher).unregisterCampaign();
+        }
+    }
+    
+    /// @notice функция автоматически актуализирует статус контракта при истекшем дедлайне
+    /// @dev вызывается внутри функции вывода взносов, но может быть вызвана снаружи    
     function checkDeadlineStatus() public virtual {
     
         Status previous = status;
@@ -254,14 +311,15 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
             ) {
                 status = raised >= goal ? Status.Successful : Status.Failed;
                 emit CampaignStatusChanged(previous, status, block.timestamp); 
+                unregister(); //подумать, надо ли?
         }
     }
-    /**
-     * @notice служебная функция перевода средств
-     * @dev реализация зависит от валюты, обязательно переопределять в наследниках
-     * @param recipient получатель
-     * @param amount сумма перевода
-     */
+    
+    /// @notice служебная функция перевода средств
+    /// @dev реализация зависит от валюты, обязательно переопределять в наследниках
+    /// @param recipient получатель
+    /// @param amount сумма перевода
+    /// @return bool результатм перевода
     function _transferTo(address recipient, uint256 amount) internal virtual returns (bool);  
     
     receive() external payable {

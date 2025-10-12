@@ -6,30 +6,35 @@ import {defaultCampaignArgs, getBadReciever} from "./test-helpers"
 describe("Campaign Native", function() {
     async function deploy() {        
         const [userPlatform, userCreator, user0, user1, user2] = await ethers.getSigners();
+
+        const dispatcher_Factory = await ethers.getContractFactory("StatusDispatcher");
+        const dispatcher = await dispatcher_Factory.deploy();
+        await dispatcher.waitForDeployment();  
         
-          const args: [
-                string, // platformAddress
-                string, // creator
-                bigint, // Id
-                bigint, // goal
-                number, // deadline
-                string, // campaignMeta
-                number, // platformFee      
-            ] = defaultCampaignArgs({}, userPlatform.address, userCreator.address);      
+        const args: [
+            string, // platformAddress
+            string, // creator
+            bigint, // Id
+            bigint, // goal
+            number, // deadline
+            string, // campaignMeta
+            number, // platformFee
+            string // адрес диспетчера
+        ] = defaultCampaignArgs({}, userPlatform.address, userCreator.address, await dispatcher.getAddress());              
         
         const campaign_Factory = await ethers.getContractFactory("CampaignNative");
         const campaign = await campaign_Factory.deploy(...args, {});
         await campaign.waitForDeployment();        
 
-        return { userPlatform, userCreator, user0, user1, user2, campaign }
+        return { userPlatform, userCreator, user0, user1, user2, campaign, dispatcher }
     }
 
     describe("deployment tеsts", function() {
         it("should be deployed", async function() { //простой тест, что деплоится нормально
-            const { userPlatform, userCreator, campaign } = await loadFixture(deploy); 
+            const { userPlatform, userCreator, campaign, dispatcher } = await loadFixture(deploy); 
             
             //заберем аргументы, с которыми деплоили
-            const args = defaultCampaignArgs({}, userPlatform.address, userCreator.address);
+            const args = defaultCampaignArgs({}, userPlatform.address, userCreator.address, await dispatcher.getAddress());
             
             expect(campaign.target).to.be.properAddress;
             //и проверим, правильно ли установились поля
@@ -177,7 +182,7 @@ describe("Campaign Native", function() {
     
             //отменяем кампанию -> переводим статус 
             const cancelStatus = 2;
-            const txCancell = await campaign.connect(userCreator).setCampaignStatus(cancelStatus);
+            const txCancell = await campaign.connect(userCreator).cancelCampaign();
             txCancell.wait(1);
             
             const amount = 100n;
@@ -223,7 +228,7 @@ describe("Campaign Native", function() {
         it("should be reverted donate to cancelled campaign", async function() { //проверка отката взноса на отмененную кампанию
             const {userCreator, user0, campaign } = await loadFixture(deploy );   
             
-            const txStatus = await campaign.connect(userCreator).setCampaignStatus(2);
+            const txStatus = await campaign.connect(userCreator).cancelCampaign();
             await txStatus.wait(1);
             
             const amount = 100n;
@@ -303,7 +308,7 @@ describe("Campaign Native", function() {
             let balance = await campaign.raised();
 
             //фаундер отменяет кампанию
-            const txCancel = await campaign.connect(userCreator).setCampaignStatus(2);
+            const txCancel = await campaign.connect(userCreator).cancelCampaign();
             await txCancel.wait(1);
             expect(await campaign.status()).equal(2);
             expect(txCancel).to.emit(campaign, "CampaignStatusChanged").withArgs(0, 2, anyValue);
@@ -352,7 +357,7 @@ describe("Campaign Native", function() {
             let balance = await campaign.raised();
 
             //приостанавливаем кампанию
-            const txStop = await campaign.connect(userCreator).setCampaignStatus(1);
+            const txStop = await campaign.connect(userCreator).stopCampaign();
 
             //проверяем, что сейчас пользователь не может вывести взнос
             const txWDStopped = campaign.connect(user0).claimContribution();
@@ -454,7 +459,7 @@ describe("Campaign Native", function() {
             let balance = await campaign.raised();
             
             //фаундер отменяет кампанию (чтобы время не мотать, так проще)
-            const txCancel = await campaign.connect(userCreator).setCampaignStatus(2);
+            const txCancel = await campaign.connect(userCreator).cancelCampaign();
             expect(await campaign.status()).equal(2);
             
             //user0  клеймит взнос первый раз
@@ -542,7 +547,7 @@ describe("Campaign Native", function() {
             const txContribute = await campaign["contribute()"]({value:amount});
             await txContribute.wait(1);
             //отменяем кампанию
-            await campaign.connect(userCreator).setCampaignStatus(2);            
+            await campaign.connect(userCreator).cancelCampaign();            
             
             //пробуем вывести
             const txWD =  campaign.connect(userCreator).withdrawFunds();
@@ -559,7 +564,7 @@ describe("Campaign Native", function() {
             const txContribute = await campaign["contribute()"]({value:amount});
             await txContribute.wait(1);
             //останавливаем кампанию
-            await campaign.connect(userCreator).setCampaignStatus(1);            
+            await campaign.connect(userCreator).stopCampaign();            
             
             //пробуем вывести
             const txWD =  campaign.connect(userCreator).withdrawFunds();
@@ -666,7 +671,7 @@ describe("Campaign Native", function() {
             await txDonate.wait();
 
             //теперь отменим кампанию
-            (await campaign.connect(userCreator).setCampaignStatus(2)).wait(1);            
+            (await campaign.connect(userCreator).cancelCampaign()).wait(1);            
             
             //теперь пробуем вернуть взнос
             const claimTx = await badReceiver.callClaimContribution(campaign);
@@ -693,11 +698,13 @@ describe("Campaign Native", function() {
         //проверяем, накапливаются ли неудачно выведенные фонды фаундера в pending withdraw и можно ли их потом вывести
         //то есть проверяем withdrawFunds + claimPendingFunds
         it("should be possible withraw faunder pending funds", async function() {
-            const { user0 } = await loadFixture(deploy); 
+            const { user0, dispatcher } = await loadFixture(deploy); 
             
             //наш "фаундер" и "платформа" - контракт, который отклоняет приходы в receive         
             const badReceiver = await getBadReciever(); 
             const badReceiverAddr = await badReceiver.getAddress();
+
+            const dispatcherAddr = await dispatcher.getAddress();
 
             //передеплоим контракт с "плохим получателем" как фаундером и платформой
             const args: [
@@ -708,7 +715,8 @@ describe("Campaign Native", function() {
                 number, // deadline
                 string, // campaignMeta
                 number, // platformFee      
-            ] = defaultCampaignArgs({}, badReceiverAddr, badReceiverAddr);
+                string 
+            ] = defaultCampaignArgs({}, badReceiverAddr, badReceiverAddr, dispatcherAddr);
       
         
             const campaign_Factory = await ethers.getContractFactory("CampaignNative");
@@ -769,7 +777,7 @@ describe("Campaign Native", function() {
         it("should revert setting status without access", async function() {
             const {user0, campaign } = await loadFixture(deploy );
     
-            const txChangeStatus = campaign.connect(user0).setCampaignStatus(2);
+            const txChangeStatus = campaign.connect(user0).cancelCampaign();
             await expect(txChangeStatus).revertedWithCustomError(campaign, "CampaignUnauthorizedAccount").withArgs(user0);
             
         });     

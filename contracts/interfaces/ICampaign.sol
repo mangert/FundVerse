@@ -233,8 +233,17 @@ interface ICampaign {
     /// @dev вызывается внутри функции вывода взносов, чтобы вывод не падал если дедлайн истек, а статус не переведен
     /// @dev допускается вызывать снаружи    
     function checkDeadlineStatus() external;    
+
+    /// @notice функция отменяет кампанию
+    /// @dev может вызываться только владельцем, при реализации указать модификатор onlyOwner
+    function cancelCampaign() external;
+
+    /// @notice функция приостанавливает кампанию
+    /// @dev может вызываться только владельцем, при реализации указать модификатор onlyOwner
+    function stopCampaign() external; 
+
+    /// @notice функция запускает приостановленную кампанию
+    /// @dev может вызываться только владельцем, при реализации указать модификатор onlyOwner
+    function resumeCampaign() external;   
     
-    /// @notice функция вручную устанавливает новый статус     
-    /// @dev может быть вызвана только creator'ом, внутри проверяет, какие статусы можно менять         
-    function setCampaignStatus(Status newStatus) external;        
 }

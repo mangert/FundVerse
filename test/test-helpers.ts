@@ -5,8 +5,8 @@ import { token } from "../typechain-types/@openzeppelin/contracts";
 
 //хелперы для тестов контракта-кампании в версии для нативной валюты
 //функция для задания аргументов конструктора для нативной версии контракта
-export function defaultCampaignArgs(overrides = {}, platformAddr : string, creatorAddr : string ) : [
-    string, string, /*string,*/ bigint, bigint, number, string, number ] {    
+export function defaultCampaignArgs(overrides = {}, platformAddr : string, creatorAddr : string, dispatcherAddr : string ) : [
+    string, string, bigint, bigint, number, string, number, string] {    
     const defaults = {
         platformAddress: platformAddr,
         creator: creatorAddr,        
@@ -14,8 +14,9 @@ export function defaultCampaignArgs(overrides = {}, platformAddr : string, creat
         goal: 1000_000n,
         deadline: Math.floor(Date.now() / 1000) + 60,
         campaignMeta: "Description and URI",
-        platformFee: 50
-    };
+        platformFee: 50,
+        dispatcher: dispatcherAddr        
+    };    
 
     const merged = { ...defaults, ...overrides };
     
@@ -26,7 +27,8 @@ export function defaultCampaignArgs(overrides = {}, platformAddr : string, creat
         merged.goal,
         merged.deadline,
         merged.campaignMeta,
-        merged.platformFee        
+        merged.platformFee,
+        merged.dispatcher
     ];   
 }
 

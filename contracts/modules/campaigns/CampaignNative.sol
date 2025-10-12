@@ -7,8 +7,18 @@ import "./CampaignBase.sol"; //общий код
 /// @title Контракт кампании (разновидность в нативной валюте) 
 /// @notice обеспечивает сбор денег на конкретную цель
 contract CampaignNative is ICampaign, CampaignBase {
+    
+    /// @notice конструктор
+    /// @param _platformAddress адрес платформы
+    /// @param _creator создатель кампании
+    /// @param _id идентификатор кампании
+    /// @param _goal целевая сумма сборов
+    /// @param _deadline срок действия кампании
+    /// @param _campaignMeta метаданные (название, описание, ссылка на ресурсы и т.д.)
+    /// @param _platformFee комиссия платформы
+    /// @param _statusDispatcher адрес контракта-диспетчера статусов    
     constructor(
-        address  _platformAddress,
+        address _platformAddress,
         address _creator,        
         uint32 _id,
         uint128 _goal,
@@ -63,6 +73,7 @@ contract CampaignNative is ICampaign, CampaignBase {
         if(raised >= goal) { //если после зачисления достигли цели
             status = Status.Successful; //Аетуализируем статус
             emit CampaignStatusChanged(Status.Live, status, block.timestamp);
+            unregister();
         }
 
         //если есть, что возвращать

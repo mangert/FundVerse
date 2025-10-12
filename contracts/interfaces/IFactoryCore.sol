@@ -13,7 +13,9 @@ interface IFactoryCore {
     /// @param _deadline срок действия кампании
     /// @param _campaignMeta данные кампании (имя, описание, ссылка на документы)
     /// @param _platformFee размер комиссии в промилле
-    /// @param _token валюта сбора (address(0) для нативной валюты)    
+    /// @param _token валюта сбора (address(0) для нативной валюты)
+    /// @param _campaignStatusDispatcher адрес контракта диспетчера для автоперевода статуса
+    /// @return адрес созданного контракта-кампании  
     function createCampaign(
         address _founder,        
         uint32 _index,

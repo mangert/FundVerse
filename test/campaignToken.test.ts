@@ -7,6 +7,11 @@ describe("Campaign Token", function() {
     async function deploy() {        
         const [userPlatform, userCreator, user0, user1, user2] = await ethers.getSigners();
 
+        const dispatcher_Factory = await ethers.getContractFactory("StatusDispatcher");
+        const dispatcher = await dispatcher_Factory.deploy();
+        await dispatcher.waitForDeployment();  
+        
+        
         const token_Factory = await ethers.getContractFactory("TestTokenERC20");
         const tokenERC20 = await token_Factory.deploy();
         const tokenERC20Addr = await tokenERC20.getAddress();
@@ -19,22 +24,40 @@ describe("Campaign Token", function() {
                 bigint, // goal
                 number, // deadline
                 string, // campaignMeta
-                number, // platformFee                      
-            ] = defaultCampaignArgs({}, userPlatform.address, userCreator.address);      
+                number, // platformFee,
+                string  // dispatcher Address                    
+            ] = defaultCampaignArgs({}, userPlatform.address, userCreator.address, await dispatcher.getAddress());      
+
+            //запихиваем токен перед последним элементом
+            const finalArgs = [
+                ...args.slice(0, -1), // всё кроме последнего элемента
+                tokenERC20Addr,           // новый аргумент — токен
+                args[args.length - 1] // последний элемент (dispatcher)
+            ] as [
+                string, // platformAddress
+                string, // creator
+                bigint, // Id
+                bigint, // goal
+                number, // deadline
+                string, // campaignMeta
+                number, // platformFee,
+                string, // tokenAddress
+                string  // dispatcher Address                    
+            ];            
         
         const campaign_Factory = await ethers.getContractFactory("CampaignToken");
-        const campaign = await campaign_Factory.deploy(...args, tokenERC20, {});
+        const campaign = await campaign_Factory.deploy(...finalArgs, {});
         await campaign.waitForDeployment();        
 
-        return { userPlatform, userCreator, user0, user1, user2, campaign, tokenERC20 }
+        return { userPlatform, userCreator, user0, user1, user2, campaign, tokenERC20, dispatcher }
     }
 
     describe("deployment tеsts", function() {
         it("should be deployed", async function() { //простой тест, что деплоится нормально
-            const { userPlatform, userCreator, campaign, tokenERC20} = await loadFixture(deploy); 
+            const { userPlatform, userCreator, campaign, tokenERC20, dispatcher} = await loadFixture(deploy); 
             
             //заберем аргументы, с которыми деплоили
-            const args = defaultCampaignArgs({}, userPlatform.address, userCreator.address);
+            const args = defaultCampaignArgs({}, userPlatform.address, userCreator.address, await dispatcher.getAddress());
             
             
             expect(campaign.target).to.be.properAddress;
@@ -215,7 +238,7 @@ describe("Campaign Token", function() {
     
             //отменяем кампанию -> переводим статус 
             const cancelStatus = 2;
-            const txCancell = await campaign.connect(userCreator).setCampaignStatus(cancelStatus);
+            const txCancell = await campaign.connect(userCreator).cancelCampaign();
             txCancell.wait(1);
             
             const amount = 100n;
@@ -267,7 +290,7 @@ describe("Campaign Token", function() {
         it("should be reverted donate to cancelled campaign", async function() { 
             const {userCreator, user0, campaign } = await loadFixture(deploy );   
             
-            const txStatus = await campaign.connect(userCreator).setCampaignStatus(2);
+            const txStatus = await campaign.connect(userCreator).cancelCampaign();
             await txStatus.wait(1);
             
             const amount = 100n;
@@ -363,7 +386,7 @@ describe("Campaign Token", function() {
             let balance = await campaign.raised();
 
             //фаундер отменяет кампанию
-            const txCancel = await campaign.connect(userCreator).setCampaignStatus(2);
+            const txCancel = await campaign.connect(userCreator).cancelCampaign();
             await txCancel.wait(1);
             expect(await campaign.status()).equal(2);
             expect(txCancel).to.emit(campaign, "CampaignStatusChanged").withArgs(0, 2, anyValue);
@@ -419,7 +442,7 @@ describe("Campaign Token", function() {
             let balance = await campaign.raised();
 
             //приостанавливаем кампанию
-            const txStop = await campaign.connect(userCreator).setCampaignStatus(1);
+            const txStop = await campaign.connect(userCreator).stopCampaign();
 
             //проверяем, что сейчас пользователь не может вывести взнос
             const txWDStopped = campaign.connect(user0).claimContribution();
@@ -535,7 +558,7 @@ describe("Campaign Token", function() {
             let balance = await campaign.raised();
             
             //фаундер отменяет кампанию (чтобы время не мотать, так проще)
-            const txCancel = await campaign.connect(userCreator).setCampaignStatus(2);
+            const txCancel = await campaign.connect(userCreator).cancelCampaign();
             expect(await campaign.status()).equal(2);
             
             //user0  клеймит взнос первый раз
@@ -635,7 +658,7 @@ describe("Campaign Token", function() {
             const txContribute = await campaign.connect(user0)["contribute(uint128)"](amount);
             await txContribute.wait(1);
             //отменяем кампанию
-            await campaign.connect(userCreator).setCampaignStatus(2);            
+            await campaign.connect(userCreator).cancelCampaign();            
             
             //пробуем вывести
             const txWD =  campaign.connect(userCreator).withdrawFunds();
@@ -655,7 +678,7 @@ describe("Campaign Token", function() {
             const txContribute = await campaign.connect(user0)["contribute(uint128)"](amount);
             await txContribute.wait(1);
             //останавливаем кампанию
-            await campaign.connect(userCreator).setCampaignStatus(1);            
+            await campaign.connect(userCreator).stopCampaign();            
             
             //пробуем вывести
             const txWD =  campaign.connect(userCreator).withdrawFunds();
@@ -735,7 +758,7 @@ describe("Campaign Token", function() {
             const txContribute = await campaign.connect(user0)["contribute(uint128)"](amount);
 
             //теперь отменим кампанию
-            (await campaign.connect(userCreator).setCampaignStatus(2)).wait(1);            
+            (await campaign.connect(userCreator).cancelCampaign()).wait(1);            
             
             //теперь пробуем вернуть взнос
             (await tokenERC20.switchTransfer(false)).wait(1);
@@ -826,7 +849,7 @@ describe("Campaign Token", function() {
         it("should revert setting status without access", async function() {
             const {user0, campaign } = await loadFixture(deploy );
     
-            const txChangeStatus = campaign.connect(user0).setCampaignStatus(2);
+            const txChangeStatus = campaign.connect(user0).cancelCampaign();
             await expect(txChangeStatus).revertedWithCustomError(campaign, "CampaignUnauthorizedAccount").withArgs(user0);
             
         });     
