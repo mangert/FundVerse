@@ -43,8 +43,9 @@ contract Platform is
     bytes32 public constant TREASURE_ROLE = keccak256("TREASURE");    
 
     // Константы для настройки событий изменения параметров платформы
-    bytes32 constant PARAM_LOYALTY_PROG  = keccak256("loyaltyProgram");
-    bytes32 constant PARAM_MIN_LIFESPAN  = keccak256("minLifespan");
+    bytes32 constant PARAM_LOYALTY_PROG = keccak256("loyaltyProgram");
+    bytes32 constant PARAM_MIN_LIFESPAN = keccak256("minLifespan");
+    bytes32 constant PARAM_STATUS_DISPATCHER = keccak256("minLifespan");
 
     /// @notice флаг для nonReentrancy
     bool private _inCall;
@@ -137,10 +138,19 @@ contract Platform is
 
     //геттеры
     /// @notice Получить минимальную длительность кампании
+    /// @return uint32 минимальная продолжительность кампании
     function getMinLifespan() external view returns (uint32) {
         return PlatformStorageLib.layout().minLifespan;
-}
+    }
+
+    /// @notice Получить адрес диспетчера перевода статусов
+    /// @return address диспетчер автоперевода статуса по дедлайну
+    function getStatusDispatcher() external view returns(address) {
+        return PlatformStorageLib.layout().campaignStatusDispatcher;
+    }
+
     /// @notice Получить общее количество всех кампаний на платформе
+    /// @return uint32 общее количество всех кампаний на платформе
     function getTotalCampaigns() external view returns (uint32) {
         return PlatformStorageLib.layout().totalCounter;
     }
@@ -246,7 +256,18 @@ contract Platform is
     /// @param _baseFee новой значение базовой комиссии
     function setBaseFee(uint16 _baseFee) external onlyRole(CONFIGURATOR_ROLE) {
         _setBaseFee(_baseFee);
-    }   
+    }
+    
+    /// @notice установить новый адрес контракта-диспетчера
+    /// @dev установка адреса в address(0) отключает диспетчер
+    /// @notice ответственность за корректность адреса несет конфигуратор платформы
+    /// @param newDispatcher адрес нового диспетчера
+    function setStatusDispatcher(address newDispatcher) external onlyRole(CONFIGURATOR_ROLE) {
+        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
+        s.campaignStatusDispatcher = newDispatcher;
+        emit FVPlatformParameterUpdated(PARAM_STATUS_DISPATCHER, newDispatcher, msg.sender);
+    }
+   
 
     //функции вывода средств
     /// @notice функция позволяет вывести средства в нативной валюте

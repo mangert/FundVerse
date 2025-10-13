@@ -172,9 +172,10 @@ interface ICampaign {
     function status() external view returns (Status);
     
     /// @notice JSON-метаданные (описание + документы/IPFS)   
+    /// @return string метаданные кампании
     function campaignMeta() external view returns (string memory);    
     
-    /// @notice функция-геттер возвращает сводную информацию о кампании    
+    /// @notice функция-геттер возвращает сводную информацию о кампании
     function getSummary()
         external
         view        
@@ -190,7 +191,8 @@ interface ICampaign {
         );   
     
     /// @notice функция возвращает сумму перечисленных инвестором средств
-    /// @param investor адрес инвестора    
+    /// @param investor адрес инвестора
+    /// @return uint256 сумма средств, внесенная инветором
     function getContribution(address investor) external view returns(uint256);
     
     /// @notice функция возращает сумму "зависших" средств (непрошедшие рефанды, неуспешно заклейменные взносы, неуспешно выведенные фонды)

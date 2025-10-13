@@ -213,44 +213,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         else{
             emit CampaignFundsDeffered(creator, withdrawnAmount);
         }
-    }
-
-    /// @notice функция для владельца    
-    /// @notice установить новый статус
-    /* function setCampaignStatus(Status newStatus) external onlyCreator {
-        Status oldStatus = status; //запоминаем текущий статус        
-        
-        require(
-            oldStatus < Status.Cancelled && //статус менять можем только у живых и приостановленных кампаний
-            oldStatus != newStatus, //проверяем, что новый и старый статусы не совпадают
-            CampaignInvalidChandgedStatus(newStatus)
-        );
-
-        //переменная для сохранения валидности смены статуса        
-        // slither-disable-next-line uninitialized-local
-        bool valid;
-
-        //цепочка проверяет, можем ли мы установить запрашиваемый статус в зависимости от текущего состояния контракта
-        //и сохраняет результат в переменную valid
-        // timestamp manipulation not critical here
-        if (newStatus == Status.Successful) {
-            valid = (raised >= goal); // полностью собранные кампании можем объявлять успешными досрочно
-        } else if (newStatus == Status.Cancelled || newStatus == Status.Stopped) {
-            // slither-disable-next-line timestamp
-            valid = (block.timestamp < deadline && raised < goal); 
-        } else if (newStatus == Status.Failed) {
-            // slither-disable-next-line timestamp
-            valid = (block.timestamp >= deadline && raised < goal);
-        } else if (newStatus == Status.Live) {
-            // slither-disable-next-line timestamp
-            valid = (block.timestamp < deadline && raised < goal);
-        }
-
-        require(valid, CampaignInvalidChandgedStatus(newStatus));
-        
-        status = newStatus;
-        emit CampaignStatusChanged(oldStatus, newStatus, block.timestamp); 
-    }    */
+    }   
     
     /// @notice функция отменяет кампанию
     function cancelCampaign() external onlyCreator override {

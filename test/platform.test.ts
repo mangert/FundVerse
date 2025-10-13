@@ -24,11 +24,16 @@ describe("Platform main functionality tests", function() {
         const tokenERC20 = await token_Factory.deploy();
         const tokenERC20Addr = await tokenERC20.getAddress();        
         
+        //деплоим контракт-диспетчер
+        const dispatcher_Factory = await ethers.getContractFactory("StatusDispatcher");
+        const dispatcher = await dispatcher_Factory.deploy();
+        await dispatcher.waitForDeployment();  
+
         return {ownerPlatform, userCreator, 
             user0, user1, user2, user3, 
             platform, tokenERC20, tokenERC20Addr, factory,
-            beneficiar
-        };       
+            beneficiar, dispatcher
+        };
     }
 
     describe("deployment tеsts", function() { //примитивный тест на деплой - просто проверить, что общая часть работает
@@ -44,7 +49,7 @@ describe("Platform main functionality tests", function() {
     describe("create capmpaign tеsts", function() {
         // проверяем, что можно создать кампанию в нативной валюте
         it("should create native campaign", async function() {
-            const {ownerPlatform, user0, user1, platform, factory} = await loadFixture(deploy);            
+            const { user0, platform } = await loadFixture(deploy);            
             //формируем стандарный набор аргументов кампании
             const args = defaultCreateCampaignArgs();
             //создаем кампанию
@@ -63,9 +68,10 @@ describe("Platform main functionality tests", function() {
             const campaign = await ethers.getContractAt("ICampaign", campaignAddress);
             expect(await campaign.token()).equal(ethers.ZeroAddress);            
         });
+        
         // проверяем, что можно создать кампанию в токенах
         it("should create token campaign", async function() {
-            const {ownerPlatform, user0, user1, platform, tokenERC20Addr, factory} = await loadFixture(deploy);            
+            const {ownerPlatform, user0, platform, tokenERC20Addr} = await loadFixture(deploy);            
             //формируем стандарный набор аргументов кампании
             const args = defaultCreateCampaignArgs({token: tokenERC20Addr});
             
@@ -344,7 +350,7 @@ describe("Platform main functionality tests", function() {
 
         //проверяем, что кто попало не может менять минимальный дедлайн
         it("should revert unauthorized change default minLifespan", async function() {
-            const {user0, ownerPlatform, platform } = await loadFixture(deploy);            
+            const {user0, platform } = await loadFixture(deploy);            
             const lifespan = 60 * 60;
             const txSetLifespan = platform.connect(user0).setMinLifespan(lifespan);            
             //проверяем, что получилось
@@ -365,9 +371,38 @@ describe("Platform main functionality tests", function() {
         
         //проверяем, что кто попало не может установить размер базовой комиссии
         it("should revert unauthorized base fee", async function() {
-            const {user0, ownerPlatform, platform } = await loadFixture(deploy);            
+            const {user0, platform } = await loadFixture(deploy);            
             const newBaseFee = 70;
             const tx = platform.connect(user0).setBaseFee(newBaseFee);
+            await expect(tx).revertedWithCustomError(platform, "AccessControlUnauthorizedAccount");            
+        });
+
+        //проверяем, что можно установить адрес диспетчера
+        it("should change status dispatcher", async function() {
+            const {ownerPlatform, user0, platform, dispatcher } = await loadFixture(deploy);            
+            //изначально адрес должен быть нулевой
+            expect(await platform.getStatusDispatcher()).equal(ethers.ZeroAddress);
+            
+            const setDispTx = await platform.connect(ownerPlatform).setStatusDispatcher(dispatcher);
+            expect(await platform.getStatusDispatcher()).equal(await dispatcher.getAddress());
+
+            //пробуем создать кампанию и проверим в ней диспечтера
+            const args = defaultCreateCampaignArgs();
+            const txCreate = await platform.connect(user0).createCampaign(...args);            
+            //смотрим, что получилось            
+            const campaignAddress = await platform.getCampaignByIndex(0);            
+
+            const campaign = await ethers.getContractAt("CampaignNative", campaignAddress);
+
+            expect (await campaign.statusDispatcher()).equal(await dispatcher.getAddress());
+            
+        });
+        
+        //проверяем, что кто попало не может установить диспетчера
+        it("should revert unauthorized chander status dispatcher", async function() {
+            const {user0, ownerPlatform, platform } = await loadFixture(deploy);            
+            const newBaseFee = 70;
+            const tx = platform.connect(user0).setStatusDispatcher(ethers.ZeroAddress);
             await expect(tx).revertedWithCustomError(platform, "AccessControlUnauthorizedAccount");            
         });
     });    
@@ -771,10 +806,10 @@ describe("Platform main functionality tests", function() {
             //4. Для пробы - еще раз (должно отвалиться)
             const mintTx2 = loyalty.connect(user0).safeMint(user0);
             await expect(mintTx2).revertedWithCustomError(loyalty, "NotEligibilable")
-                .withArgs(user0, 1);
+                .withArgs(user0);
         });
 
-        //тес проверки расчетов комиссий со скидками по NFT
+        //тест проверки расчетов комиссий со скидками по NFT
         it("should calculate founder fees", async function() {
             
             const {user0, user1, ownerPlatform, platform } = await loadFixture(deploy);                        
@@ -892,7 +927,7 @@ describe("Platform main functionality tests", function() {
             await tokenERC20.mint(user3, contribution2);
             await tokenERC20.connect(user3).approve(campaign2Addr, contribution2);
             await (await campaign2.connect(user3)["contribute(uint128)"](contribution2)).wait();
-            await (await campaign2.connect(user2).setCampaignStatus(2)).wait();
+            await (await campaign2.connect(user2).cancelCampaign()).wait();
             
             // D. user3 создает успешную кампанию в ETH
             const tx3 = await (await platform.connect(user3).createCampaign(...argsNative)).wait();

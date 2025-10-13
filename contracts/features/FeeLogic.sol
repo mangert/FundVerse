@@ -5,7 +5,7 @@ import { PlatformStorageLib } from "../core/storage/PlatformStorageLib.sol";
 import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
 import { IFundVerseLoyaltyMinimal } from "../interfaces/IFundVerseLoyaltyMinimal.sol";
 
-/// @title Модуль рабрты с комиссиями платформы
+/// @title Модуль работы с комиссиями платформы
 /// @notice содержит базовый функционал настройки и расчетов комисиий
 abstract contract FeeLogic is IPlatformCommon {
 
@@ -40,7 +40,6 @@ abstract contract FeeLogic is IPlatformCommon {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.baseFee = _baseFee;          
         emit FVPlatformParameterUpdated(PARAM_BASE_FEE, _baseFee, msg.sender);
-    }
-    
+    }   
 
 }

@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "../../interfaces/ICampaign.sol";
+import { ICampaign } from "../../interfaces/ICampaign.sol";
 
-/** 
- * @notice хранилищце данных платформы
- */
+
+/// @notice хранилищце данных платформы
+/// @author mangert
+
 
 library PlatformStorageLib {
     bytes32 internal constant STORAGE_SLOT = keccak256("FV.platform.storage");
 
     struct Layout {
         
-         // Адрес фабрики
+        // Адрес фабрики
         address factory;
         //адрес контракта программы лояльности
         address loyaltyProgram;       
