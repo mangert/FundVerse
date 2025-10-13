@@ -3,12 +3,11 @@ pragma solidity ^0.8.30;
 
 import { ICampaign } from "../../interfaces/ICampaign.sol";
 import { IStatusDispatcher } from "../../interfaces/IStatusDispatcher.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-/**
- * @title Абстрактный контракт для кампаний
- * @notice содержит общую часть (хранилище, типы, модификаторы, функции, которые не зависят от валюты) 
- */
+/// @title CampaignBase - aбстрактный контракт для кампаний
+/// @author mangert
+/// @notice содержит общую часть (хранилище, типы, модификаторы, функции, которые не зависят от валюты)  
 abstract contract CampaignBase is ICampaign, ReentrancyGuard {    
     
     //хранилище данных 
@@ -62,10 +61,8 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         require(msg.sender == creator, CampaignUnauthorizedAccount(msg.sender)); 
         _;
     }
-
-    /**
-     * @dev модификатор применяется к функциям, которые могут вызываться только на "живых" кампаниях
-     */
+    
+    /// @dev модификатор применяется к функциям, которые могут вызываться только на "живых" кампаниях    
     modifier checkState() {                        
         require(status == Status.Live, CampaignInvalidStatus(status, Status.Live));
         // slither-disable-next-line timestamp
@@ -146,23 +143,8 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     /// @notice узнать сумму "зависших" средств
     function getPendingFunds(address recipient) external view returns(uint256) {
         return pendingWithdrawals[recipient];
-    }
-    
-    /// @notice техническая функция - расшифровывает значение статуса словами
-    function getStatusName(Status numStatus) external pure virtual returns(string memory) {
-        
-        string [5] memory  statuses = [
-            "Live",
-            "Stopped",
-            "Cancelled",    
-            "Failed",       
-            "Successful"    
-        ];
-        uint8 index = uint8(numStatus);
-        require(statuses.length > index, CampaignUnknownStatus(numStatus));
-        return statuses[index];
-    } 
-
+    }    
+   
     //общие функции по выводу средств
     /// @notice затребовать взнос с провалившейся или отмененной кампании
     function claimContribution()  external nonReentrant override {
@@ -274,7 +256,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
             ) {
                 status = raised >= goal ? Status.Successful : Status.Failed;
                 emit CampaignStatusChanged(previous, status, block.timestamp); 
-                unregister(); //подумать, надо ли?
+                unregister(); //пусть здесь останется - тогда можно спокойно вызывать руками тоже
         }
     }
     
@@ -292,5 +274,4 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     fallback() external payable {
         revert CampaignIncorrectCall(msg.sender, msg.value, msg.data);
     } 
-
 }

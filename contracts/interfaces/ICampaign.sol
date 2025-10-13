@@ -198,10 +198,6 @@ interface ICampaign {
     /// @notice функция возращает сумму "зависших" средств (непрошедшие рефанды, неуспешно заклейменные взносы, неуспешно выведенные фонды)
     /// @param recipient aдрес возврата    
     function getPendingFunds(address recipient) external view returns(uint256);
-    
-    /// @notice техническая функция - расшифровка статуса "словами"
-    /// @param numStatus статус, который надо "расшифровать"     
-    function getStatusName(Status numStatus) external pure returns(string memory);    
 
     // Основные функции взаимодействия
     

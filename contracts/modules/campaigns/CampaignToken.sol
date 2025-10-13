@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "../../interfaces/ICampaign.sol"; //интерфейс
-import "./CampaignBase.sol";
-import "@openzeppelin/contracts/interfaces/IERC20.sol";
+import { ICampaign } from "../../interfaces/ICampaign.sol"; //интерфейс
+import { CampaignBase } from "./CampaignBase.sol";
+import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
-/**
- * @title Контракт кампании (разновидность для токенов по стандарту ERC20) 
- * @notice обеспечивает сбор денег на конкретную цель
- */
 
+/// @title CampaignToken - контракт кампании (разновидность для токенов по стандарту ERC20) 
+/// @author mangert
+/// @notice обеспечивает сбор денег на конкретную цель
 contract CampaignToken is ICampaign, CampaignBase {
         
     /// @notice конструктор

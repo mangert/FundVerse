@@ -8,12 +8,26 @@ pragma solidity ^0.8.30;
 
 interface IStatusDispatcher {
 
-    /// @notice функция регистрирует кампанию в очереди
-    /// @dev подумать, что она будет возращать
-    function registerCampaign() external returns(bool);
+    /// @notice событие индицирует регистрацию кампании в очереди
+    /// @param campaign адрес кампании
+    /// @param blockTimestamp временная метка регистрации
+    event CampaingnRegistered(address indexed campaign, uint32 blockTimestamp);
 
-    /// @notice функция исключает кампанию из очереди
-    /// @dev подумать, что она будет возращать
-    function unregisterCampaign() external returns(bool);    
+    /// @notice событие индицирует исключение кампании из очереди
+    /// @param campaign адрес кампании
+    /// @param blockTimestamp временная метка регистрации
+    event CampaingnUnregistered(address indexed campaign, uint32 blockTimestamp);
+
+    /// @notice ошибка индицирует попытку повторно зарегистрировать кампанию в очереди
+    error CampaignAlreadyRegistered();
+
+    /// @notice ошибка индицирует попытку исключить из очереди отсутствующую кампанию
+    error CampaignNotRegistered();
+    
+    /// @notice функция регистрирует кампанию в очереди    
+    function registerCampaign() external;
+
+    /// @notice функция исключает кампанию из очереди    
+    function unregisterCampaign() external;    
 
 }

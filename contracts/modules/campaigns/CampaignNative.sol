@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import "../../interfaces/ICampaign.sol"; //интерфейс
-import "./CampaignBase.sol"; //общий код
+import { ICampaign } from "../../interfaces/ICampaign.sol"; //интерфейс
+import { CampaignBase } from "./CampaignBase.sol"; //общий код
 
 /// @title Контракт кампании (разновидность в нативной валюте) 
 /// @notice обеспечивает сбор денег на конкретную цель
