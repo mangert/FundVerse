@@ -29,8 +29,7 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
     // --- Chainlink Automation ---
 
     /// @notice функция проверки условия запуска автоматизации
-    /// @dev вызывается Chainlink-нодой off-chain
-    /// @param null параметр не задействован, требование интерфейса
+    /// @dev вызывается Chainlink-нодой off-chain    
     /// @return upkeepNeeded признак запуска автоматизации
     /// @return performData данные, передаваемые в автоматизацию
     function checkUpkeep(bytes calldata) external view override 
@@ -58,13 +57,15 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
     // --- Регистрация / удаление кампаний ---
     
     /// @notice функция регистрации кампаний в куче
+    /// @param _deadline дедлайн кампании (приходится передавать параметром, потому что фукнция вызывается из конструктора)
     /// @dev вызывается контрактом-кампанией
-    function registerCampaign() external override {
+    function registerCampaign(uint32 _deadline) external override {        
+
+        address campaign = msg.sender;
         
-        address campaign = msg.sender;       
-        require(indexOf[campaign] == 0, AlreadyRegistered());
+        require(indexOf[campaign] == 0, CampaignAlreadyRegistered());        
         
-        uint256 deadline = ICampaign(campaign).deadline;
+        uint32 deadline = _deadline;
 
         //кладем в кучу на последнее место
         heap.push(CampaignInfo({campaign: campaign, deadline: deadline}));
@@ -82,9 +83,9 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
 
     /// @notice функция исключения кампании из кампаний в кучи
     /// @dev вызывается контрактом-кампанией
-    function unregisterCampaign() external override {
+    function unregisterCampaign() external override {        
         
-        address campaign = msg.sender;        
+        address campaign = msg.sender;
         uint256 idx = indexOf[campaign];
         require(idx != 0, CampaignNotRegistered());
 
@@ -148,7 +149,14 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
     /// @param indexA индекс массива кучи первого обмениваемого элемента
     /// @param indexB индекс массива кучи второго обмениваемого элемента
     function _swap(uint256 indexA, uint256 indexB) internal {
-        (heap[indexA], heap[indexB]) = (heap[indexB], heap[indexA]); //кортежное присваивание
+        
+        {
+            CampaignInfo memory tmp = heap[indexA];
+            heap[indexA] = heap[indexB];
+            heap[indexB] = tmp;
+        }       
+
+        //(heap[indexA], heap[indexB]) = (heap[indexB], heap[indexA]); //кортежное присваивание - компилятор ругается
         
         //обновляем позиции элементов в очереди исходя из их индексов в массиве кучи (просто сдвиг на единицу)
         indexOf[heap[indexA].campaign] = indexA + 1; 

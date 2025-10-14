@@ -103,7 +103,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         token = _token; // address(0) — для ETH, иначе — адрес ERC20 токена
         statusDispatcher = _statusDispatcher;
 
-        register(); // регистрируем нашу кампанию в диспетчере
+        register(_deadline); // регистрируем нашу кампанию в диспетчере
     }
 
     //общие для обеих версий геттеры        
@@ -232,9 +232,9 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     //служебные функции
 
     /// @notice функция регистрирует кампанию в диспетчере статусов
-    function register() internal virtual {
+    function register(uint32 _deadline) internal virtual {
         if(statusDispatcher != address(0)) {
-            IStatusDispatcher(statusDispatcher).registerCampaign();
+            IStatusDispatcher(statusDispatcher).registerCampaign(_deadline);
         }
     }
 

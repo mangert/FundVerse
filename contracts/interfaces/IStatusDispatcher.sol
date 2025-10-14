@@ -11,12 +11,12 @@ interface IStatusDispatcher {
     /// @notice событие индицирует регистрацию кампании в очереди
     /// @param campaign адрес кампании
     /// @param blockTimestamp временная метка регистрации
-    event CampaingnRegistered(address indexed campaign, uint32 blockTimestamp);
+    event CampaignRegistered(address indexed campaign, uint256 blockTimestamp);
 
     /// @notice событие индицирует исключение кампании из очереди
     /// @param campaign адрес кампании
     /// @param blockTimestamp временная метка регистрации
-    event CampaingnUnregistered(address indexed campaign, uint32 blockTimestamp);
+    event CampaignUnregistered(address indexed campaign, uint256 blockTimestamp);
 
     /// @notice ошибка индицирует попытку повторно зарегистрировать кампанию в очереди
     error CampaignAlreadyRegistered();
@@ -24,10 +24,16 @@ interface IStatusDispatcher {
     /// @notice ошибка индицирует попытку исключить из очереди отсутствующую кампанию
     error CampaignNotRegistered();
     
-    /// @notice функция регистрирует кампанию в очереди    
-    function registerCampaign() external;
+    /// @notice функция регистрирует кампанию в очереди
+    /// @param _deadline дедлайн  
+    function registerCampaign(uint32 _deadline) external;
 
-    /// @notice функция исключает кампанию из очереди    
+    /// @notice функция исключает кампанию из очереди        
     function unregisterCampaign() external;    
+
+    /// @notice функция возвращает верхнюю кампанию в куче
+    /// @return campaign адрес кампании
+    /// @return deadline дедлайн
+    function getNextCampaign() external view returns (address campaign, uint256 deadline);
 
 }

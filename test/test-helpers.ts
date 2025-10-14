@@ -2,6 +2,7 @@ import { loadFixture, ethers, expect } from "./setup";
 import { network } from "hardhat";
 import { time } from "@nomicfoundation/hardhat-network-helpers";
 import { token } from "../typechain-types/@openzeppelin/contracts";
+import { resolve } from "path";
 
 //хелперы для тестов контракта-кампании в версии для нативной валюты
 //функция для задания аргументов конструктора для нативной версии контракта
@@ -90,4 +91,9 @@ export async function loyaltyProgram (ownerPlatform : any, platform  : any) {
     loyalty.waitForDeployment();
             
         return loyalty;            
+}
+
+// хелперы для тестирования диспетчера
+function sleep(ms: number) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
