@@ -1,0 +1,27 @@
+{
+  "extends": "solhint:recommended",
+  "plugins": [],
+  "rules": {    
+    "comprehensive-interface": "warn",
+    "code-complexity": ["warn", 6],
+    "payable-fallback": "warn",
+    "func-visibility": ["error", { "ignoreConstructors": true }],
+    "ordering": "warn",
+    "no-empty-blocks": "warn",
+    "max-line-length": ["warn", 120],
+    "use-natspec": "warn",    
+    "no-inline-assembly": "error",
+    "avoid-low-level-calls": "warn",
+    "avoid-sha3": "warn",
+    "reason-string": ["warn", { "maxLength": 64 }],
+    "not-rely-on-time": "warn",
+    "reentrancy": "error",
+    "check-send-result": "error",
+    "avoid-suicide": "error",
+    "avoid-throw": "error",
+    "state-visibility": "error",    
+    "max-states-count": ["warn", 15], 
+    "explicit-types": "warn",    
+    "avoid-tx-origin": "error"    
+  }
+}

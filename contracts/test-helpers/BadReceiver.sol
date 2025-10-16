@@ -25,7 +25,7 @@ contract BadReceiver {
     function callClaimPendingFunds(address campaign) external payable {
         
         (bool success, bytes memory returndata) = campaign.call(abi.encodeCall(ICampaign.claimPendingFunds, ()));
-        //require(success, "Withdraw error");        
+            
         if (!success) {
         // Проброс оригинальной ошибки с сохранением типа (включая custom errors!)
             assembly {

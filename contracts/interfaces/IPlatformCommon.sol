@@ -30,10 +30,10 @@ interface IPlatformCommon {
     /// @param token адрес токена валюты кампании (для ETH - address(0))
     /// @param goal целевая сумма сбора     
     event FVCampaignCreated(
-        ICampaign indexed NewCampaignAddress
-        , address indexed founder
-        , address indexed token
-        , uint256 goal
+        address indexed NewCampaignAddress,
+        address indexed founder,
+        address indexed token,
+        uint256 goal
         );     
     
     /// @notice событие порождается при добавлении нового токена в список поддерживаемых    

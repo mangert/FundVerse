@@ -142,7 +142,30 @@ interface ICampaign {
     /// @notice индицирует попытку повторной инициализации
     error CampaignReInitialization();
 
-    //геттеры        
+    // ----------------- Функции ----------------//
+
+    /// @notice фунция инициализации
+    /// @param _platformAddress адрес платформы
+    /// @param _creator создатель кампании
+    /// @param _id идентификатор кампании
+    /// @param _goal целевая сумма сборов
+    /// @param _deadline срок действия кампании
+    /// @param _campaignMeta метаданные (название, описание, ссылка на ресурсы и т.д.)
+    /// @param _platformFee комиссия платформы
+    /// @param _token валюта кампании
+    /// @param _statusDispatcher адрес контракта диспетчера для автоперевода статуса
+    function initialize(
+        address _platformAddress,        
+        address _creator,        
+        uint32 _id,
+        uint128 _goal,
+        uint32 _deadline,
+        string memory _campaignMeta,
+        uint128 _platformFee, 
+        address _token,
+        address _statusDispatcher) external;
+
+    // ----------------- геттеры --------------- //
     /// @notice создатель, он же владелец
     function creator() external view returns (address);
 
@@ -202,7 +225,7 @@ interface ICampaign {
     /// @param recipient aдрес возврата    
     function getPendingFunds(address recipient) external view returns(uint256);
 
-    // Основные функции взаимодействия
+    // ----------------- Основные функции взаимодействия ----------------- //
     
     /// @notice Внести средства (ERC20)
     /// @dev Зачисляется только та часть `_amount`, которая не превышает оставшуюся сумму до цели.
@@ -223,7 +246,7 @@ interface ICampaign {
     /// @notice функция позволяет затребовать "зависшую" сумму (непрошедший рефанд, неполлученный взнос, фонд кампании, комиссию платформы)    
     function claimPendingFunds()  external;
     
-    //функции для владельца    
+    // ----------------- функции для владельца ----------------- //
     
     /// @notice функция вывода фаундером накопленных средств
     /// средства выводятся фаундером за вычетом комиссии платформы

@@ -25,6 +25,7 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
     
     /// @dev счетчик кампаний
     uint256 public totalCampaigns;
+    uint256 public counter;
 
     // --- Chainlink Automation ---
 
@@ -33,7 +34,7 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
     /// @return upkeepNeeded признак запуска автоматизации
     /// @return performData данные, передаваемые в автоматизацию
     function checkUpkeep(bytes calldata) external view override 
-        returns (bool upkeepNeeded, bytes memory performData) {
+        returns (bool upkeepNeeded, bytes memory performData) {        
         
         if (heap.length == 0) return (false, "");
 
@@ -61,7 +62,7 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
     /// @dev вызывается контрактом-кампанией
     function registerCampaign(uint32 _deadline) external override {        
 
-        address campaign = msg.sender;
+        address campaign = msg.sender;        
         
         require(indexOf[campaign] == 0, CampaignAlreadyRegistered());        
         
@@ -70,7 +71,7 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
         //кладем в кучу на последнее место
         heap.push(CampaignInfo({campaign: campaign, deadline: deadline}));
         //увеличиваем счетчик
-        totalCampaigns++;
+        ++totalCampaigns;
 
         //считаем индекс в очереди
         uint256 idx = heap.length;        
@@ -101,7 +102,7 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
         
         heap.pop(); //обрезаем кучу
         indexOf[campaign] = 0; 
-        totalCampaigns--;
+        --totalCampaigns;
 
         emit CampaignUnregistered(campaign, block.timestamp);
     }
@@ -168,7 +169,7 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
     /// @notice функция возвращает верхнюю кампанию в куче
     /// @return campaign адрес кампании
     /// @return deadline дедлайн
-    function getNextCampaign() external view returns (address campaign, uint256 deadline) {
+    function getNextCampaign() external view override returns (address campaign, uint256 deadline) {
         if (heap.length == 0) return (address(0), 0);
         CampaignInfo memory next = heap[0];
         return (next.campaign, next.deadline);

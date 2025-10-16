@@ -43,9 +43,9 @@ contract Platform is
     bytes32 public constant TREASURE_ROLE = keccak256("TREASURE");    
 
     // Константы для настройки событий изменения параметров платформы
-    bytes32 constant PARAM_LOYALTY_PROG = keccak256("loyaltyProgram");
-    bytes32 constant PARAM_MIN_LIFESPAN = keccak256("minLifespan");
-    bytes32 constant PARAM_STATUS_DISPATCHER = keccak256("minLifespan");
+    bytes32 private constant PARAM_LOYALTY_PROG = keccak256("loyaltyProgram");
+    bytes32 private constant PARAM_MIN_LIFESPAN = keccak256("minLifespan");
+    bytes32 private constant PARAM_STATUS_DISPATCHER = keccak256("statusDispatcher");
 
     /// @notice флаг для nonReentrancy
     bool private _inCall;
@@ -112,7 +112,7 @@ contract Platform is
             //посчитаем комиссию
             uint128 _platformFee = getFounderFee(founder);
             
-            ICampaign newCampaign = IFactoryCore(s.factory).createCampaign(
+            address newCampaign = IFactoryCore(s.factory).createCampaign(
                 founder, 
                 s.totalCounter, 
                 _goal, 
@@ -124,7 +124,7 @@ contract Platform is
                 );    
             
             //проверим на всякий случай, что то-то вернулось
-            require(address(newCampaign).code.length != 0, FVCreateFailed());
+            require(newCampaign.code.length != 0, FVCreateFailed());
 
             if(deposit > 0) { //если вдруг у нас платформа не требует залога, не будем нули регистрировать
                 _lockDeposit(founder, deposit, newCampaign); //регистрируем залог
@@ -172,14 +172,14 @@ contract Platform is
 
     //служебные функции
     /// @notice Регистрируем кампанию в хранилище
-    function _registerCampaign(address founder, ICampaign newCampaign) internal {
+    function _registerCampaign(address founder, address newCampaign) internal {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
 
         uint32 index = s.totalCounter;
         s.totalCounter++;
 
-        s.campaignIndex[index] = address(newCampaign);
-        s.campaignsByFounder[founder][s.campaignsCountByFounder[founder]++] = address(newCampaign);        
+        s.campaignIndex[index] = newCampaign;
+        s.campaignsByFounder[founder][s.campaignsCountByFounder[founder]++] = newCampaign;        
         s.registeredCampaigns[address(newCampaign)] = true;
     }
 

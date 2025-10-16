@@ -9,13 +9,11 @@ describe("Campaign Token", function() {
 
         const dispatcher_Factory = await ethers.getContractFactory("StatusDispatcher");
         const dispatcher = await dispatcher_Factory.deploy();
-        await dispatcher.waitForDeployment();  
-        
+        await dispatcher.waitForDeployment();          
         
         const token_Factory = await ethers.getContractFactory("TestTokenERC20");
         const tokenERC20 = await token_Factory.deploy();
-        const tokenERC20Addr = await tokenERC20.getAddress();
-        
+        const tokenERC20Addr = await tokenERC20.getAddress();        
         
           const args: [
                 string, // platformAddress
@@ -25,11 +23,14 @@ describe("Campaign Token", function() {
                 number, // deadline
                 string, // campaignMeta
                 number, // platformFee,
+                string, // token
                 string  // dispatcher Address                    
             ] = defaultCampaignArgs({}, userPlatform.address, userCreator.address, await dispatcher.getAddress());      
 
             //запихиваем токен перед последним элементом
-            const finalArgs = [
+            args[7] = tokenERC20Addr; 
+
+            /*const finalArgs = [
                 ...args.slice(0, -1), // всё кроме последнего элемента
                 tokenERC20Addr,           // новый аргумент — токен
                 args[args.length - 1] // последний элемент (dispatcher)
@@ -43,12 +44,12 @@ describe("Campaign Token", function() {
                 number, // platformFee,
                 string, // tokenAddress
                 string  // dispatcher Address                    
-            ];            
+            ];*/            
         
         const campaign_Factory = await ethers.getContractFactory("CampaignToken");
         const campaign = await campaign_Factory.deploy();
         await campaign.waitForDeployment();
-        await campaign.initialize(...finalArgs);
+        await campaign.initialize(...args);
 
         return { userPlatform, userCreator, user0, user1, user2, campaign, tokenERC20, dispatcher }
     }

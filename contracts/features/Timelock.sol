@@ -9,7 +9,7 @@ import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
 abstract contract Timelock is IPlatformCommon {      
 
     // Константы для настройки событий изменения параметров платформы
-    bytes32 constant PARAM_DELAY = keccak256("delay");
+    bytes32 private constant PARAM_DELAY = keccak256("delay");
 
     /// @notice функция проверяет, действует ли еще таймлок для фаундера
     function _isLocked(address founder) internal view returns(bool) {            

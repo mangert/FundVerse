@@ -10,7 +10,7 @@ import { ICampaign } from "../interfaces/ICampaign.sol";
 abstract contract DepositLogic is IPlatformCommon {
 
     // Константы для настройки событий изменения параметров платформы    
-    bytes32 constant PARAM_DEPOSIT = keccak256("depositAmount");
+    bytes32 private constant PARAM_DEPOSIT = keccak256("depositAmount");
     
     /// @notice регистрирует залог
     /// @dev следует вызывать после деплоя новой кампании
@@ -18,14 +18,14 @@ abstract contract DepositLogic is IPlatformCommon {
     /// @param founder адрес фаундера    
     /// @param amount сумма залога
     /// @param campaign адрес кампании, обеспечиваемой залогом
-    function _lockDeposit(address founder, uint256 amount, ICampaign campaign) internal {        
+    function _lockDeposit(address founder, uint256 amount, address campaign) internal {        
         
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
         // сохраняем залог
         s.totalDeposit += amount;
-        s.depositsByCampaigns[address(campaign)] = amount;
+        s.depositsByCampaigns[campaign] = amount;
 
-        emit FVDepositLocked(founder, amount, address(campaign));
+        emit FVDepositLocked(founder, amount, campaign);
     }
 
     /// @notice возвращает залог фаундеру

@@ -10,7 +10,7 @@ import { IFundVerseLoyaltyMinimal } from "../interfaces/IFundVerseLoyaltyMinimal
 abstract contract FeeLogic is IPlatformCommon {
 
     // Константы для настройки событий изменения параметров платформы
-    bytes32 constant PARAM_BASE_FEE = keccak256("baseFee");
+    bytes32 private constant PARAM_BASE_FEE = keccak256("baseFee");
     
     /// @notice функция возвращает базовый размер комиссии
     function getBaseFee() public view returns (uint16) {        

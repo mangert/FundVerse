@@ -6,49 +6,17 @@ import { CampaignBase } from "./CampaignBase.sol"; //общий код
 
 /// @title Контракт кампании (разновидность в нативной валюте) 
 /// @notice обеспечивает сбор денег на конкретную цель
-contract CampaignNative is ICampaign, CampaignBase {
+contract CampaignNative is ICampaign, CampaignBase {    
     
-    /// @notice функция инициализации
-    /// @param _platformAddress адрес платформы
-    /// @param _creator создатель кампании
-    /// @param _id идентификатор кампании
-    /// @param _goal целевая сумма сборов
-    /// @param _deadline срок действия кампании
-    /// @param _campaignMeta метаданные (название, описание, ссылка на ресурсы и т.д.)
-    /// @param _platformFee комиссия платформы    
-    /// @param _statusDispatcher адрес контракта диспетчера для автоперевода статуса
-    function initialize(
-        address _platformAddress,        
-        address _creator,        
-        uint32 _id,
-        uint128 _goal,
-        uint32 _deadline,
-        string memory _campaignMeta,
-        uint128 _platformFee,         
-        address _statusDispatcher) external {       
-            
-        super._initializeBase(
-            _platformAddress,
-            _creator,        
-            _id,
-            _goal,
-            _deadline,
-            _campaignMeta,
-            _platformFee,
-            address(0),
-            _statusDispatcher
-        );
-    }
-
     // Основные функции взаимодействия
 
     /// @notice Внести средства - неиспользуемая перегрузка
-    function contribute(uint128) external pure {
+    function contribute(uint128) external override pure {
         revert CampaignIncorrertFunction();
     }
 
    /// @notice Внести средства (ETH - cчитаем в wei)
-    function contribute() external payable nonReentrant checkState {
+    function contribute() external payable override nonReentrant checkState {
         
         address contributor = msg.sender;
 

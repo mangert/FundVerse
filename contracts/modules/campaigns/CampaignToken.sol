@@ -9,43 +9,8 @@ import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 /// @title CampaignToken - контракт кампании (разновидность для токенов по стандарту ERC20) 
 /// @author mangert
 /// @notice обеспечивает сбор денег на конкретную цель
-contract CampaignToken is ICampaign, CampaignBase {
-        
-    /// @notice функция инициализации
-    /// @param _platformAddress адрес платформы
-    /// @param _creator создатель кампании
-    /// @param _id идентификатор кампании
-    /// @param _goal целевая сумма сборов
-    /// @param _deadline срок действия кампании
-    /// @param _campaignMeta метаданные (название, описание, ссылка на ресурсы и т.д.)
-    /// @param _platformFee комиссия платформы
-    /// @param _token валюта кампании    
-    /// @param _statusDispatcher адрес контракта диспетчера для автоперевода статуса
-    function initialize(
-        address _platformAddress,        
-        address _creator,        
-        uint32 _id,
-        uint128 _goal,
-        uint32 _deadline,
-        string memory _campaignMeta,        
-        uint128 _platformFee,
-        address _token,         
-        address _statusDispatcher) external {       
-            
-        super._initializeBase(
-            _platformAddress,
-            _creator,        
-            _id,
-            _goal,
-            _deadline,
-            _campaignMeta,
-            _platformFee,
-            _token,
-            _statusDispatcher
-        );
-    }
+contract CampaignToken is ICampaign, CampaignBase {        
     
-
     // Основные функции взаимодействия
     
     /// @notice Делает взнос в кампанию указанным количеством токенов.

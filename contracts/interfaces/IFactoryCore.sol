@@ -26,5 +26,5 @@ interface IFactoryCore {
         address _token,
         address _campaignStatusDispatcher
 
-        ) external returns(ICampaign); 
+        ) external returns(address); 
 }

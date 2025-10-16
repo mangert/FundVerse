@@ -42,43 +42,24 @@ contract FactoryCore is IFactoryCore{
         uint128 _platformFee, 
         address _token,
         address _campaignStatusDispatcher
-        ) external returns(ICampaign) { 
+        ) external override returns(address) { 
+
+        address payable newCampaign = payable(Clones.clone(
+          (_token == address(0) ?  implementationNative : implementationToken)
+        ));
+          //инициализируем        
+        ICampaign(newCampaign).initialize(
+            msg.sender,       
+            _founder,
+            _index,
+            _goal,
+            _deadline,
+            _campaignMeta,
+            _platformFee,
+            _token,
+            _campaignStatusDispatcher
+        );             
         
-        address platform = msg.sender;        
-        
-        address payable newCampaign;
-        
-        if(_token == address(0)) { //если задан нулевой адрес, будем делать кампанию в нативной валюте
-            
-            newCampaign = payable(Clones.clone(implementationNative)); //создаем клон
-            
-            //инициализируем        
-            CampaignNative(newCampaign).initialize(
-                platform,       
-                _founder,
-                _index,
-                _goal,
-                _deadline,
-                _campaignMeta,
-                _platformFee,
-                _campaignStatusDispatcher
-            );             
-        }
-        else { //если переменная токен содержит ненулевой адрес, выбираем вариант кампании в токенах
-            
-            newCampaign = payable(Clones.clone(implementationToken)); //создаем клон
-            CampaignToken(newCampaign).initialize(
-                platform,       
-                _founder,
-                _index,
-                _goal,
-                _deadline,
-                _campaignMeta,
-                _platformFee, 
-                _token,
-                _campaignStatusDispatcher
-            );         
-        }              
-        return ICampaign(newCampaign);
+        return newCampaign;
     }        
 }

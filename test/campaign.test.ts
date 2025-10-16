@@ -19,6 +19,7 @@ describe("Campaign Native", function() {
             number, // deadline
             string, // campaignMeta
             number, // platformFee
+            string, // address(0) - token
             string // адрес диспетчера
         ] = defaultCampaignArgs({}, userPlatform.address, userCreator.address, await dispatcher.getAddress());              
         
@@ -27,7 +28,6 @@ describe("Campaign Native", function() {
         await campaign.waitForDeployment();        
         //инициализируем
         await campaign.initialize(...args);
-
 
         return { userPlatform, userCreator, user0, user1, user2, campaign, dispatcher, args}
     }
@@ -717,7 +717,8 @@ describe("Campaign Native", function() {
                 bigint, // goal
                 number, // deadline
                 string, // campaignMeta
-                number, // platformFee      
+                number,// platformFee      
+                string,
                 string 
             ] = defaultCampaignArgs({}, badReceiverAddr, badReceiverAddr, dispatcherAddr);
       

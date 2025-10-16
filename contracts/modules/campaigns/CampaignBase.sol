@@ -84,7 +84,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     /// @param _platformFee комиссия платформы
     /// @param _token валюта кампании
     /// @param _statusDispatcher адрес контракта диспетчера для автоперевода статуса
-    function _initializeBase(
+    function initialize(
         address _platformAddress,        
         address _creator,        
         uint32 _id,
@@ -93,7 +93,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         string memory _campaignMeta,
         uint128 _platformFee, 
         address _token,
-        address _statusDispatcher) internal virtual {
+        address _statusDispatcher) external {
         
         require(!_initialized, CampaignReInitialization()); 
         _initialized = true;       

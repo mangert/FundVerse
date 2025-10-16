@@ -22,7 +22,7 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
 
     /// @notice получатели NFT
     /// @dev если NFT быд выдан, то при передаче в списке остается старый владелец
-    mapping (address founder => uint256 tokenId) foundersTokens;
+    mapping (address founder => uint256 tokenId) internal foundersTokens;
 
     /// @notice скидка, зафиксированная при минте
     mapping (uint256 tokenId => uint16 discountAtMint) private tokenDiscount;

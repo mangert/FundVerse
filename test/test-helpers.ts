@@ -7,7 +7,7 @@ import { resolve } from "path";
 //хелперы для тестов контракта-кампании в версии для нативной валюты
 //функция для задания аргументов конструктора для нативной версии контракта
 export function defaultCampaignArgs(overrides = {}, platformAddr : string, creatorAddr : string, dispatcherAddr : string ) : [
-    string, string, bigint, bigint, number, string, number, string] {    
+    string, string, bigint, bigint, number, string, number, string, string] {    
     const defaults = {
         platformAddress: platformAddr,
         creator: creatorAddr,        
@@ -16,6 +16,7 @@ export function defaultCampaignArgs(overrides = {}, platformAddr : string, creat
         deadline: Math.floor(Date.now() / 1000) + 60,
         campaignMeta: "Description and URI",
         platformFee: 50,
+        token: ethers.ZeroAddress,
         dispatcher: dispatcherAddr        
     };    
 
@@ -29,6 +30,7 @@ export function defaultCampaignArgs(overrides = {}, platformAddr : string, creat
         merged.deadline,
         merged.campaignMeta,
         merged.platformFee,
+        merged.token,
         merged.dispatcher
     ];   
 }
