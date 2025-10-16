@@ -8,35 +8,37 @@ import { CampaignBase } from "./CampaignBase.sol"; //общий код
 /// @notice обеспечивает сбор денег на конкретную цель
 contract CampaignNative is ICampaign, CampaignBase {
     
-    /// @notice конструктор
+    /// @notice функция инициализации
     /// @param _platformAddress адрес платформы
     /// @param _creator создатель кампании
     /// @param _id идентификатор кампании
     /// @param _goal целевая сумма сборов
     /// @param _deadline срок действия кампании
     /// @param _campaignMeta метаданные (название, описание, ссылка на ресурсы и т.д.)
-    /// @param _platformFee комиссия платформы
-    /// @param _statusDispatcher адрес контракта-диспетчера статусов    
-    constructor(
-        address _platformAddress,
+    /// @param _platformFee комиссия платформы    
+    /// @param _statusDispatcher адрес контракта диспетчера для автоперевода статуса
+    function initialize(
+        address _platformAddress,        
         address _creator,        
         uint32 _id,
         uint128 _goal,
         uint32 _deadline,
         string memory _campaignMeta,
-        uint128 _platformFee,
-        address _statusDispatcher
-    ) CampaignBase (
-        _platformAddress,
-        _creator,        
-        _id,
-        _goal,
-        _deadline,
-        _campaignMeta,
-        _platformFee,
-        address(0),
-        _statusDispatcher
-    ) {}    
+        uint128 _platformFee,         
+        address _statusDispatcher) external {       
+            
+        super._initializeBase(
+            _platformAddress,
+            _creator,        
+            _id,
+            _goal,
+            _deadline,
+            _campaignMeta,
+            _platformFee,
+            address(0),
+            _statusDispatcher
+        );
+    }
 
     // Основные функции взаимодействия
 

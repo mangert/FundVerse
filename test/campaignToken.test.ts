@@ -46,8 +46,9 @@ describe("Campaign Token", function() {
             ];            
         
         const campaign_Factory = await ethers.getContractFactory("CampaignToken");
-        const campaign = await campaign_Factory.deploy(...finalArgs, {});
-        await campaign.waitForDeployment();        
+        const campaign = await campaign_Factory.deploy();
+        await campaign.waitForDeployment();
+        await campaign.initialize(...finalArgs);
 
         return { userPlatform, userCreator, user0, user1, user2, campaign, tokenERC20, dispatcher }
     }

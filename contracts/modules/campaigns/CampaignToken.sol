@@ -11,36 +11,40 @@ import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 /// @notice обеспечивает сбор денег на конкретную цель
 contract CampaignToken is ICampaign, CampaignBase {
         
-    /// @notice конструктор
+    /// @notice функция инициализации
     /// @param _platformAddress адрес платформы
     /// @param _creator создатель кампании
     /// @param _id идентификатор кампании
     /// @param _goal целевая сумма сборов
     /// @param _deadline срок действия кампании
     /// @param _campaignMeta метаданные (название, описание, ссылка на ресурсы и т.д.)
-    /// @param _platformFee комиссия платформы    
+    /// @param _platformFee комиссия платформы
+    /// @param _token валюта кампании    
     /// @param _statusDispatcher адрес контракта диспетчера для автоперевода статуса
-    constructor(        
-        address  _platformAddress,
+    function initialize(
+        address _platformAddress,        
         address _creator,        
         uint32 _id,
         uint128 _goal,
         uint32 _deadline,
-        string memory _campaignMeta,
+        string memory _campaignMeta,        
         uint128 _platformFee,
-        address _token,
-        address _statusDispatcher
-    ) CampaignBase (
-        _platformAddress,
-        _creator,        
-        _id,
-        _goal,
-        _deadline,
-        _campaignMeta,
-        _platformFee,
-        _token,
-        _statusDispatcher
-    ) {}    
+        address _token,         
+        address _statusDispatcher) external {       
+            
+        super._initializeBase(
+            _platformAddress,
+            _creator,        
+            _id,
+            _goal,
+            _deadline,
+            _campaignMeta,
+            _platformFee,
+            _token,
+            _statusDispatcher
+        );
+    }
+    
 
     // Основные функции взаимодействия
     

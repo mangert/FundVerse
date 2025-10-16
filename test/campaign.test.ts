@@ -23,10 +23,13 @@ describe("Campaign Native", function() {
         ] = defaultCampaignArgs({}, userPlatform.address, userCreator.address, await dispatcher.getAddress());              
         
         const campaign_Factory = await ethers.getContractFactory("CampaignNative");
-        const campaign = await campaign_Factory.deploy(...args, {});
+        const campaign = await campaign_Factory.deploy();
         await campaign.waitForDeployment();        
+        //инициализируем
+        await campaign.initialize(...args);
 
-        return { userPlatform, userCreator, user0, user1, user2, campaign, dispatcher }
+
+        return { userPlatform, userCreator, user0, user1, user2, campaign, dispatcher, args}
     }
 
     describe("deployment tеsts", function() {
@@ -720,8 +723,10 @@ describe("Campaign Native", function() {
       
         
             const campaign_Factory = await ethers.getContractFactory("CampaignNative");
-            const campaign = await campaign_Factory.deploy(...args, {});
-            await campaign.waitForDeployment();                   
+            const campaign = await campaign_Factory.deploy();
+            await campaign.waitForDeployment();
+            //инициализируем
+            await campaign.initialize(...args);
             
             
             //сначала просто задонатим от любого пользователя до цели контаркта
@@ -781,6 +786,14 @@ describe("Campaign Native", function() {
             await expect(txChangeStatus).revertedWithCustomError(campaign, "CampaignUnauthorizedAccount").withArgs(user0);
             
         });     
+
+        it("should revert contract initialization twice", async function() {
+            const {user0, campaign, args } = await loadFixture(deploy );
+    
+            const txChangeStatus = campaign.initialize(...args);
+            await expect(txChangeStatus).revertedWithCustomError(campaign, "CampaignReInitialization");
+            
+        });
 
     });
  

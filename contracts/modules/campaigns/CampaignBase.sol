@@ -12,28 +12,28 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     
     //хранилище данных 
     /// @notice адрес платформы краудфандинга (для получения комиссии)
-    address internal immutable platformAddress;
+    address internal platformAddress;
     
     /// @notice адрес контракта-диспетчера для перевода статуса по дедлайну
-    address public immutable statusDispatcher;
+    address public statusDispatcher;
     
     /// @notice создатель, он же владелец
-    address public immutable creator;
+    address public creator;
 
     /// @notice 0x0 для ETH (для совместимости)
-    address public immutable token; 
+    address public token; 
     
     /// @notice цель - wei / decimals   
-    uint128 public immutable goal; 
+    uint128 public goal; 
     
     /// @notice комиссия платформы в промилле
-    uint128 public immutable platformFee; 
+    uint128 public platformFee; 
     
     /// @notice срок
-    uint32 public immutable deadline;
+    uint32 public deadline;
     
     /// @notice идентификатор
-    uint32 public immutable id; 
+    uint32 public id; 
 
     /// @notice Общая сумма средств, внесённых в кампанию за всё время.
     /// @dev Значение не уменьшается при возврате вкладов или выводе средств фаундером.
@@ -47,6 +47,10 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
 
     /// @notice флаг для nonReentrancy
     bool private _inCall;
+
+    /// @notice флаг инициализации клона
+    bool private _initialized;   
+
        
     /// @notice JSON-метаданные (описание + документы/IPFS)   
     string public campaignMeta; 
@@ -68,18 +72,19 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         // slither-disable-next-line timestamp
         require(block.timestamp < deadline, CampaignTimeExpired(deadline, block.timestamp));
         _;
-    }   
-
-    /// @notice конструктор
+    }          
+    
+    /// @notice фунция инициализации
     /// @param _platformAddress адрес платформы
     /// @param _creator создатель кампании
     /// @param _id идентификатор кампании
     /// @param _goal целевая сумма сборов
     /// @param _deadline срок действия кампании
     /// @param _campaignMeta метаданные (название, описание, ссылка на ресурсы и т.д.)
-    /// @param _platformFee комиссия платформы    
+    /// @param _platformFee комиссия платформы
+    /// @param _token валюта кампании
     /// @param _statusDispatcher адрес контракта диспетчера для автоперевода статуса
-    constructor(
+    function _initializeBase(
         address _platformAddress,        
         address _creator,        
         uint32 _id,
@@ -88,9 +93,11 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         string memory _campaignMeta,
         uint128 _platformFee, 
         address _token,
-        address _statusDispatcher
+        address _statusDispatcher) internal virtual {
+        
+        require(!_initialized, CampaignReInitialization()); 
+        _initialized = true;       
 
-    ) {
         platformAddress= _platformAddress;
         creator = _creator;        
         id = _id;
@@ -103,8 +110,8 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         token = _token; // address(0) — для ETH, иначе — адрес ERC20 токена
         statusDispatcher = _statusDispatcher;
 
-        register(_deadline); // регистрируем нашу кампанию в диспетчере
-    }
+        register(_deadline); // регистрируем нашу кампанию в диспетчере        
+    }   
 
     //общие для обеих версий геттеры        
     

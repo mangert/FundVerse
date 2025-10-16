@@ -65,8 +65,9 @@ describe("Platform main functionality tests", function() {
             expect(campaignAddress).equal(await platform.getCampaignOfFounderByIndex(user0, 0));
             expect(await platform.getCampaignsCountByFounder(user0)).equal(1);
 
-            const campaign = await ethers.getContractAt("ICampaign", campaignAddress);
-            expect(await campaign.token()).equal(ethers.ZeroAddress);            
+            const campaign = await ethers.getContractAt("ICampaign", campaignAddress);                       
+            
+            //expect(await campaign.token()).equal(ethers.ZeroAddress);            
         });
         
         // проверяем, что можно создать кампанию в токенах

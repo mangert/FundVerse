@@ -139,6 +139,9 @@ interface ICampaign {
     /// @param amount сумма неудавшегося взноса (полностью)    
     error CampaignTokenReceiptFailed(address investor, uint256 amount);
 
+    /// @notice индицирует попытку повторной инициализации
+    error CampaignReInitialization();
+
     //геттеры        
     /// @notice создатель, он же владелец
     function creator() external view returns (address);
