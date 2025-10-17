@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ICampaign} from "./ICampaign.sol";
+
 
 /// @title интерфейс модуля создания кампаний 
 /// @notice содержит функционал создания кампаний

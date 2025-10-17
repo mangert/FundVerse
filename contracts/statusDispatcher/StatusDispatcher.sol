@@ -25,7 +25,6 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
     
     /// @dev счетчик кампаний
     uint256 public totalCampaigns;
-    uint256 public counter;
 
     // --- Chainlink Automation ---
 

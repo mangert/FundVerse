@@ -1,13 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import { ICampaign } from "../../interfaces/ICampaign.sol";
-
-
 /// @notice хранилищце данных платформы
 /// @author mangert
-
-
 library PlatformStorageLib {
     bytes32 internal constant STORAGE_SLOT = keccak256("FV.platform.storage");
 

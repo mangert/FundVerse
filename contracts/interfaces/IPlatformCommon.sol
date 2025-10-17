@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-import {ICampaign} from "./ICampaign.sol";
+
 
 /// @title интерфейс IPlatformCommon - события и ошибки платформы
 /// @notice содержит объявления событий и ошибок, кидаемых платформой
