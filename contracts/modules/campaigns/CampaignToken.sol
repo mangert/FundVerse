@@ -15,10 +15,11 @@ contract CampaignToken is ICampaign, CampaignBase {
     
     /// @notice Делает взнос в кампанию указанным количеством токенов.
     /// @dev Зачисляется только та часть `_amount`, которая не превышает оставшуюся сумму до цели.
-    ///      Остаток средств (`_amount - accepted`) не списывается с пользователя, но логируется событием CampaignRefunded.
-    ///      Пользователь должен предварительно вызвать `approve` на сумму `_amount`.
+    /// Остаток средств (`_amount - accepted`) не списывается с пользователя, 
+    /// но логируется событием CampaignRefunded.
+    /// Пользователь должен предварительно вызвать `approve` на сумму `_amount`.
     /// @param _amount Объем средств, который пользователь хочет внести в кампанию (в токенах).
-    function contribute(uint128 _amount) external nonReentrant checkState {
+    function contribute(uint128 _amount) external override nonReentrant checkState {
         
         address contributor = msg.sender;
 
@@ -41,7 +42,7 @@ contract CampaignToken is ICampaign, CampaignBase {
         //получаем токены
         // External call before state changes: safe because transferFrom doesn't invoke reentrant logic
         // and state changes follow after successful receipt.
-        // slither-disable-next-line reentrancy-no-eth
+        // solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = token.call(
             abi.encodeWithSelector(IERC20.transferFrom.selector, msg.sender, address(this), contribution)
         );
@@ -52,9 +53,11 @@ contract CampaignToken is ICampaign, CampaignBase {
         donates[contributor] += contribution;
         raised += uint128(contribution);
         
+        // solhint-disable-next-line gas-strict-inequalities
         if(raised >= goal) { //если после зачисления достигли цели
             status = Status.Successful; //Актуализируем статус
-            emit CampaignStatusChanged(Status.Live, status, block.timestamp); // timestamp manipulation not critical here
+            // solhint-disable-next-line not-rely-on-time
+            emit CampaignStatusChanged(Status.Live, status, block.timestamp);
             unregister();
         }        
         
@@ -67,7 +70,7 @@ contract CampaignToken is ICampaign, CampaignBase {
     }
 
    /// @notice Внести средства (неиспользуемая перегрузка)
-    function contribute() external payable {
+    function contribute() external payable override {
         revert CampaignIncorrertFunction();        
     }     
 
@@ -81,7 +84,7 @@ contract CampaignToken is ICampaign, CampaignBase {
         pendingWithdrawals[recipient] = 0; //обнуляем баланс
 
         emit PendingFundsClaimed(recipient, amount);               
-
+        //solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = token.call(
             abi.encodeWithSelector(IERC20.transfer.selector, recipient, amount)
         );
@@ -91,13 +94,16 @@ contract CampaignToken is ICampaign, CampaignBase {
     }    
     
     /// @notice служебная функция перевода средств
+    /// @param recipient получатель средств
+    /// @param amount переводимая сумма
+    /// @return bool результат перевода (прошел или провалился)
     /// @dev используется для рефандов и переводов
     /// @dev не использовать при клейме зависших средств!
-    /// @dev Внешний вызов безопасен — состояние не меняется до него.
+    /// @dev Внешний вызов безопасен — состояние не меняется до него.    
     /// Запись в pendingWithdrawals происходит ТОЛЬКО при неудаче отправки.
     /// Вызов обернут в external функцию с модификатором nonReentrant.      
     function _transferTo(address recipient, uint256 amount) internal override returns (bool) {               
-        
+        // solhint-disable avoid-low-level-calls
         (bool success, bytes memory returndata) = token.call(
             abi.encodeWithSelector(IERC20.transfer.selector, recipient, amount)
         );
@@ -106,6 +112,7 @@ contract CampaignToken is ICampaign, CampaignBase {
             pendingWithdrawals[recipient] += amount;
             emit CampaignTransferFailed(msg.sender, amount, token);
         }
+        // solhint-enable avoid-low-level-calls
         return result;
     }     
 

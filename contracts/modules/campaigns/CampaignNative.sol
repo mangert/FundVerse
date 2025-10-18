@@ -4,14 +4,15 @@ pragma solidity ^0.8.30;
 import { ICampaign } from "../../interfaces/ICampaign.sol"; //интерфейс
 import { CampaignBase } from "./CampaignBase.sol"; //общий код
 
-/// @title Контракт кампании (разновидность в нативной валюте) 
+/// @title Контракт кампании (разновидность в нативной валюте)
+/// @author mangert
 /// @notice обеспечивает сбор денег на конкретную цель
 contract CampaignNative is ICampaign, CampaignBase {    
     
     // Основные функции взаимодействия
 
     /// @notice Внести средства - неиспользуемая перегрузка
-    function contribute(uint128) external override pure {
+    function contribute(uint128) external override pure { //solhint-disable-line use-natspec
         revert CampaignIncorrertFunction();
     }
 
@@ -39,9 +40,10 @@ contract CampaignNative is ICampaign, CampaignBase {
         //зачисляем взнос
         donates[contributor] += contribution;
         raised += uint128(contribution);
-        
+        // solhint-disable-next-line gas-strict-inequalities
         if(raised >= goal) { //если после зачисления достигли цели
             status = Status.Successful; //Аетуализируем статус
+            //solhint-disable-next-line not-rely-on-time
             emit CampaignStatusChanged(Status.Live, status, block.timestamp);
             unregister();
         }
@@ -74,6 +76,9 @@ contract CampaignNative is ICampaign, CampaignBase {
     //вспомогательные функции
  
     /// @notice служебная функция перевода средств
+    /// @param recipient получатель средств
+    /// @param amount переводимая сумма
+    /// @return bool результат перевода (прошел или провалился)
     /// @dev используется для рефандов и переводов
     /// @dev не использовать при клейме зависших средств!
     /// @dev Внешний вызов безопасен — состояние не меняется до него.

@@ -7,7 +7,8 @@ import {CampaignToken} from "./campaigns/CampaignToken.sol";
 import {IFactoryCore} from "../interfaces/IFactoryCore.sol";
 import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 
-/// @title Модуль создания кампаний 
+/// @title Модуль создания кампаний
+/// @author mangert
 /// @notice содержит функционал создания кампаний
 contract FactoryCore is IFactoryCore{          
 
@@ -26,13 +27,15 @@ contract FactoryCore is IFactoryCore{
     }   
    
     /// @notice внутренняя функция создания кампании 
+    /// @param _founder создатель кампании
+    /// @param _index глобальный индекс кампании
     /// @param _goal целевая сумма сбора
     /// @param _deadline срок действия кампании
     /// @param _campaignMeta данные кампании (имя, описание, ссылка на документы)
     /// @param _platformFee размер комиссии в промилле
     /// @param _token валюта сбора (address(0) для нативной валюты)
     /// @param _campaignStatusDispatcher адрес контракта диспетчера для автоперевода статуса
-    /// @return адрес созданного контракта-кампании
+    /// @return address адрес созданного контракта-кампании
     function createCampaign(        
         address _founder,
         uint32 _index,

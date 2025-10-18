@@ -3,8 +3,8 @@ pragma solidity ^0.8.30;
 
 
 /// @title интерфейс ICampaign для контрактов-кампаний 
+/// @author mangert
 /// @notice содержит описания функций, событий, ошибок и типов контрактов-кампаний
-
 interface ICampaign {
     
     //типы
@@ -50,7 +50,8 @@ interface ICampaign {
     /// @param amount полученная сумма    
     event CampaignContributionClaimed(address indexed recipient, uint256 amount);
     
-    /// @notice порождается, когда инвестор запросил с контракта средства, но перевод "завис" (перешел в pendingWithdraw)
+    /// @notice порождается, когда инвестор запросил с контракта средства, 
+    /// но перевод "завис" (перешел в pendingWithdraw)
     /// @param recipient адрес получателя
     /// @param amount запросшенная сумма    
     event CampaignContributionDeffered(address indexed recipient, uint256 amount);
@@ -170,12 +171,15 @@ interface ICampaign {
     function creator() external view returns (address);
 
     /// @notice адрес контракта-диспетчера, переводящего статус по дедлайну
+    /// @return address адрес контракта-диспетчера
     function statusDispatcher() external view returns (address);
 
     /// @notice 0x0 для ETH (для совместимости)
+    /// @return address адрес контракта токена ERC20
     function token() external view returns (address);
 
-    /// @notice цель - wei / decimals   
+    /// @notice получить размер суммы сбора - wei / decimals
+    /// @return uint128 целевая сумма сбора
     function goal() external view returns (uint128);
 
     /// @notice комиссия платформы в промилле
@@ -221,7 +225,8 @@ interface ICampaign {
     /// @return uint256 сумма средств, внесенная инветором
     function getContribution(address investor) external view returns(uint256);
     
-    /// @notice функция возращает сумму "зависших" средств (непрошедшие рефанды, неуспешно заклейменные взносы, неуспешно выведенные фонды)
+    /// @notice функция возращает сумму "зависших" средств (непрошедшие рефанды,     
+    /// неуспешно заклейменные взносы, неуспешно выведенные фонды)
     /// @param recipient aдрес возврата    
     function getPendingFunds(address recipient) external view returns(uint256);
 
@@ -243,7 +248,8 @@ interface ICampaign {
     /// @dev при реализации необходимо предусмотреть проверку статуса    
     function claimContribution()  external;    
     
-    /// @notice функция позволяет затребовать "зависшую" сумму (непрошедший рефанд, неполлученный взнос, фонд кампании, комиссию платформы)    
+    /// @notice функция позволяет затребовать "зависшую" сумму (непрошедший рефанд, 
+    /// неполученный взнос, фонд кампании, комиссию платформы)    
     function claimPendingFunds()  external;
     
     // ----------------- функции для владельца ----------------- //
@@ -268,6 +274,5 @@ interface ICampaign {
 
     /// @notice функция запускает приостановленную кампанию
     /// @dev может вызываться только владельцем, при реализации указать модификатор onlyOwner
-    function resumeCampaign() external;   
-    
+    function resumeCampaign() external;       
 }

@@ -37,13 +37,13 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
     /// @param oldValue старое значение дисконта
     /// @param newValue новое значение дисконта
     /// @param author автор изменений    
-    event FeeDiscountChanged(uint16 oldValue, uint16 newValue, address author);
+    event FeeDiscountChanged(uint16 oldValue, uint16 newValue, address indexed author);
 
-    /// @notice событие порождается при адреса платформы
+    /// @notice событие порождается при измненеии адреса платформы
     /// @param oldValue старый адрес
     /// @param newValue новый адрес
     /// @param author автор изменений    
-    event PlatformAddressChanged(address oldValue, address newValue, address author);    
+    event PlatformAddressChanged(address oldValue, address newValue, address indexed author);    
 
     //ошибки
     

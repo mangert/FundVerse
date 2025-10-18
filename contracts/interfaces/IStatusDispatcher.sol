@@ -8,15 +8,19 @@ pragma solidity ^0.8.30;
 
 interface IStatusDispatcher {
 
+    // заглушаем предупреждения, чтобы время не заставлял делать indexed
+    // solhint-disable gas-indexed-events       
     /// @notice событие индицирует регистрацию кампании в очереди
     /// @param campaign адрес кампании
     /// @param blockTimestamp временная метка регистрации
-    event CampaignRegistered(address indexed campaign, uint256 blockTimestamp);
+    event CampaignRegistered(address indexed campaign, uint256 blockTimestamp); 
 
     /// @notice событие индицирует исключение кампании из очереди
     /// @param campaign адрес кампании
-    /// @param blockTimestamp временная метка регистрации
-    event CampaignUnregistered(address indexed campaign, uint256 blockTimestamp);
+    /// @param blockTimestamp временная метка регистрации    
+    event CampaignUnregistered(address indexed campaign, uint256 blockTimestamp); 
+
+    // solhint-disable gas-indexed-events
 
     /// @notice ошибка индицирует попытку повторно зарегистрировать кампанию в очереди
     error CampaignAlreadyRegistered();

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+/// @title PlatformStorageLib
 /// @notice хранилищце данных платформы
 /// @author mangert
-library PlatformStorageLib {
-    bytes32 internal constant STORAGE_SLOT = keccak256("FV.platform.storage");
+library PlatformStorageLib {   
 
     struct Layout {
         
@@ -50,11 +50,16 @@ library PlatformStorageLib {
         //мэппинг для информации о поддерживаемых токенах
         mapping (address token => bool allowed) allowedTokens;        
     }
-
-    function layout() internal pure returns (Layout storage l) {
-        bytes32 slot = STORAGE_SLOT;
+    
+    bytes32 internal constant STORAGE_SLOT = keccak256("FV.platform.storage");
+    
+    // solhint-disable no-inline-assembly
+    /// @notice функция определяет, куда положить наши данные
+    /// @return _layout местоположение хранилища
+    function layout() internal pure returns (Layout storage _layout) {
+        bytes32 slot = STORAGE_SLOT;        
         assembly {
-            l.slot := slot
+           _layout.slot := slot
         }
     }
 }

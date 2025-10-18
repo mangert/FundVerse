@@ -6,6 +6,7 @@ import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
 import { IFundVerseLoyaltyMinimal } from "../interfaces/IFundVerseLoyaltyMinimal.sol";
 
 /// @title Модуль работы с комиссиями платформы
+/// @author mangert
 /// @notice содержит базовый функционал настройки и расчетов комисиий
 abstract contract FeeLogic is IPlatformCommon {
 
@@ -13,12 +14,14 @@ abstract contract FeeLogic is IPlatformCommon {
     bytes32 private constant PARAM_BASE_FEE = keccak256("baseFee");
     
     /// @notice функция возвращает базовый размер комиссии
+    /// @return uint16 базовая комиссия
     function getBaseFee() public view returns (uint16) {        
         return PlatformStorageLib.layout().baseFee;
     }
 
     /// @notice функция возвращает размер комиссии для конкретного фаундера (с учетом дисконта)
     /// @param founder адрес фаундера, для которого запрашиваем комиссию
+    /// @return uint16 расчетная комиссия для фаунтдера
     function getFounderFee(address founder) public view returns (uint16) {        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         uint16 fee = s.baseFee;

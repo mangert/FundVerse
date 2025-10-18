@@ -25,12 +25,12 @@ interface IPlatformCommon {
     );
 
     /// @notice событие порождается при создании новой кампании
-    /// @param NewCampaignAddress адрес контратка созданной кампании
+    /// @param newCampaignAddress адрес контратка созданной кампании
     /// @param founder адрес фаундера
     /// @param token адрес токена валюты кампании (для ETH - address(0))
     /// @param goal целевая сумма сбора     
     event FVCampaignCreated(
-        address indexed NewCampaignAddress,
+        address indexed newCampaignAddress,
         address indexed founder,
         address indexed token,
         uint256 goal
@@ -121,7 +121,8 @@ interface IPlatformCommon {
     /// @param token валюта вывода (для нативной валюты address(0))
     error FVInsufficientFunds(uint256 amount, uint256 available, address token);
 
-    /// @notice ошибка возникает при планируемой сумме вывода равной нулю (если нечего выводить или такой вывод запрошен)
+    /// @notice ошибка возникает при планируемой сумме вывода равной нулю 
+    /// (если нечего выводить или такой вывод запрошен)
     error FVZeroWithdrawnAmount();
 
     /// @notice ошибка возникает при попытке рекурсивного вызова функции вывода средств

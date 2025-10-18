@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
+import { IStatusDispatcher } from "../interfaces/IStatusDispatcher.sol";
+import { ICampaign } from "../interfaces/ICampaign.sol";
+import { 
+        AutomationCompatibleInterface
+} from "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
+
 /// @title StatusDispatcher 
 /// @author mangert
 /// @notice содержит функционал автоперевода статуса контрактов-кампаний
-import { IStatusDispatcher } from "../interfaces/IStatusDispatcher.sol";
-import { ICampaign } from "../interfaces/ICampaign.sol";
-import {AutomationCompatibleInterface} from "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
-
 contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
 
     //структура для "кучи"
@@ -23,41 +25,14 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
     /// @dev (1-based)
     mapping(address => uint256) private indexOf;
     
-    /// @dev счетчик кампаний
-    uint256 public totalCampaigns;
+    /// @notice счетчик кампаний
+    uint256 public totalCampaigns;    
 
-    // --- Chainlink Automation ---
-
-    /// @notice функция проверки условия запуска автоматизации
-    /// @dev вызывается Chainlink-нодой off-chain    
-    /// @return upkeepNeeded признак запуска автоматизации
-    /// @return performData данные, передаваемые в автоматизацию
-    function checkUpkeep(bytes calldata) external view override 
-        returns (bool upkeepNeeded, bytes memory performData) {        
-        
-        if (heap.length == 0) return (false, "");
-
-        CampaignInfo memory next = heap[0];
-        if (block.timestamp >= next.deadline) {
-            upkeepNeeded = true;
-            performData = abi.encode(next.campaign);
-        }
-    }        
-    
-    /// @notice функция выполняет автоматизацию
-    /// @dev вызывается нодой chainlink, если checkUpkeep вернул true
-    /// @param performData данные, с которыми работаем (в нашем случае адрес кампании)    
-    function performUpkeep(bytes calldata performData) external override {
-        
-        address campaignAddr = abi.decode(performData, (address));
-        ICampaign campaign = ICampaign(campaignAddr);
-        campaign.checkDeadlineStatus(); // сама вызовет unregister()
-    }
-
-    // --- Регистрация / удаление кампаний ---
+    // --- Регистрация / удаление кампаний ---    
     
     /// @notice функция регистрации кампаний в куче
-    /// @param _deadline дедлайн кампании (приходится передавать параметром, потому что фукнция вызывается из конструктора)
+    /// @param _deadline дедлайн кампании 
+    /// (приходится передавать параметром, потому что фукнция вызывается из конструктора)
     /// @dev вызывается контрактом-кампанией
     function registerCampaign(uint32 _deadline) external override {        
 
@@ -77,7 +52,7 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
         indexOf[campaign] = idx;
         //балансируем дерево
         _heapifyUp(idx - 1);
-
+        // solhint-disable-next-line not-rely-on-time
         emit CampaignRegistered(campaign, block.timestamp);
     }
 
@@ -102,10 +77,50 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
         heap.pop(); //обрезаем кучу
         indexOf[campaign] = 0; 
         --totalCampaigns;
-
+        // solhint-disable-next-line not-rely-on-time
         emit CampaignUnregistered(campaign, block.timestamp);
-    }
+    }    
+    
+    // --- Chainlink Automation ---
 
+    /// @notice функция выполняет автоматизацию
+    /// @dev вызывается нодой chainlink, если checkUpkeep вернул true
+    /// @param performData данные, с которыми работаем (в нашем случае адрес кампании)    
+    function performUpkeep(bytes calldata performData) external override {
+        
+        address campaignAddr = abi.decode(performData, (address));
+        ICampaign campaign = ICampaign(campaignAddr);
+        campaign.checkDeadlineStatus(); // сама вызовет unregister()
+    }       
+    
+    /// @notice функция проверки условия запуска автоматизации
+    /// @dev вызывается Chainlink-нодой off-chain   
+    /// @return upkeepNeeded признак запуска автоматизации
+    /// @return performData данные, передаваемые в автоматизацию
+    function checkUpkeep(bytes calldata) external view override // solhint-disable-line use-natspec
+        returns (bool upkeepNeeded, bytes memory performData) {        
+        
+        if (heap.length == 0) return (false, "");
+
+        CampaignInfo memory next = heap[0];
+        // solhint-disable not-rely-on-time, gas-strict-inequalities
+        if (block.timestamp >= next.deadline) {
+            upkeepNeeded = true;
+            performData = abi.encode(next.campaign);
+        }
+    }        
+
+    // --- Просмотр ---
+
+    /// @notice функция возвращает верхнюю кампанию в куче
+    /// @return campaign адрес кампании
+    /// @return deadline дедлайн
+    function getNextCampaign() external view override returns (address campaign, uint256 deadline) {
+        if (heap.length == 0) return (address(0), 0);
+        CampaignInfo memory next = heap[0];
+        return (next.campaign, next.deadline);
+    }
+    
     // --- Куча ---
 
     /// @notice балансировка дерева при добавлении элемента
@@ -113,6 +128,7 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
     function _heapifyUp(uint256 i) internal {
         while (i > 0) {
             uint256 parent = (i - 1) / 2;
+            //solhint-disable-next-line gas-strict-inequalities
             if (heap[i].deadline >= heap[parent].deadline) break;
             _swap(i, parent);
             i = parent;
@@ -161,16 +177,5 @@ contract StatusDispatcher is IStatusDispatcher, AutomationCompatibleInterface {
         //обновляем позиции элементов в очереди исходя из их индексов в массиве кучи (просто сдвиг на единицу)
         indexOf[heap[indexA].campaign] = indexA + 1; 
         indexOf[heap[indexB].campaign] = indexB + 1;
-    }
-
-    // --- Просмотр ---
-
-    /// @notice функция возвращает верхнюю кампанию в куче
-    /// @return campaign адрес кампании
-    /// @return deadline дедлайн
-    function getNextCampaign() external view override returns (address campaign, uint256 deadline) {
-        if (heap.length == 0) return (address(0), 0);
-        CampaignInfo memory next = heap[0];
-        return (next.campaign, next.deadline);
-    }    
+    }        
 }

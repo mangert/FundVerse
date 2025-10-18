@@ -8,7 +8,7 @@ import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.s
 /// @title CampaignBase - aбстрактный контракт для кампаний
 /// @author mangert
 /// @notice содержит общую часть (хранилище, типы, модификаторы, функции, которые не зависят от валюты)  
-abstract contract CampaignBase is ICampaign, ReentrancyGuard {    
+abstract contract CampaignBase is ICampaign, ReentrancyGuard {        
     
     //хранилище данных 
     /// @notice адрес платформы краудфандинга (для получения комиссии)
@@ -64,15 +64,18 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     modifier onlyCreator() {
         require(msg.sender == creator, CampaignUnauthorizedAccount(msg.sender)); 
         _;
-    }
+    }   
     
     /// @dev модификатор применяется к функциям, которые могут вызываться только на "живых" кампаниях    
     modifier checkState() {                        
         require(status == Status.Live, CampaignInvalidStatus(status, Status.Live));
-        // slither-disable-next-line timestamp
+        // slither-disable-next-line timestamp 
         require(block.timestamp < deadline, CampaignTimeExpired(deadline, block.timestamp));
         _;
     }          
+
+    // проверка дедлайн часть бизнес-логики, поэтому отключаем здесь правило
+    //solhint-disable not-rely-on-time
     
     /// @notice фунция инициализации
     /// @param _platformAddress адрес платформы
@@ -90,7 +93,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         uint32 _id,
         uint128 _goal,
         uint32 _deadline,
-        string memory _campaignMeta,
+        string calldata _campaignMeta,
         uint128 _platformFee, 
         address _token,
         address _statusDispatcher) external {
@@ -143,11 +146,15 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     }
     
     /// @notice узнать сумму взносов инвестора
+    /// @param investor адрес инвестора
+    /// @return uint256 сумма взносов инвестора
     function getContribution(address investor) external view returns(uint256) {
         return donates[investor];
     }
     
     /// @notice узнать сумму "зависших" средств
+    /// @param recipient адрес владельца зависших средств
+    /// @return uint256 зависшая сумма
     function getPendingFunds(address recipient) external view returns(uint256) {
         return pendingWithdrawals[recipient];
     }    
@@ -205,10 +212,10 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     }   
     
     /// @notice функция отменяет кампанию
-    function cancelCampaign() external onlyCreator override {
+    function cancelCampaign() external onlyCreator override {        
         require(
             (status == Status.Live || status == Status.Stopped) 
-            && block.timestamp < deadline,
+            && block.timestamp < deadline, 
             CampaignInvalidChandgedStatus(Status.Cancelled)
         );        
 
@@ -239,6 +246,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     //служебные функции
 
     /// @notice функция регистрирует кампанию в диспетчере статусов
+    /// @param _deadline срок завершения кампании
     function register(uint32 _deadline) internal virtual {
         if(statusDispatcher != address(0)) {
             IStatusDispatcher(statusDispatcher).registerCampaign(_deadline);
@@ -257,14 +265,16 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     function checkDeadlineStatus() public virtual {
     
         Status previous = status;
+        // solhint-disable not-rely-on-time, gas-strict-inequalities
         // slither-disable-next-line timestamp
         if ((status == Status.Live || status == Status.Stopped) &&                        
-            block.timestamp >= deadline
-            ) {
-                status = raised >= goal ? Status.Successful : Status.Failed;
+            block.timestamp >= deadline 
+            ) {                
+                status = raised >= goal ? Status.Successful : Status.Failed;                
                 emit CampaignStatusChanged(previous, status, block.timestamp); 
-                unregister(); //пусть здесь останется - тогда можно спокойно вызывать руками тоже
+                unregister(); 
         }
+        // solhint-enable not-rely-on-time, gas-strict-inequalities
     }
     
     /// @notice служебная функция перевода средств
@@ -274,10 +284,12 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     /// @return bool результатм перевода
     function _transferTo(address recipient, uint256 amount) internal virtual returns (bool);  
     
+    /// @notice запрещаем переводы без вызова функции
     receive() external payable {
         revert CampaignIncorrectCall(msg.sender, msg.value, "");
     }
-
+    
+    /// @notice запрещаем переводы с вызовом несуществующей / неправильной функции
     fallback() external payable {
         revert CampaignIncorrectCall(msg.sender, msg.value, msg.data);
     } 
