@@ -58,13 +58,14 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     mapping(address investor => uint256 value) internal donates; //хранилище для вкладов участников
     mapping (address recipient => uint256 value) internal pendingWithdrawals; //хранилище для "зависших" сумм
     
-    /**
-     * @dev модификатор применяется к функциям, которые может вызвать только фаундер
-     */
+    //проверка deadline часть бизнес-логики, поэтому отключаем правило
+    //solhint-disable not-rely-on-time    
+    
+    /// @dev модификатор применяется к функциям, которые может вызвать только фаундер    
     modifier onlyCreator() {
         require(msg.sender == creator, CampaignUnauthorizedAccount(msg.sender)); 
         _;
-    }   
+    }  
     
     /// @dev модификатор применяется к функциям, которые могут вызываться только на "живых" кампаниях    
     modifier checkState() {                        
@@ -72,10 +73,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         // slither-disable-next-line timestamp 
         require(block.timestamp < deadline, CampaignTimeExpired(deadline, block.timestamp));
         _;
-    }          
-
-    // проверка дедлайн часть бизнес-логики, поэтому отключаем здесь правило
-    //solhint-disable not-rely-on-time
+    }       
     
     /// @notice фунция инициализации
     /// @param _platformAddress адрес платформы
@@ -115,50 +113,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
 
         register(_deadline); // регистрируем нашу кампанию в диспетчере        
     }   
-
-    //общие для обеих версий геттеры        
     
-    /// @notice Получить сводку о кампании
-    function getSummary()
-        external
-        view
-        virtual
-        returns (
-            address _creator,            
-            uint32 _id,
-            address _token, // 0x0 для ETH
-            uint128 _goal,
-            uint128 _raised,
-            uint32 _deadline,
-            string memory _campaignMeta,
-            Status _campaignStatus            
-        ){
-            return(
-                creator,                 
-                id,
-                token, // 0x0 для ETH
-                goal,
-                raised,
-                deadline,
-                campaignMeta,
-                status
-            );       
-    }
-    
-    /// @notice узнать сумму взносов инвестора
-    /// @param investor адрес инвестора
-    /// @return uint256 сумма взносов инвестора
-    function getContribution(address investor) external view returns(uint256) {
-        return donates[investor];
-    }
-    
-    /// @notice узнать сумму "зависших" средств
-    /// @param recipient адрес владельца зависших средств
-    /// @return uint256 зависшая сумма
-    function getPendingFunds(address recipient) external view returns(uint256) {
-        return pendingWithdrawals[recipient];
-    }    
-   
     //общие функции по выводу средств
     /// @notice затребовать взнос с провалившейся или отмененной кампании
     function claimContribution()  external nonReentrant override {
@@ -242,23 +197,58 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         emit CampaignStatusChanged(Status.Stopped, Status.Live, block.timestamp);
     }
 
-
-    //служебные функции
-
-    /// @notice функция регистрирует кампанию в диспетчере статусов
-    /// @param _deadline срок завершения кампании
-    function register(uint32 _deadline) internal virtual {
-        if(statusDispatcher != address(0)) {
-            IStatusDispatcher(statusDispatcher).registerCampaign(_deadline);
-        }
+    //общие для обеих версий геттеры        
+    
+    /// @notice Получить сводку о кампании    
+    /// @return _creator адрес фаундера            
+    /// @return _id идентификатор
+    /// @return _token валюта кампании (0x0 для нативной валюты)
+    /// @return _goal целевая сумма сбора (wei / decimals)
+    /// @return _raised сумма собранных средств (wei / decimals)
+    /// @return _deadline срок действия кампании
+    /// @return _campaignMeta данные кампании
+    /// @return _campaignStatus статус кампании
+    function getSummary()
+        external
+        view
+        virtual
+        returns (
+            address _creator,            
+            uint32 _id,
+            address _token, // 0x0 для ETH
+            uint128 _goal,
+            uint128 _raised,
+            uint32 _deadline,
+            string memory _campaignMeta,
+            Status _campaignStatus            
+        ){
+            return(
+                creator,                 
+                id,
+                token, // 0x0 для ETH
+                goal,
+                raised,
+                deadline,
+                campaignMeta,
+                status
+            );       
     }
-
-    /// @notice функция отменяет регистрацию кампании в диспетчере статусов
-    function unregister() internal virtual {
-        if(statusDispatcher != address(0)) {
-            IStatusDispatcher(statusDispatcher).unregisterCampaign();
-        }
+    
+    /// @notice узнать сумму взносов инвестора
+    /// @param investor адрес инвестора
+    /// @return uint256 сумма взносов инвестора
+    function getContribution(address investor) external view returns(uint256) {
+        return donates[investor];
     }
+    
+    /// @notice узнать сумму "зависших" средств
+    /// @param recipient адрес владельца зависших средств
+    /// @return uint256 зависшая сумма
+    function getPendingFunds(address recipient) external view returns(uint256) {
+        return pendingWithdrawals[recipient];
+    }    
+    
+    //служебные функции    
     
     /// @notice функция автоматически актуализирует статус контракта при истекшем дедлайне
     /// @dev вызывается внутри функции вывода взносов, но может быть вызвана снаружи    
@@ -275,6 +265,21 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
                 unregister(); 
         }
         // solhint-enable not-rely-on-time, gas-strict-inequalities
+    }
+    
+    /// @notice функция регистрирует кампанию в диспетчере статусов
+    /// @param _deadline срок завершения кампании
+    function register(uint32 _deadline) internal virtual {
+        if(statusDispatcher != address(0)) {
+            IStatusDispatcher(statusDispatcher).registerCampaign(_deadline);
+        }
+    }
+
+    /// @notice функция отменяет регистрацию кампании в диспетчере статусов
+    function unregister() internal virtual {
+        if(statusDispatcher != address(0)) {
+            IStatusDispatcher(statusDispatcher).unregisterCampaign();
+        }
     }
     
     /// @notice служебная функция перевода средств

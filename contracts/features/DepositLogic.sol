@@ -6,6 +6,7 @@ import { IPlatformCommon } from "../interfaces/IPlatformCommon.sol";
 import { ICampaign } from "../interfaces/ICampaign.sol";
 
 /// @title Модуль учета залогов
+/// @author mangert
 /// @notice содержит базовый функционал настройки, учета и возврата залогов
 abstract contract DepositLogic is IPlatformCommon {
 
@@ -54,7 +55,7 @@ abstract contract DepositLogic is IPlatformCommon {
 
     /// @notice функция по установке суммы залога    
     /// @notice действует глобально для всех пользователей, создающих кампании после установки нового значения
-    /// @notice depositAmount новое значение суммы залога
+    /// @param depositAmount новое значение суммы залога
     /// @dev следует переопределить с установкой роли
     function _setRequiredDeposit(uint256 depositAmount) internal {        
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
@@ -65,18 +66,22 @@ abstract contract DepositLogic is IPlatformCommon {
     //геттеры
     
     /// @notice Получить информацию о сумме залога, требуемой платформой
+    /// @return uint256 сумма залога в нативной валюте (wei)
     function getRequiredDeposit() external view returns (uint256) {
         return PlatformStorageLib.layout().requiredDeposit;
     }            
 
     /// @notice Получить информацию о сумме невозвращенного залога по конкретной кампании
+    /// @param campaign адрес кампании, для которой проверяем залог
+    /// @return uint256 сумма неполученного залога в нативной валюте (wei)
     function getCampaignDeposit(address campaign) external view returns (uint256) {
         return PlatformStorageLib.layout().depositsByCampaigns[campaign];
     }            
     
     // служебные функции
-    /// @notice служебная функция - возвращает истину, если кампания тем или иным образом завершена 
+    /// @notice служебная функция - проверяет, завершена ли кампания
     /// @param campaign aдрес кампании
+    /// @return bool результат проверки (завершена - истина)
     function _isCampaignFinished(ICampaign campaign) internal view virtual returns (bool) {
         ICampaign.Status status = campaign.status();
         return (

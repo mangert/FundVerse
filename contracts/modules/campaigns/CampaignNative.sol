@@ -9,13 +9,13 @@ import { CampaignBase } from "./CampaignBase.sol"; //общий код
 /// @notice обеспечивает сбор денег на конкретную цель
 contract CampaignNative is ICampaign, CampaignBase {    
     
-    // Основные функции взаимодействия
+    // Основные функции взаимодействия    
 
-    /// @notice Внести средства - неиспользуемая перегрузка
+   /// @notice Внести средства - неиспользуемая перегрузка
     function contribute(uint128) external override pure { //solhint-disable-line use-natspec
         revert CampaignIncorrertFunction();
     }
-
+   
    /// @notice Внести средства (ETH - cчитаем в wei)
     function contribute() external payable override nonReentrant checkState {
         
@@ -56,7 +56,7 @@ contract CampaignNative is ICampaign, CampaignBase {
         }
 
         emit CampaignContribution(contributor, contribution);
-    }     
+    }
 
     ///@notice затребовать "зависшие" средства    
     function claimPendingFunds() external override nonReentrant {

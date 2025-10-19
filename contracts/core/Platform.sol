@@ -20,8 +20,9 @@ import { DepositLogic} from "../features/DepositLogic.sol"; //функциона
 import {PlatformStorageLib} from "./storage/PlatformStorageLib.sol"; //хранилище данных
 
 
-///@title Главный контракт краудфандинговой платформы  
-///@notice обеспечивает функционирование самой платформы
+/// @title Главный контракт краудфандинговой платформы
+/// @author mangert
+/// @notice обеспечивает функционирование самой платформы
 contract Platform is 
     Initializable, 
     AccessControlUpgradeable, 
@@ -57,8 +58,16 @@ contract Platform is
         _;
         _inCall = false;        
     }   
-
+    
+    // так как полного интерфейса платформы нет, отключаем правило
+    // solhint-disable comprehensive-interface
+    
+    //так как функция инициализации играет роль конструктора и логично с нее начинать, отключаем здесь правило
+    // solhint-disable ordering
+    
     /// @notice инициализатор - вместо конструктора
+    /// @param _factory ссылка на контракт-фабрику
+    /// @dev фабрика должна быть предварительно задеплоена
     function initialize(address _factory) public initializer {       
         
         address owner = msg.sender;
@@ -77,10 +86,12 @@ contract Platform is
         s.delay = 0; //отладочно, потом сколько-нибудь поставить! 60 * 60 * 24 * 2; //двое суток
         //устанавливаем минимальную продолжительность для кампаний
         s.minLifespan = 60 * 60 * 24;        
-    }
+    }    
 
     /// @notice пустой receive — для автоматического приема комиссий и любых входящих переводов
     receive() external payable {}
+
+    // solhint-enable ordering
 
     /// @notice функция создает новую кампанию
     /// @param _goal целевая сумма сбора
@@ -100,10 +111,11 @@ contract Platform is
 
             //проверяем, что залог перечислен
             uint256 deposit = msg.value;
-            require(deposit >= s.requiredDeposit, FVInsufficientDeposit(deposit, s.requiredDeposit));
+            // solhint-disable-next-line gas-strict-inequalities
+            require(deposit >= s.requiredDeposit, FVInsufficientDeposit(deposit, s.requiredDeposit));            
             
-            // slither-disable-next-line timestamp
-            require(_deadline >= (s.minLifespan + block.timestamp)
+            // solhint-disable-next-line not-rely-on-time, gas-strict-inequalities
+            require(_deadline >= (s.minLifespan + block.timestamp) // slither-disable-line timestamp
                 , FVErrorDeadlineLessMinimun()); //проверяем, что дедлайн не слишком маленький
             
             address founder = msg.sender;
@@ -156,29 +168,39 @@ contract Platform is
     }
 
     /// @notice Получить кампанию по глобальному индексу
+    /// @param index глобальный индекс кампании    
+    /// @return address адрес кампании
     function getCampaignByIndex(uint32 index) external view returns (address) {
         return address(PlatformStorageLib.layout().campaignIndex[index]);
     }
 
     /// @notice Получить количество кампаний, созданных конкретным фаундером
+    /// @param founder адрес фаундера
+    /// @return uint32 количество кампаний, созданных фаундером
     function getCampaignsCountByFounder(address founder) external view returns (uint32) {
         return PlatformStorageLib.layout().campaignsCountByFounder[founder];
     }
 
     /// @notice Получить кампанию фаундера по его локальному индексу
+    /// @param founder адрес фаундера
+    /// @param index индекс кампании у фаундера
+    /// @return address адрес кампании
     function getCampaignOfFounderByIndex(address founder, uint32 index) external view returns (address) {
         return address(PlatformStorageLib.layout().campaignsByFounder[founder][index]);
     }
 
     //служебные функции
     /// @notice Регистрируем кампанию в хранилище
+    /// @param founder адрес фаундера, создавшего кампанию
+    /// @param newCampaign адрес регистрируемой кампании
     function _registerCampaign(address founder, address newCampaign) internal {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
 
         uint32 index = s.totalCounter;
-        s.totalCounter++;
+        ++s.totalCounter;
 
         s.campaignIndex[index] = newCampaign;
+        // solhint-disable-next-line  gas-increment-by-one
         s.campaignsByFounder[founder][s.campaignsCountByFounder[founder]++] = newCampaign;        
         s.registeredCampaigns[address(newCampaign)] = true;
     }
@@ -187,14 +209,15 @@ contract Platform is
     
     /// @notice функция по установке срока таймлоков
     /// @notice позволяет устанавливать длительность лока взамен установленного ранее
-    /// @notice действует глобально для всех пользователей, создающих кампании после установки нового значения    
+    /// @notice действует глобально для всех пользователей, создающих кампании после установки нового значения
+    /// @param newDelay новое значение лока    
     function setDelay(uint32 newDelay) external onlyRole(CONFIGURATOR_ROLE) {
         _setDelay(newDelay);
     }
     
     /// @notice функция по установке суммы залога    
     /// @notice действует глобально для всех пользователей, создающих кампании после установки нового значения
-    /// @notice depositAmount новое значение суммы залога    
+    /// @param depositAmount новое значение суммы залога    
     function setRequiredDeposit(uint256 depositAmount) external onlyRole(CONFIGURATOR_ROLE) {
         _setRequiredDeposit(depositAmount);
     }
@@ -202,7 +225,7 @@ contract Platform is
     /// @notice функция по прикреплению контракта программы лояльности
     /// @notice отключение - установка программы лояльности на нулевой адрес
     /// @notice действует глобально для всех пользователей, создающих кампании после установки нового значения
-    /// @notice loyaltyProgram адрес прикрепляемой программы лояльности (или нулевой адрес для отключения)
+    /// @param loyaltyProgram адрес прикрепляемой программы лояльности (или нулевой адрес для отключения)
     function setLoyaltyProgram(address loyaltyProgram) external onlyRole(CONFIGURATOR_ROLE) {
         
         //если в параметрах нулевой адрес
@@ -219,7 +242,8 @@ contract Platform is
             abi.encodeWithSelector(IFundVerseLoyaltyMinimal.platform.selector)
         );
 
-        //проверяем - вызов должен быть успешный и вернуть адрес платформы (т.е. платформа записана в контракте лояльности)
+        //проверяем - вызов должен быть успешный и вернуть адрес платформы 
+        //(т.е. платформа записана в контракте лояльности)
         require(
             success && data.length == 32 && abi.decode(data, (address)) == address(this),
             FVUnacceptableLoyaltyProgram(loyaltyProgram)
@@ -231,7 +255,8 @@ contract Platform is
 
     /// @notice функция по установке минимального срока действия кампаний
     /// @notice позволяет устанавливать минимальный срок действия кампаний взамен установленного ранее
-    /// @notice действует глобально для всех кампаний, создаваемых после установки нового значения    
+    /// @notice действует глобально для всех кампаний, создаваемых после установки нового значения
+    /// @param _lifespan новое значение миниального срока
     function setMinLifespan(uint32 _lifespan) external onlyRole(CONFIGURATOR_ROLE) {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.minLifespan = _lifespan;
@@ -266,13 +291,12 @@ contract Platform is
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
         s.campaignStatusDispatcher = newDispatcher;
         emit FVPlatformParameterUpdated(PARAM_STATUS_DISPATCHER, newDispatcher, msg.sender);
-    }
-   
+    }   
 
     //функции вывода средств
-    /// @notice функция позволяет вывести средства в нативной валюте
-    /// @param amount сумма вывода
+    /// @notice функция позволяет вывести средства в нативной валюте    
     /// @param recipient адрес вывода
+    /// @param amount сумма вывода
     function withdrawIncomes(address payable recipient, uint256 amount) 
         external onlyRole(TREASURE_ROLE) NonReentrancy {
         
@@ -289,9 +313,9 @@ contract Platform is
         require(success, FVTransferFailed(recipient, amount, address(0)));
     }
 
-    /// @notice функция позволяет вывести средства в токенах
+    /// @notice функция позволяет вывести средства в токенах    
+    /// @param recipient адрес вывода    
     /// @param amount сумма вывода
-    /// @param recipient адрес вывода
     /// @param token валюта вывода 
     function withdrawIncomes(address payable recipient, uint256 amount, address token) 
         external onlyRole(TREASURE_ROLE) NonReentrancy {        
@@ -299,10 +323,10 @@ contract Platform is
         // смотрим доступные средства
         uint256 availableValue = IERC20(token).balanceOf(address(this));
         require(amount <= availableValue,  FVInsufficientFunds(amount, availableValue, token));
-
         
         emit FVWithdrawn(amount, recipient, token);
 
+        //solhint-disable-next-line avoid-low-level-calls
         (bool success, bytes memory returndata) = token.call(
             abi.encodeWithSelector(IERC20.transfer.selector, recipient, amount)
         );       
@@ -325,8 +349,11 @@ contract Platform is
         ICampaign(campaign).claimPendingFunds();       
     }    
 
+    /// @notice функция проверки полномочий на обновление контракта
+    /// @param newImplementation ссылка на адрес новой имплементации
+    /// @dev вся работа в модификаторе, поэтому правило отключено
     function _authorizeUpgrade(address newImplementation)
         internal
         override
-        onlyRole(UPGRADER_ROLE){}
+        onlyRole(UPGRADER_ROLE){} // solhint-disable-line no-empty-blocks
 }

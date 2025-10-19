@@ -11,6 +11,7 @@ interface IPlatformMinimal {
     function getBaseFee() external view returns (uint16);
     
     /// @notice Получить кампанию по глобальному индексу
+    /// @param index глобальный индекс кампании
     /// @return address адрес кампании
     function getCampaignByIndex(uint32 index) external view returns (address);
     
@@ -20,6 +21,8 @@ interface IPlatformMinimal {
     function getCampaignsCountByFounder(address founder) external view returns (uint32);
     
     /// @notice Получить кампанию фаундера по его локальному индексу
+    /// @param founder адрес фаундера
+    /// @param index индекс кампании у фаундера
     /// @return address адрес кампании
     function getCampaignOfFounderByIndex(address founder, uint32 index) external view returns (address);
 }

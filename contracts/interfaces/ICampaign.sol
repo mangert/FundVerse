@@ -168,6 +168,7 @@ interface ICampaign {
 
     // ----------------- геттеры --------------- //
     /// @notice создатель, он же владелец
+    /// @return address фаундер
     function creator() external view returns (address);
 
     /// @notice адрес контракта-диспетчера, переводящего статус по дедлайну
@@ -183,12 +184,15 @@ interface ICampaign {
     function goal() external view returns (uint128);
 
     /// @notice комиссия платформы в промилле
+    /// @return uint128 размер комиссии
     function platformFee() external view returns (uint128);
 
-    /// @notice срок
+    /// @notice получить дедлайнт
+    /// @return uint32 срок действия кампании
     function deadline() external view returns (uint32);
 
-    /// @notice идентификатор
+    /// @notice получить идентификатор
+    /// @return uint32 уникальный идентификатор кампании
     function id() external view returns (uint32);
 
     /// @notice Общая сумма средств, внесенных в кампанию за всё время.
@@ -196,9 +200,11 @@ interface ICampaign {
     /// Используется исключительно для определения достижения цели (`goal`) и смены статуса.
     /// Актуальный баланс кампании можно получить через `address(this).balance` для эфира
     /// или `token.balanceOf(address(this))` для токенов.
+    /// @return uint128 собранная сумма средств (wei / decimals)
     function raised() external view returns (uint128);
 
-    /// @notice статус кампании
+    /// @notice получить текущий статус кампании
+    /// @return Status статус на момент запроса
     function status() external view returns (Status);
     
     /// @notice JSON-метаданные (описание + документы/IPFS)   
@@ -206,6 +212,14 @@ interface ICampaign {
     function campaignMeta() external view returns (string memory);    
     
     /// @notice функция-геттер возвращает сводную информацию о кампании
+    /// @return _creator адрес фаундера            
+    /// @return _id идентификатор
+    /// @return _token валюта кампании (0x0 для нативной валюты)
+    /// @return _goal целевая сумма сбора (wei / decimals)
+    /// @return _raised сумма собранных средств (wei / decimals)
+    /// @return _deadline срок действия кампании
+    /// @return _campaignMeta данные кампании
+    /// @return _status статус кампании
     function getSummary()
         external
         view        
@@ -227,7 +241,8 @@ interface ICampaign {
     
     /// @notice функция возращает сумму "зависших" средств (непрошедшие рефанды,     
     /// неуспешно заклейменные взносы, неуспешно выведенные фонды)
-    /// @param recipient aдрес возврата    
+    /// @param recipient aдрес возврата
+    /// @return uint256 сумма зависших средств инвестора
     function getPendingFunds(address recipient) external view returns(uint256);
 
     // ----------------- Основные функции взаимодействия ----------------- //

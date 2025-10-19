@@ -7,10 +7,14 @@ import { IPlatformMinimal } from "../interfaces/IPlatformMinimal.sol";
 import { ICampaign } from "../interfaces/ICampaign.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
+ /// @title контракт программы лояльности FundVerseLoyaltyv1 
+ /// @author mangert
+ /// @notice контракт NFT с функциями предоставляющими скидку на комиссии платформы
 contract FundVerseLoyaltyv1 is ERC721, Ownable {
 
     //метадата
     //выложено на ipfs
+    // solhint-disable-next-line gas-small-strings
     string private constant _TOKEN_URI = "ipfs://bafkreih7bcghnbpsdx3ln4tsxrz7jcao5wnlqgfnqf3jji72eapo7osnde";
     
     /// @notice ссылка на адрес платформы
@@ -64,7 +68,11 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
     /// @param platformAddr устанавливаемый адрес
     error UnacceptablePlatformAddress(address platformAddr);
 
+    // solhint-disable comprehensive-interface
     
+    /// @notice в конструкторе устанавливаем начальные параметры
+    /// @param initialOwner вдаделец
+    /// @param _platform платформа, для которой работает программа лояльности
     constructor(address initialOwner, address _platform) 
         ERC721("FundVerse Loyalty v1", "FVC") 
         Ownable(initialOwner)
@@ -72,8 +80,10 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
         //начальные установки
         feeDiscount = 5; //в вычитаемых промилле
         platform = _platform;
-    }
-
+    }    
+    
+    /// @notice функция минта NFT
+    /// @param to адрес, на который минтим
     function safeMint(address to) external {
         //проверяем, что наш получатель соответствует условиям
         require(_validateMintEligibility(to), NotEligibilable(to));        
@@ -83,18 +93,19 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
         //и включаем его в список
         foundersTokens[to] = counter;
         // сохраняем скидку для этого NFT
-        tokenDiscount[counter] = feeDiscount;
-    
+        tokenDiscount[counter] = feeDiscount;    
     }
 
-    /// @notice функция возвращает ссылку json-файл с метаданными
-    function tokenURI(uint256) public pure override returns (string memory) {
+    /// @notice функция возвращает ссылку json-файл с метаданными    
+    /// @return string ссылка на метаданные    
+    function tokenURI(uint256) public pure override returns (string memory) { // solhint-disable-line use-natspec
         return _TOKEN_URI;
     }
     
 
     /// @notice функция возвращает размер скидки фаундера (в вычитаемых из размера комиссии промилле)
     /// @param founder адрес фаундера, для которого возвращаем скидку
+    /// @return uint16 размер скидки в абсолютном значении промилле
     function getFounderDiscount(address founder) external view returns(uint16) {        
 
         uint256 tokenId = foundersTokens[founder];
@@ -106,6 +117,7 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
 
     /// @notice внутренняя функция проверки, может ли фаундер получить NFT
     /// @param founder адрес фаундера
+    /// @return bool результат проверки
     function validateMintEligibility(address founder) external view returns (bool) {
         return _validateMintEligibility(founder);
     }
@@ -124,7 +136,7 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
     /// @notice функция позволяет установить новое значение дисконта
     /// @param newFeeDiscount новое значение дисконта
     function setFeeDiscount(uint16 newFeeDiscount) external onlyOwner() {
-        require(newFeeDiscount <= 1000 &&
+        require(newFeeDiscount <= 1000 && // solhint-disable-line gas-strict-inequalities
             newFeeDiscount <= IPlatformMinimal(platform).getBaseFee()
             , UnacceptableFeeDiscount(newFeeDiscount));
         
@@ -136,6 +148,7 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
     
     /// @notice внутренняя функция проверки, может ли фаундер получить NFT
     /// @param founder адрес фаундера
+    /// @return bool результат проверки
     function _validateMintEligibility(address founder) internal view returns(bool){
         //сначала проверим - если раньше уже получал - не может, даже если продал
         if(foundersTokens[founder] != 0) {

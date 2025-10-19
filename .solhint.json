@@ -20,7 +20,7 @@
     "avoid-suicide": "error",
     "avoid-throw": "error",
     "state-visibility": "error",    
-    "max-states-count": ["warn", 15], 
+    "max-states-count": ["warn", 20], 
     "explicit-types": "warn",    
     "avoid-tx-origin": "error"    
   }

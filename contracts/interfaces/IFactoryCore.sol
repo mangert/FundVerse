@@ -3,19 +3,22 @@ pragma solidity ^0.8.30;
 
 
 
-/// @title интерфейс модуля создания кампаний 
+/// @title интерфейс модуля создания кампаний
+/// @author mangert 
 /// @notice содержит функционал создания кампаний
 interface IFactoryCore {      
 
     /// @notice функция создания кампании 
     /// @dev вызывается контрактом краудфандинговой платформы
+    /// @param _founder создатель кампании
+    /// @param _index глобальный индекс кампании  
     /// @param _goal целевая сумма сбора
     /// @param _deadline срок действия кампании
     /// @param _campaignMeta данные кампании (имя, описание, ссылка на документы)
     /// @param _platformFee размер комиссии в промилле
     /// @param _token валюта сбора (address(0) для нативной валюты)
     /// @param _campaignStatusDispatcher адрес контракта диспетчера для автоперевода статуса
-    /// @return адрес созданного контракта-кампании  
+    /// @return address адрес созданного контракта-кампании  
     function createCampaign(
         address _founder,        
         uint32 _index,

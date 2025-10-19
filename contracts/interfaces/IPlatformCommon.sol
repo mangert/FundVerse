@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.30;
 
-
-
 /// @title интерфейс IPlatformCommon - события и ошибки платформы
+/// @author mangert
 /// @notice содержит объявления событий и ошибок, кидаемых платформой
 interface IPlatformCommon {    
 
@@ -17,7 +16,11 @@ interface IPlatformCommon {
         uint256 newValue,
         address indexed updatedBy
     );
-    /// @notice событие порождается при изменении настроек платформы - перегрузка для адресов
+
+    /// @notice событие порождается при изменении настроек платформы - перегрузка для адресов    
+    /// @param parameter хэш имени изменияемого параметра
+    /// @param newValue новое значение
+    /// @param updatedBy кто обновил
     event FVPlatformParameterUpdated(
         bytes32 indexed parameter,          
         address newValue,
