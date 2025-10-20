@@ -82,6 +82,10 @@ interface ICampaign {
     /// @param amount забранная сумма    
     event PendingFundsClaimed(address indexed recipient, uint256 amount);
 
+    /// @notice порождается при ошибках вызова функций диспетчера
+    /// @param funcSelector селектор обвалившейся функции диспетчера
+    event CampaignDispatcherCallFailed(bytes4 funcSelector);
+
     //ошибки    
     
     /// @notice индицирует попытку доступа к функциям кампании не владельцем

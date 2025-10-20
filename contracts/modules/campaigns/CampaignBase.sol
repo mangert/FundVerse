@@ -283,14 +283,20 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     /// @param _deadline срок завершения кампании
     function register(uint32 _deadline) internal virtual {
         if(statusDispatcher != address(0)) {
-            IStatusDispatcher(statusDispatcher).registerCampaign(_deadline);
+            try IStatusDispatcher(statusDispatcher).registerCampaign(_deadline) {
+            } catch {
+                emit CampaignDispatcherCallFailed(IStatusDispatcher.registerCampaign.selector);
+            }
         }
     }
 
     /// @notice функция отменяет регистрацию кампании в диспетчере статусов
     function unregister() internal virtual {
         if(statusDispatcher != address(0)) {
-            IStatusDispatcher(statusDispatcher).unregisterCampaign();
+            try  IStatusDispatcher(statusDispatcher).unregisterCampaign() {                
+            } catch {
+                emit CampaignDispatcherCallFailed(IStatusDispatcher.unregisterCampaign.selector);               
+            }            
         }
     }
     
