@@ -19,7 +19,6 @@ import { DepositLogic} from "../features/DepositLogic.sol"; //функциона
 
 import {PlatformStorageLib} from "./storage/PlatformStorageLib.sol"; //хранилище данных
 
-
 /// @title Главный контракт краудфандинговой платформы
 /// @author mangert
 /// @notice обеспечивает функционирование самой платформы
@@ -63,8 +62,9 @@ contract Platform is
     // solhint-disable comprehensive-interface
     
     //так как функция инициализации играет роль конструктора и логично с нее начинать, отключаем здесь правило
-    // solhint-disable ordering
-    
+    // solhint-disable ordering    
+    // Slither warning is false positive: initialize is protected by OpenZeppelin initializer
+    // and upgrades are restricted by _authorizeUpgrade with onlyRole(UPGRADER_ROLE)
     /// @notice инициализатор - вместо конструктора
     /// @param _factory ссылка на контракт-фабрику
     /// @dev фабрика должна быть предварительно задеплоена

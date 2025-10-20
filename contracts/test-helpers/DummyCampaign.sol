@@ -11,7 +11,7 @@ contract DummyCampaign {
     //solhint-disable comprehensive-interface
     
     /// @notice адрес диспетчера
-    IStatusDispatcher public dispatcher;
+    IStatusDispatcher immutable public dispatcher;
 
     /// @notice в конструкторе присваиваем адрес диспетчера
     /// @param _dispatcher адрес диспетчера

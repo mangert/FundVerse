@@ -1,0 +1,587 @@
+INFO:Detectors:
+Platform.withdrawIncomes(address,uint256) (contracts/core/Platform.sol#300-315) sends eth to arbitrary user
+        Dangerous calls:
+        - (success,None) = recipient.call{value: amount}() (contracts/core/Platform.sol#313)
+DepositLogic.returnDeposit(ICampaign) (contracts/features/DepositLogic.sol#19-38) sends eth to arbitrary user
+        Dangerous calls:
+        - (success,None) = address(founder).call{value: amount}() (contracts/features/DepositLogic.sol#36)
+BadReceiver.callContribute(address,uint256) (contracts/test-helpers/BadReceiver.sol#55-61) sends eth to arbitrary user
+        Dangerous calls:
+        - (success,None) = campaign.call{value: amount}(abi.encodeWithSignature(contribute())) (contracts/test-helpers/BadReceiver.sol#57-59)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#functions-that-send-ether-to-arbitrary-destinations
+INFO:Detectors:
+Math.mulDiv(uint256,uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#204-275) has bitwise-xor operator ^ instead of the exponentiation operator **:
+         - inverse = (3 * denominator) ^ 2 (node_modules/@openzeppelin/contracts/utils/math/Math.sol#257)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-exponentiation
+INFO:Detectors:
+Platform (contracts/core/Platform.sol#26-361) is an upgradeable contract that does not protect its initialize functions: Platform.initialize(address) (contracts/core/Platform.sol#71-89). Anyone can delete the contract with: UUPSUpgradeable.upgradeToAndCall(address,bytes) (node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol#92-95)Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unprotected-upgradeable-contract
+INFO:Detectors:
+Math.mulDiv(uint256,uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#204-275) performs a multiplication on the result of a division:
+        - denominator = denominator / twos (node_modules/@openzeppelin/contracts/utils/math/Math.sol#242)
+        - inverse = (3 * denominator) ^ 2 (node_modules/@openzeppelin/contracts/utils/math/Math.sol#257)
+Math.mulDiv(uint256,uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#204-275) performs a multiplication on the result of a division:
+        - denominator = denominator / twos (node_modules/@openzeppelin/contracts/utils/math/Math.sol#242)
+        - inverse *= 2 - denominator * inverse (node_modules/@openzeppelin/contracts/utils/math/Math.sol#261)
+Math.mulDiv(uint256,uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#204-275) performs a multiplication on the result of a division:
+        - denominator = denominator / twos (node_modules/@openzeppelin/contracts/utils/math/Math.sol#242)
+        - inverse *= 2 - denominator * inverse (node_modules/@openzeppelin/contracts/utils/math/Math.sol#262)
+Math.mulDiv(uint256,uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#204-275) performs a multiplication on the result of a division:
+        - denominator = denominator / twos (node_modules/@openzeppelin/contracts/utils/math/Math.sol#242)
+        - inverse *= 2 - denominator * inverse (node_modules/@openzeppelin/contracts/utils/math/Math.sol#263)
+Math.mulDiv(uint256,uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#204-275) performs a multiplication on the result of a division:
+        - denominator = denominator / twos (node_modules/@openzeppelin/contracts/utils/math/Math.sol#242)
+        - inverse *= 2 - denominator * inverse (node_modules/@openzeppelin/contracts/utils/math/Math.sol#264)
+Math.mulDiv(uint256,uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#204-275) performs a multiplication on the result of a division:
+        - denominator = denominator / twos (node_modules/@openzeppelin/contracts/utils/math/Math.sol#242)
+        - inverse *= 2 - denominator * inverse (node_modules/@openzeppelin/contracts/utils/math/Math.sol#265)
+Math.mulDiv(uint256,uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#204-275) performs a multiplication on the result of a division:
+        - denominator = denominator / twos (node_modules/@openzeppelin/contracts/utils/math/Math.sol#242)
+        - inverse *= 2 - denominator * inverse (node_modules/@openzeppelin/contracts/utils/math/Math.sol#266)
+Math.mulDiv(uint256,uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#204-275) performs a multiplication on the result of a division:
+        - low = low / twos (node_modules/@openzeppelin/contracts/utils/math/Math.sol#245)
+        - result = low * inverse (node_modules/@openzeppelin/contracts/utils/math/Math.sol#272)
+Math.invMod(uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#315-361) performs a multiplication on the result of a division:
+        - quotient = gcd / remainder (node_modules/@openzeppelin/contracts/utils/math/Math.sol#337)
+        - (gcd,remainder) = (remainder,gcd - remainder * quotient) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#339-346)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#divide-before-multiply
+INFO:Detectors:
+Contract locking ether found:
+        Contract CampaignToken (contracts/modules/campaigns/CampaignToken.sol#12-120) has payable functions:
+         - CampaignBase.receive() (contracts/modules/campaigns/CampaignBase.sol#119-121)
+         - CampaignBase.fallback() (contracts/modules/campaigns/CampaignBase.sol#124-126)
+         - ICampaign.contribute() (contracts/interfaces/ICampaign.sol#186)
+         - CampaignToken.contribute() (contracts/modules/campaigns/CampaignToken.sol#73-75)
+        But does not have a function to withdraw the ether
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#contracts-that-lock-ether
+INFO:Detectors:
+Reentrancy in CampaignToken.contribute(uint128) (contracts/modules/campaigns/CampaignToken.sol#22-70):
+        External calls:
+        - (success,returndata) = token.call(abi.encodeWithSelector(IERC20.transferFrom.selector,msg.sender,address(this),contribution)) (contracts/modules/campaigns/CampaignToken.sol#46-48)
+        State variables written after the call(s):
+        - raised += uint128(contribution) (contracts/modules/campaigns/CampaignToken.sol#54)
+        CampaignBase.raised (contracts/modules/campaigns/CampaignBase.sol#40) can be used in cross function reentrancies:
+        - CampaignBase.checkDeadlineStatus() (contracts/modules/campaigns/CampaignBase.sol#267-280)
+        - CampaignBase.getSummary() (contracts/modules/campaigns/CampaignBase.sol#223-247)
+        - CampaignBase.raised (contracts/modules/campaigns/CampaignBase.sol#40)
+        - status = Status.Successful (contracts/modules/campaigns/CampaignToken.sol#58)
+        CampaignBase.status (contracts/modules/campaigns/CampaignBase.sol#43) can be used in cross function reentrancies:
+        - CampaignBase.cancelCampaign() (contracts/modules/campaigns/CampaignBase.sol#182-192)
+        - CampaignBase.checkDeadlineStatus() (contracts/modules/campaigns/CampaignBase.sol#267-280)
+        - CampaignBase.getSummary() (contracts/modules/campaigns/CampaignBase.sol#223-247)
+        - CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address) (contracts/modules/campaigns/CampaignBase.sol#89-116)
+        - CampaignBase.resumeCampaign() (contracts/modules/campaigns/CampaignBase.sol#204-210)
+        - CampaignBase.status (contracts/modules/campaigns/CampaignBase.sol#43)
+        - CampaignBase.stopCampaign() (contracts/modules/campaigns/CampaignBase.sol#195-201)
+Reentrancy in FundVerseLoyaltyv1.safeMint(address) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#88-98):
+        External calls:
+        - _safeMint(to,++ counter) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#93)
+                - ERC721Utils.checkOnERC721Received(_msgSender(),address(0),to,tokenId,data) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#289)
+                - retval = IERC721Receiver(to).onERC721Received(operator,from,tokenId,data) (node_modules/@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol#33-47)
+        State variables written after the call(s):
+        - foundersTokens[to] = counter (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#95)
+        FundVerseLoyaltyv1.foundersTokens (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#29) can be used in cross function reentrancies:
+        - FundVerseLoyaltyv1._validateMintEligibility(address) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#155-176)
+        - FundVerseLoyaltyv1.getFounderDiscount(address) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#128-135)
+        - FundVerseLoyaltyv1.safeMint(address) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#88-98)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-1
+INFO:Detectors:
+ERC1967Utils.upgradeToAndCall(address,bytes) (node_modules/@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol#67-76) ignores return value by Address.functionDelegateCall(newImplementation,data) (node_modules/@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol#72)
+ERC1967Utils.upgradeBeaconToAndCall(address,bytes) (node_modules/@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol#157-166) ignores return value by Address.functionDelegateCall(IBeacon(newBeacon).implementation(),data) (node_modules/@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol#162)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#unused-return
+INFO:Detectors:
+Platform.withdrawIncomes(address,uint256).recipient (contracts/core/Platform.sol#300) lacks a zero-check on :
+                - (success,None) = recipient.call{value: amount}() (contracts/core/Platform.sol#313)
+Platform.withdrawIncomes(address,uint256,address).recipient (contracts/core/Platform.sol#321) lacks a zero-check on :
+                - (success,returndata) = token.call(abi.encodeWithSelector(IERC20.transfer.selector,recipient,amount)) (contracts/core/Platform.sol#332-334)
+FundVerseLoyaltyv1.constructor(address,address)._platform (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#77) lacks a zero-check on :
+                - platform = _platform (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#83)
+CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._platformAddress (contracts/modules/campaigns/CampaignBase.sol#90) lacks a zero-check on :
+                - platformAddress = _platformAddress (contracts/modules/campaigns/CampaignBase.sol#103)
+CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._creator (contracts/modules/campaigns/CampaignBase.sol#91) lacks a zero-check on :
+                - creator = _creator (contracts/modules/campaigns/CampaignBase.sol#104)
+CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._token (contracts/modules/campaigns/CampaignBase.sol#97) lacks a zero-check on :
+                - token = _token (contracts/modules/campaigns/CampaignBase.sol#112)
+CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._statusDispatcher (contracts/modules/campaigns/CampaignBase.sol#98) lacks a zero-check on :
+                - statusDispatcher = _statusDispatcher (contracts/modules/campaigns/CampaignBase.sol#113)
+BadReceiver.callClaimPendingFunds(address).campaign (contracts/test-helpers/BadReceiver.sol#31) lacks a zero-check on :
+                - (success,returndata) = campaign.call(abi.encodeCall(ICampaign.claimPendingFunds,())) (contracts/test-helpers/BadReceiver.sol#33)
+BadReceiver.callWithdrawFunds(address).campaign (contracts/test-helpers/BadReceiver.sol#46) lacks a zero-check on :
+                - (success,None) = campaign.call(abi.encodeCall(ICampaign.withdrawFunds,())) (contracts/test-helpers/BadReceiver.sol#48)
+BadReceiver.callContribute(address,uint256).campaign (contracts/test-helpers/BadReceiver.sol#55) lacks a zero-check on :
+                - (success,None) = campaign.call{value: amount}(abi.encodeWithSignature(contribute())) (contracts/test-helpers/BadReceiver.sol#57-59)
+BadReceiver.callClaimContribution(address).campaign (contracts/test-helpers/BadReceiver.sol#66) lacks a zero-check on :
+                - (success,None) = campaign.call(abi.encodeWithSignature(claimContribution())) (contracts/test-helpers/BadReceiver.sol#68-70)
+ETHSender.sendTo(address).target (contracts/test-helpers/ETHSender.sol#15) lacks a zero-check on :
+                - (ok,None) = target.call{value: msg.value}() (contracts/test-helpers/ETHSender.sol#16)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-zero-address-validation
+INFO:Detectors:
+FundVerseLoyaltyv1._validateMintEligibility(address) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#155-176) has external calls inside a loop: campaign = IPlatformMinimal(platform).getCampaignOfFounderByIndex(founder,i) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#170)
+        Calls stack containing the loop:
+                FundVerseLoyaltyv1.safeMint(address)
+FundVerseLoyaltyv1._validateMintEligibility(address) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#155-176) has external calls inside a loop: ICampaign(campaign).status() == ICampaign.Status.Successful (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#171)
+        Calls stack containing the loop:
+                FundVerseLoyaltyv1.safeMint(address)
+FundVerseLoyaltyv1._validateMintEligibility(address) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#155-176) has external calls inside a loop: campaign = IPlatformMinimal(platform).getCampaignOfFounderByIndex(founder,i) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#170)
+        Calls stack containing the loop:
+                FundVerseLoyaltyv1.validateMintEligibility(address)
+FundVerseLoyaltyv1._validateMintEligibility(address) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#155-176) has external calls inside a loop: ICampaign(campaign).status() == ICampaign.Status.Successful (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#171)
+        Calls stack containing the loop:
+                FundVerseLoyaltyv1.validateMintEligibility(address)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation/#calls-inside-a-loop
+INFO:Detectors:
+Reentrancy in CampaignNative._transferTo(address,uint256) (contracts/modules/campaigns/CampaignNative.sol#91-98):
+        External calls:
+        - (success,None) = address(recipient).call{value: amount}() (contracts/modules/campaigns/CampaignNative.sol#92)
+        State variables written after the call(s):
+        - pendingWithdrawals[recipient] += amount (contracts/modules/campaigns/CampaignNative.sol#94)
+Reentrancy in CampaignToken._transferTo(address,uint256) (contracts/modules/campaigns/CampaignToken.sol#105-117):
+        External calls:
+        - (success,returndata) = token.call(abi.encodeWithSelector(IERC20.transfer.selector,recipient,amount)) (contracts/modules/campaigns/CampaignToken.sol#107-109)
+        State variables written after the call(s):
+        - pendingWithdrawals[recipient] += amount (contracts/modules/campaigns/CampaignToken.sol#112)
+Reentrancy in CampaignBase.claimContribution() (contracts/modules/campaigns/CampaignBase.sol#131-148):
+        External calls:
+        - checkDeadlineStatus() (contracts/modules/campaigns/CampaignBase.sol#133)
+                - IStatusDispatcher(statusDispatcher).unregisterCampaign() (contracts/modules/campaigns/CampaignBase.sol#296-299)
+        State variables written after the call(s):
+        - donates[recipient] = 0 (contracts/modules/campaigns/CampaignBase.sol#141)
+Reentrancy in CampaignToken.contribute(uint128) (contracts/modules/campaigns/CampaignToken.sol#22-70):
+        External calls:
+        - (success,returndata) = token.call(abi.encodeWithSelector(IERC20.transferFrom.selector,msg.sender,address(this),contribution)) (contracts/modules/campaigns/CampaignToken.sol#46-48)
+        State variables written after the call(s):
+        - donates[contributor] += contribution (contracts/modules/campaigns/CampaignToken.sol#53)
+Reentrancy in FundVerseLoyaltyv1.safeMint(address) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#88-98):
+        External calls:
+        - _safeMint(to,++ counter) (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#93)
+                - ERC721Utils.checkOnERC721Received(_msgSender(),address(0),to,tokenId,data) (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#289)
+                - retval = IERC721Receiver(to).onERC721Received(operator,from,tokenId,data) (node_modules/@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol#33-47)
+        State variables written after the call(s):
+        - tokenDiscount[counter] = feeDiscount (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#97)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-2
+INFO:Detectors:
+Reentrancy in Platform.createCampaign(uint128,uint32,string,address) (contracts/core/Platform.sol#101-149):
+        External calls:
+        - newCampaign = IFactoryCore(s.factory).createCampaign(founder,s.totalCounter,_goal,_deadline,_campaignMeta,_platformFee,_token,s.campaignStatusDispatcher) (contracts/core/Platform.sol#127-136)        Event emitted after the call(s):
+        - FVCampaignCreated(newCampaign,founder,_token,_goal) (contracts/core/Platform.sol#148)
+        - FVDepositLocked(founder,amount,campaign) (contracts/features/DepositLogic.sol#68)
+                - _lockDeposit(founder,deposit,newCampaign) (contracts/core/Platform.sol#142)
+        - FVSetFounderTimelock(founder,_timelock) (contracts/features/Timelock.sol#39)
+                - _setLockTime(founder) (contracts/core/Platform.sol#146)
+Reentrancy in CampaignBase.register(uint32) (contracts/modules/campaigns/CampaignBase.sol#284-291):
+        External calls:
+        - IStatusDispatcher(statusDispatcher).registerCampaign(_deadline) (contracts/modules/campaigns/CampaignBase.sol#286-289)
+        Event emitted after the call(s):
+        - CampaignDispatcherCallFailed(IStatusDispatcher.registerCampaign.selector) (contracts/modules/campaigns/CampaignBase.sol#288)
+Reentrancy in CampaignBase.unregister() (contracts/modules/campaigns/CampaignBase.sol#294-301):
+        External calls:
+        - IStatusDispatcher(statusDispatcher).unregisterCampaign() (contracts/modules/campaigns/CampaignBase.sol#296-299)
+        Event emitted after the call(s):
+        - CampaignDispatcherCallFailed(IStatusDispatcher.unregisterCampaign.selector) (contracts/modules/campaigns/CampaignBase.sol#298)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#reentrancy-vulnerabilities-3
+INFO:Detectors:
+Platform.createCampaign(uint128,uint32,string,address) (contracts/core/Platform.sol#101-149) uses timestamp for comparisons
+        Dangerous comparisons:
+        - require(bool,error)(_deadline >= (s.minLifespan + block.timestamp),revert FVErrorDeadlineLessMinimun()()) (contracts/core/Platform.sol#118-119)
+Timelock._isLocked(address) (contracts/features/Timelock.sol#56-60) uses timestamp for comparisons
+        Dangerous comparisons:
+        - (s.timelocks[founder] >= uint32(block.timestamp)) (contracts/features/Timelock.sol#59)
+CampaignBase.cancelCampaign() (contracts/modules/campaigns/CampaignBase.sol#182-192) uses timestamp for comparisons
+        Dangerous comparisons:
+        - require(bool,error)((status == Status.Live || status == Status.Stopped) && block.timestamp < deadline,revert CampaignInvalidChandgedStatus(ICampaign.Status)(Status.Cancelled)) (contracts/modules/campaigns/CampaignBase.sol#183-187)
+CampaignBase.stopCampaign() (contracts/modules/campaigns/CampaignBase.sol#195-201) uses timestamp for comparisons
+        Dangerous comparisons:
+        - require(bool,error)(status == Status.Live && block.timestamp < deadline,revert CampaignInvalidChandgedStatus(ICampaign.Status)(Status.Stopped)) (contracts/modules/campaigns/CampaignBase.sol#196-197)
+CampaignBase.resumeCampaign() (contracts/modules/campaigns/CampaignBase.sol#204-210) uses timestamp for comparisons
+        Dangerous comparisons:
+        - require(bool,error)(status == Status.Stopped && block.timestamp < deadline,revert CampaignInvalidChandgedStatus(ICampaign.Status)(Status.Live)) (contracts/modules/campaigns/CampaignBase.sol#205-206)
+StatusDispatcher.checkUpkeep(bytes) (contracts/statusDispatcher/StatusDispatcher.sol#100-111) uses timestamp for comparisons
+        Dangerous comparisons:
+        - block.timestamp >= next.deadline (contracts/statusDispatcher/StatusDispatcher.sol#107)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#block-timestamp
+INFO:Detectors:
+AccessControlUpgradeable._getAccessControlStorage() (node_modules/@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol#68-72) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol#69-71)
+Initializable._getInitializableStorage() (node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol#232-237) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol#234-236)
+Clones.clone(address,uint256) (node_modules/@openzeppelin/contracts/proxy/Clones.sol#47-62) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/proxy/Clones.sol#51-58)
+Clones.cloneDeterministic(address,bytes32,uint256) (node_modules/@openzeppelin/contracts/proxy/Clones.sol#90-109) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/proxy/Clones.sol#98-105)
+Clones.predictDeterministicAddress(address,bytes32,address) (node_modules/@openzeppelin/contracts/proxy/Clones.sol#114-129) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/proxy/Clones.sol#119-128)
+Clones.cloneWithImmutableArgs(address,bytes,uint256) (node_modules/@openzeppelin/contracts/proxy/Clones.sol#167-182) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/proxy/Clones.sol#176-178)
+Clones.fetchCloneArgs(address) (node_modules/@openzeppelin/contracts/proxy/Clones.sol#261-267) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/proxy/Clones.sol#263-265)
+ERC721Utils.checkOnERC721Received(address,address,address,uint256,bytes) (node_modules/@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol#25-49) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol#43-45)
+Address._revert(bytes) (node_modules/@openzeppelin/contracts/utils/Address.sol#138-148) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/Address.sol#142-144)
+Create2.deploy(uint256,bytes32,bytes) (node_modules/@openzeppelin/contracts/utils/Create2.sol#37-56) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/Create2.sol#44-52)
+Create2.computeAddress(bytes32,bytes32,address) (node_modules/@openzeppelin/contracts/utils/Create2.sol#70-91) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/Create2.sol#71-90)
+Panic.panic(uint256) (node_modules/@openzeppelin/contracts/utils/Panic.sol#50-56) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/Panic.sol#51-55)
+StorageSlot.getAddressSlot(bytes32) (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#66-70) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#67-69)
+StorageSlot.getBooleanSlot(bytes32) (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#75-79) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#76-78)
+StorageSlot.getBytes32Slot(bytes32) (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#84-88) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#85-87)
+StorageSlot.getUint256Slot(bytes32) (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#93-97) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#94-96)
+StorageSlot.getInt256Slot(bytes32) (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#102-106) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#103-105)
+StorageSlot.getStringSlot(bytes32) (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#111-115) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#112-114)
+StorageSlot.getStringSlot(string) (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#120-124) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#121-123)
+StorageSlot.getBytesSlot(bytes32) (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#129-133) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#130-132)
+StorageSlot.getBytesSlot(bytes) (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#138-142) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#139-141)
+Strings.toString(uint256) (node_modules/@openzeppelin/contracts/utils/Strings.sol#45-63) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/Strings.sol#50-52)
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/Strings.sol#55-57)
+Strings.toChecksumHexString(address) (node_modules/@openzeppelin/contracts/utils/Strings.sol#111-129) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/Strings.sol#116-118)
+Strings.escapeJSON(string) (node_modules/@openzeppelin/contracts/utils/Strings.sol#446-476) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/Strings.sol#470-473)
+Strings._unsafeReadBytesOffset(bytes,uint256) (node_modules/@openzeppelin/contracts/utils/Strings.sol#484-489) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/Strings.sol#486-488)
+Math.add512(uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#25-30) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/math/Math.sol#26-29)
+Math.mul512(uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#37-46) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/math/Math.sol#41-45)
+Math.tryMul(uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#73-84) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/math/Math.sol#76-80)
+Math.tryDiv(uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#89-97) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/math/Math.sol#92-95)
+Math.tryMod(uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#102-110) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/math/Math.sol#105-108)
+Math.mulDiv(uint256,uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#204-275) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/math/Math.sol#227-234)
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/math/Math.sol#240-249)
+Math.tryModExp(uint256,uint256,uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#409-433) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/math/Math.sol#411-432)
+Math.tryModExp(bytes,bytes,bytes) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#449-471) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/math/Math.sol#461-470)
+Math.log2(uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#612-651) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/math/Math.sol#648-650)
+SafeCast.toUint(bool) (node_modules/@openzeppelin/contracts/utils/math/SafeCast.sol#1157-1161) uses assembly
+        - INLINE ASM (node_modules/@openzeppelin/contracts/utils/math/SafeCast.sol#1158-1160)
+PlatformStorageLib.layout() (contracts/core/storage/PlatformStorageLib.sol#59-64) uses assembly
+        - INLINE ASM (contracts/core/storage/PlatformStorageLib.sol#61-63)
+BadReceiver.callClaimPendingFunds(address) (contracts/test-helpers/BadReceiver.sol#31-42) uses assembly
+        - INLINE ASM (contracts/test-helpers/BadReceiver.sol#38-40)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#assembly-usage
+INFO:Detectors:
+10 different versions of Solidity are used:
+        - Version constraint ^0.8.0 is used by:
+                -^0.8.0 (node_modules/@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol#2)
+        - Version constraint ^0.8.20 is used by:
+                -^0.8.20 (node_modules/@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/access/Ownable.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/proxy/Clones.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/Address.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/Context.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/Create2.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/Errors.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/Panic.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/ReentrancyGuard.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#5)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/Strings.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/math/Math.sol#4)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/math/SafeCast.sol#5)
+                -^0.8.20 (node_modules/@openzeppelin/contracts/utils/math/SignedMath.sol#4)
+        - Version constraint ^0.8.22 is used by:
+                -^0.8.22 (node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol#4)
+        - Version constraint >=0.8.4 is used by:
+                ->=0.8.4 (node_modules/@openzeppelin/contracts/access/IAccessControl.sol#4)
+                ->=0.8.4 (node_modules/@openzeppelin/contracts/interfaces/draft-IERC6093.sol#3)
+        - Version constraint >=0.4.11 is used by:
+                ->=0.4.11 (node_modules/@openzeppelin/contracts/interfaces/IERC1967.sol#4)
+        - Version constraint >=0.4.16 is used by:
+                ->=0.4.16 (node_modules/@openzeppelin/contracts/interfaces/IERC20.sol#4)
+                ->=0.4.16 (node_modules/@openzeppelin/contracts/interfaces/draft-IERC1822.sol#4)
+                ->=0.4.16 (node_modules/@openzeppelin/contracts/proxy/beacon/IBeacon.sol#4)
+                ->=0.4.16 (node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol#4)
+                ->=0.4.16 (node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol#4)
+        - Version constraint ^0.8.21 is used by:
+                -^0.8.21 (node_modules/@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol#4)
+        - Version constraint >=0.6.2 is used by:
+                ->=0.6.2 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol#4)
+                ->=0.6.2 (node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol#4)
+                ->=0.6.2 (node_modules/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol#4)
+        - Version constraint >=0.5.0 is used by:
+                ->=0.5.0 (node_modules/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol#4)
+        - Version constraint ^0.8.30 is used by:
+                -^0.8.30 (contracts/core/Platform.sol#2)
+                -^0.8.30 (contracts/core/storage/PlatformStorageLib.sol#2)
+                -^0.8.30 (contracts/examples/GameLoyaltyWrapper.sol#2)
+                -^0.8.30 (contracts/features/DepositLogic.sol#2)
+                -^0.8.30 (contracts/features/FeeLogic.sol#2)
+                -^0.8.30 (contracts/features/Timelock.sol#2)
+                -^0.8.30 (contracts/features/TokenAllowList.sol#2)
+                -^0.8.30 (contracts/interfaces/ICampaign.sol#2)
+                -^0.8.30 (contracts/interfaces/IFactoryCore.sol#2)
+                -^0.8.30 (contracts/interfaces/IFundVerseLoyaltyMinimal.sol#2)
+                -^0.8.30 (contracts/interfaces/IPlatformCommon.sol#2)
+                -^0.8.30 (contracts/interfaces/IPlatformMinimal.sol#2)
+                -^0.8.30 (contracts/interfaces/IStatusDispatcher.sol#2)
+                -^0.8.30 (contracts/loyaltyProgram/FundVerseLoyaltyv1.sol#3)
+                -^0.8.30 (contracts/modules/FactoryCore.sol#2)
+                -^0.8.30 (contracts/modules/campaigns/CampaignBase.sol#2)
+                -^0.8.30 (contracts/modules/campaigns/CampaignNative.sol#2)
+                -^0.8.30 (contracts/modules/campaigns/CampaignToken.sol#2)
+                -^0.8.30 (contracts/statusDispatcher/StatusDispatcher.sol#2)
+                -^0.8.30 (contracts/test-helpers/BadReceiver.sol#2)
+                -^0.8.30 (contracts/test-helpers/ChaininkMock.sol#2)
+                -^0.8.30 (contracts/test-helpers/DummyCampaign.sol#2)
+                -^0.8.30 (contracts/test-helpers/ETHSender.sol#2)
+                -^0.8.30 (contracts/test-helpers/TestTokenERC20.sol#3)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#different-pragma-directives-are-used
+INFO:Detectors:
+Version constraint ^0.8.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+        - FullInlinerNonExpressionSplitArgumentEvaluationOrder
+        - MissingSideEffectsOnSelectorAccess
+        - AbiReencodingHeadOverflowWithStaticArrayCleanup
+        - DirtyBytesArrayToStorage
+        - DataLocationChangeInInternalOverride
+        - NestedCalldataArrayAbiReencodingSizeValidation
+        - SignedImmutables
+        - ABIDecodeTwoDimensionalArrayMemory
+        - KeccakCaching.
+It is used by:
+        - ^0.8.0 (node_modules/@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol#2)
+Version constraint ^0.8.20 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+        - VerbatimInvalidDeduplication
+        - FullInlinerNonExpressionSplitArgumentEvaluationOrder
+        - MissingSideEffectsOnSelectorAccess.
+It is used by:
+        - ^0.8.20 (node_modules/@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/access/Ownable.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/proxy/Clones.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/token/ERC20/ERC20.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/token/ERC721/ERC721.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/token/ERC721/utils/ERC721Utils.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/Address.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/Context.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/Create2.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/Errors.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/Panic.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/ReentrancyGuard.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/StorageSlot.sol#5)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/Strings.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/introspection/ERC165.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/math/Math.sol#4)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/math/SafeCast.sol#5)
+        - ^0.8.20 (node_modules/@openzeppelin/contracts/utils/math/SignedMath.sol#4)
+Version constraint ^0.8.22 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+        - VerbatimInvalidDeduplication.
+It is used by:
+        - ^0.8.22 (node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol#4)
+Version constraint >=0.8.4 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+        - FullInlinerNonExpressionSplitArgumentEvaluationOrder
+        - MissingSideEffectsOnSelectorAccess
+        - AbiReencodingHeadOverflowWithStaticArrayCleanup
+        - DirtyBytesArrayToStorage
+        - DataLocationChangeInInternalOverride
+        - NestedCalldataArrayAbiReencodingSizeValidation
+        - SignedImmutables.
+It is used by:
+        - >=0.8.4 (node_modules/@openzeppelin/contracts/access/IAccessControl.sol#4)
+        - >=0.8.4 (node_modules/@openzeppelin/contracts/interfaces/draft-IERC6093.sol#3)
+Version constraint >=0.4.11 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+        - DirtyBytesArrayToStorage
+        - KeccakCaching
+        - EmptyByteArrayCopy
+        - DynamicArrayCleanup
+        - ImplicitConstructorCallvalueCheck
+        - TupleAssignmentMultiStackSlotComponents
+        - MemoryArrayCreationOverflow
+        - privateCanBeOverridden
+        - SignedArrayStorageCopy
+        - UninitializedFunctionPointerInConstructor_0.4.x
+        - IncorrectEventSignatureInLibraries_0.4.x
+        - ExpExponentCleanup
+        - NestedArrayFunctionCallDecoder
+        - ZeroFunctionSelector
+        - DelegateCallReturnValue
+        - ECRecoverMalformedInput
+        - SkipEmptyStringLiteral.
+It is used by:
+        - >=0.4.11 (node_modules/@openzeppelin/contracts/interfaces/IERC1967.sol#4)
+Version constraint >=0.4.16 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+        - DirtyBytesArrayToStorage
+        - ABIDecodeTwoDimensionalArrayMemory
+        - KeccakCaching
+        - EmptyByteArrayCopy
+        - DynamicArrayCleanup
+        - ImplicitConstructorCallvalueCheck
+        - TupleAssignmentMultiStackSlotComponents
+        - MemoryArrayCreationOverflow
+        - privateCanBeOverridden
+        - SignedArrayStorageCopy
+        - ABIEncoderV2StorageArrayWithMultiSlotElement
+        - DynamicConstructorArgumentsClippedABIV2
+        - UninitializedFunctionPointerInConstructor_0.4.x
+        - IncorrectEventSignatureInLibraries_0.4.x
+        - ExpExponentCleanup
+        - NestedArrayFunctionCallDecoder
+        - ZeroFunctionSelector.
+It is used by:
+        - >=0.4.16 (node_modules/@openzeppelin/contracts/interfaces/IERC20.sol#4)
+        - >=0.4.16 (node_modules/@openzeppelin/contracts/interfaces/draft-IERC1822.sol#4)
+        - >=0.4.16 (node_modules/@openzeppelin/contracts/proxy/beacon/IBeacon.sol#4)
+        - >=0.4.16 (node_modules/@openzeppelin/contracts/token/ERC20/IERC20.sol#4)
+        - >=0.4.16 (node_modules/@openzeppelin/contracts/utils/introspection/IERC165.sol#4)
+Version constraint ^0.8.21 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+        - VerbatimInvalidDeduplication.
+It is used by:
+        - ^0.8.21 (node_modules/@openzeppelin/contracts/proxy/ERC1967/ERC1967Utils.sol#4)
+Version constraint >=0.6.2 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+        - MissingSideEffectsOnSelectorAccess
+        - AbiReencodingHeadOverflowWithStaticArrayCleanup
+        - DirtyBytesArrayToStorage
+        - NestedCalldataArrayAbiReencodingSizeValidation
+        - ABIDecodeTwoDimensionalArrayMemory
+        - KeccakCaching
+        - EmptyByteArrayCopy
+        - DynamicArrayCleanup
+        - MissingEscapingInFormatting
+        - ArraySliceDynamicallyEncodedBaseType
+        - ImplicitConstructorCallvalueCheck
+        - TupleAssignmentMultiStackSlotComponents
+        - MemoryArrayCreationOverflow.
+It is used by:
+        - >=0.6.2 (node_modules/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol#4)
+        - >=0.6.2 (node_modules/@openzeppelin/contracts/token/ERC721/IERC721.sol#4)
+        - >=0.6.2 (node_modules/@openzeppelin/contracts/token/ERC721/extensions/IERC721Metadata.sol#4)
+Version constraint >=0.5.0 contains known severe issues (https://solidity.readthedocs.io/en/latest/bugs.html)
+        - DirtyBytesArrayToStorage
+        - ABIDecodeTwoDimensionalArrayMemory
+        - KeccakCaching
+        - EmptyByteArrayCopy
+        - DynamicArrayCleanup
+        - ImplicitConstructorCallvalueCheck
+        - TupleAssignmentMultiStackSlotComponents
+        - MemoryArrayCreationOverflow
+        - privateCanBeOverridden
+        - SignedArrayStorageCopy
+        - ABIEncoderV2StorageArrayWithMultiSlotElement
+        - DynamicConstructorArgumentsClippedABIV2
+        - UninitializedFunctionPointerInConstructor
+        - IncorrectEventSignatureInLibraries
+        - ABIEncoderV2PackedStorage.
+It is used by:
+        - >=0.5.0 (node_modules/@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol#4)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#incorrect-versions-of-solidity
+INFO:Detectors:
+Low level call in Address.sendValue(address,uint256) (node_modules/@openzeppelin/contracts/utils/Address.sol#33-42):
+        - (success,returndata) = recipient.call{value: amount}() (node_modules/@openzeppelin/contracts/utils/Address.sol#38)
+Low level call in Address.functionCallWithValue(address,bytes,uint256) (node_modules/@openzeppelin/contracts/utils/Address.sol#75-81):
+        - (success,returndata) = target.call{value: value}(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#79)
+Low level call in Address.functionStaticCall(address,bytes) (node_modules/@openzeppelin/contracts/utils/Address.sol#87-90):
+        - (success,returndata) = target.staticcall(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#88)
+Low level call in Address.functionDelegateCall(address,bytes) (node_modules/@openzeppelin/contracts/utils/Address.sol#96-99):
+        - (success,returndata) = target.delegatecall(data) (node_modules/@openzeppelin/contracts/utils/Address.sol#97)
+Low level call in Platform.setLoyaltyProgram(address) (contracts/core/Platform.sol#229-254):
+        - (success,data) = loyaltyProgram.staticcall(abi.encodeWithSelector(IFundVerseLoyaltyMinimal.platform.selector)) (contracts/core/Platform.sol#241-243)
+Low level call in Platform.withdrawIncomes(address,uint256) (contracts/core/Platform.sol#300-315):
+        - (success,None) = recipient.call{value: amount}() (contracts/core/Platform.sol#313)
+Low level call in Platform.withdrawIncomes(address,uint256,address) (contracts/core/Platform.sol#321-338):
+        - (success,returndata) = token.call(abi.encodeWithSelector(IERC20.transfer.selector,recipient,amount)) (contracts/core/Platform.sol#332-334)
+Low level call in DepositLogic.returnDeposit(ICampaign) (contracts/features/DepositLogic.sol#19-38):
+        - (success,None) = address(founder).call{value: amount}() (contracts/features/DepositLogic.sol#36)
+Low level call in CampaignNative.claimPendingFunds() (contracts/modules/campaigns/CampaignNative.sol#66-78):
+        - (success,None) = recipient.call{value: amount}() (contracts/modules/campaigns/CampaignNative.sol#76)
+Low level call in CampaignNative._transferTo(address,uint256) (contracts/modules/campaigns/CampaignNative.sol#91-98):
+        - (success,None) = address(recipient).call{value: amount}() (contracts/modules/campaigns/CampaignNative.sol#92)
+Low level call in CampaignToken.contribute(uint128) (contracts/modules/campaigns/CampaignToken.sol#22-70):
+        - (success,returndata) = token.call(abi.encodeWithSelector(IERC20.transferFrom.selector,msg.sender,address(this),contribution)) (contracts/modules/campaigns/CampaignToken.sol#46-48)
+Low level call in CampaignToken.claimPendingFunds() (contracts/modules/campaigns/CampaignToken.sol#78-94):
+        - (success,returndata) = token.call(abi.encodeWithSelector(IERC20.transfer.selector,recipient,amount)) (contracts/modules/campaigns/CampaignToken.sol#88-90)
+Low level call in CampaignToken._transferTo(address,uint256) (contracts/modules/campaigns/CampaignToken.sol#105-117):
+        - (success,returndata) = token.call(abi.encodeWithSelector(IERC20.transfer.selector,recipient,amount)) (contracts/modules/campaigns/CampaignToken.sol#107-109)
+Low level call in BadReceiver.callClaimPendingFunds(address) (contracts/test-helpers/BadReceiver.sol#31-42):
+        - (success,returndata) = campaign.call(abi.encodeCall(ICampaign.claimPendingFunds,())) (contracts/test-helpers/BadReceiver.sol#33)
+Low level call in BadReceiver.callWithdrawFunds(address) (contracts/test-helpers/BadReceiver.sol#46-50):
+        - (success,None) = campaign.call(abi.encodeCall(ICampaign.withdrawFunds,())) (contracts/test-helpers/BadReceiver.sol#48)
+Low level call in BadReceiver.callContribute(address,uint256) (contracts/test-helpers/BadReceiver.sol#55-61):
+        - (success,None) = campaign.call{value: amount}(abi.encodeWithSignature(contribute())) (contracts/test-helpers/BadReceiver.sol#57-59)
+Low level call in BadReceiver.callClaimContribution(address) (contracts/test-helpers/BadReceiver.sol#66-72):
+        - (success,None) = campaign.call(abi.encodeWithSignature(claimContribution())) (contracts/test-helpers/BadReceiver.sol#68-70)
+Low level call in ETHSender.sendTo(address) (contracts/test-helpers/ETHSender.sol#15-18):
+        - (ok,None) = target.call{value: msg.value}() (contracts/test-helpers/ETHSender.sol#16)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#low-level-calls
+INFO:Detectors:
+Platform (contracts/core/Platform.sol#26-361) should inherit from IPlatformMinimal (contracts/interfaces/IPlatformMinimal.sol#7-28)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#missing-inheritance
+INFO:Detectors:
+Function AccessControlUpgradeable.__AccessControl_init() (node_modules/@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol#83-84) is not in mixedCase
+Function AccessControlUpgradeable.__AccessControl_init_unchained() (node_modules/@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol#86-87) is not in mixedCase
+Constant AccessControlUpgradeable.AccessControlStorageLocation (node_modules/@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol#66) is not in UPPER_CASE_WITH_UNDERSCORES
+Function UUPSUpgradeable.__UUPSUpgradeable_init() (node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol#65-66) is not in mixedCase
+Function UUPSUpgradeable.__UUPSUpgradeable_init_unchained() (node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol#68-69) is not in mixedCase
+Variable UUPSUpgradeable.__self (node_modules/@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol#22) is not in mixedCase
+Function ContextUpgradeable.__Context_init() (node_modules/@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol#18-19) is not in mixedCase
+Function ContextUpgradeable.__Context_init_unchained() (node_modules/@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol#21-22) is not in mixedCase
+Function ERC165Upgradeable.__ERC165_init() (node_modules/@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol#22-23) is not in mixedCase
+Function ERC165Upgradeable.__ERC165_init_unchained() (node_modules/@openzeppelin/contracts-upgradeable/utils/introspection/ERC165Upgradeable.sol#25-26) is not in mixedCase
+Parameter Platform.initialize(address)._factory (contracts/core/Platform.sol#71) is not in mixedCase
+Parameter Platform.createCampaign(uint128,uint32,string,address)._goal (contracts/core/Platform.sol#102) is not in mixedCase
+Parameter Platform.createCampaign(uint128,uint32,string,address)._deadline (contracts/core/Platform.sol#103) is not in mixedCase
+Parameter Platform.createCampaign(uint128,uint32,string,address)._campaignMeta (contracts/core/Platform.sol#104) is not in mixedCase
+Parameter Platform.createCampaign(uint128,uint32,string,address)._token (contracts/core/Platform.sol#105) is not in mixedCase
+Parameter Platform.setMinLifespan(uint32)._lifespan (contracts/core/Platform.sol#260) is not in mixedCase
+Parameter Platform.setBaseFee(uint16)._baseFee (contracts/core/Platform.sol#282) is not in mixedCase
+Modifier Platform.NonReentrancy() (contracts/core/Platform.sol#55-60) is not in mixedCase
+Parameter FactoryCore.createCampaign(address,uint32,uint128,uint32,string,uint128,address,address)._founder (contracts/modules/FactoryCore.sol#40) is not in mixedCase
+Parameter FactoryCore.createCampaign(address,uint32,uint128,uint32,string,uint128,address,address)._index (contracts/modules/FactoryCore.sol#41) is not in mixedCase
+Parameter FactoryCore.createCampaign(address,uint32,uint128,uint32,string,uint128,address,address)._goal (contracts/modules/FactoryCore.sol#42) is not in mixedCase
+Parameter FactoryCore.createCampaign(address,uint32,uint128,uint32,string,uint128,address,address)._deadline (contracts/modules/FactoryCore.sol#43) is not in mixedCase
+Parameter FactoryCore.createCampaign(address,uint32,uint128,uint32,string,uint128,address,address)._campaignMeta (contracts/modules/FactoryCore.sol#44) is not in mixedCase
+Parameter FactoryCore.createCampaign(address,uint32,uint128,uint32,string,uint128,address,address)._platformFee (contracts/modules/FactoryCore.sol#45) is not in mixedCase
+Parameter FactoryCore.createCampaign(address,uint32,uint128,uint32,string,uint128,address,address)._token (contracts/modules/FactoryCore.sol#46) is not in mixedCase
+Parameter FactoryCore.createCampaign(address,uint32,uint128,uint32,string,uint128,address,address)._campaignStatusDispatcher (contracts/modules/FactoryCore.sol#47) is not in mixedCase
+Parameter CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._platformAddress (contracts/modules/campaigns/CampaignBase.sol#90) is not in mixedCase
+Parameter CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._creator (contracts/modules/campaigns/CampaignBase.sol#91) is not in mixedCase
+Parameter CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._id (contracts/modules/campaigns/CampaignBase.sol#92) is not in mixedCase
+Parameter CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._goal (contracts/modules/campaigns/CampaignBase.sol#93) is not in mixedCase
+Parameter CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._deadline (contracts/modules/campaigns/CampaignBase.sol#94) is not in mixedCase
+Parameter CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._campaignMeta (contracts/modules/campaigns/CampaignBase.sol#95) is not in mixedCase
+Parameter CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._platformFee (contracts/modules/campaigns/CampaignBase.sol#96) is not in mixedCase
+Parameter CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._token (contracts/modules/campaigns/CampaignBase.sol#97) is not in mixedCase
+Parameter CampaignBase.initialize(address,address,uint32,uint128,uint32,string,uint128,address,address)._statusDispatcher (contracts/modules/campaigns/CampaignBase.sol#98) is not in mixedCase
+Parameter CampaignBase.register(uint32)._deadline (contracts/modules/campaigns/CampaignBase.sol#284) is not in mixedCase
+Parameter CampaignToken.contribute(uint128)._amount (contracts/modules/campaigns/CampaignToken.sol#22) is not in mixedCase
+Parameter StatusDispatcher.registerCampaign(uint32)._deadline (contracts/statusDispatcher/StatusDispatcher.sol#37) is not in mixedCase
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#conformance-to-solidity-naming-conventions
+INFO:Detectors:
+Clones.clone(address,uint256) (node_modules/@openzeppelin/contracts/proxy/Clones.sol#47-62) uses literals with too many digits:
+        - mstore(uint256,uint256)(0x00,implementation << 0x60 >> 0xe8 | 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000) (node_modules/@openzeppelin/contracts/proxy/Clones.sol#54)
+Clones.cloneDeterministic(address,bytes32,uint256) (node_modules/@openzeppelin/contracts/proxy/Clones.sol#90-109) uses literals with too many digits:
+        - mstore(uint256,uint256)(0x00,implementation << 0x60 >> 0xe8 | 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000) (node_modules/@openzeppelin/contracts/proxy/Clones.sol#101)
+Math.log2(uint256) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#612-651) uses literals with too many digits:
+        - r = r | byte(uint256,uint256)(x >> r,0x0000010102020202030303030303030300000000000000000000000000000000) (node_modules/@openzeppelin/contracts/utils/math/Math.sol#649)
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#too-many-digits
+INFO:Detectors:
+CampaignBase._inCall (contracts/modules/campaigns/CampaignBase.sol#49) should be constant
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-constant
+INFO:Detectors:
+ChainlinkMock.dispatcher (contracts/test-helpers/ChaininkMock.sol#13) should be immutable
+DummyCampaign.dispatcher (contracts/test-helpers/DummyCampaign.sol#14) should be immutable
+Reference: https://github.com/crytic/slither/wiki/Detector-Documentation#state-variables-that-could-be-declared-immutable
+INFO:Slither:. analyzed (62 contracts with 100 detectors), 159 result(s) found

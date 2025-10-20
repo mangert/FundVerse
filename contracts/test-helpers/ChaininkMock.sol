@@ -10,7 +10,7 @@ contract ChainlinkMock {
     //solhint-disable comprehensive-interface
     
     /// @notice адрес диспетчера
-    StatusDispatcher public dispatcher;
+    StatusDispatcher immutable public dispatcher;
 
     /// @notice в конструкторе регистрируем диспетчера
     /// @param _dispatcher адрес диспетчера
