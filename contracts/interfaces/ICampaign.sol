@@ -19,6 +19,7 @@ interface ICampaign {
     }
     
     // События
+    // solhint-disable gas-indexed-events
     
     /// @notice сообщает о поступившем и зачисленном взносе
     /// @param contributor вноситель
@@ -30,14 +31,14 @@ interface ICampaign {
     /// @param donor адрес вкладчика (он же получатель рефанда)
     /// @param amount сумма возврата
     /// @param token валюта возврата (address(0) для нативной валюты)    
-    event CampaignRefunded(address indexed donor, uint256 amount, address token);
+    event CampaignRefunded(address indexed donor, uint256 amount, address indexed token);
     
     /// @notice порождается, когда контракт не может перевести пользователю деньги 
     ///(при рефанде излишков, вкладов или истребовании средств фаундером)
     /// @param recipient адрес получателя
     /// @param amount сумма неудавшегося перевода
     /// @param token адрес токена, который переводился (для эфира address(0))    
-    event CampaignTransferFailed(address indexed recipient, uint256 amount, address token);    
+    event CampaignTransferFailed(address indexed recipient, uint256 amount, address indexed token);    
     
     /// @notice порождается при изменении статуса
     /// @param oldStatus исходный статус кампании      
@@ -165,6 +166,52 @@ interface ICampaign {
         uint128 _platformFee, 
         address _token,
         address _statusDispatcher) external;
+    
+    // ----------------- Основные функции взаимодействия ----------------- //      
+    
+    /// @notice Внести средства (ERC20)
+    /// @dev Зачисляется только та часть `_amount`, которая не превышает оставшуюся сумму до цели.
+    /// Остаток средств (`_amount - accepted`) не списывается с пользователя, но логируется событием CampaignRefunded.
+    /// Пользователь должен предварительно вызвать `approve` на сумму `_amount`.  
+    /// @dev перегрузка для токенов ERC20, в версии для "нативной валюты" всегда завершается ошибкой
+    /// @param amount вносимая сумма    
+    function contribute(uint128 amount) external;
+    
+    /// @notice Внести средства (ETH)
+    /// @dev перегрузка для нативной валюты, в версии для токенов ERC20 всегда завершается ошибкой    
+    function contribute() external payable;            
+    
+    /// @notice функция позволяте инвесторам вернуть взносы, если кампания провалилась или отмненена
+    /// @dev при реализации необходимо предусмотреть проверку статуса    
+    function claimContribution()  external;    
+    
+    /// @notice функция позволяет затребовать "зависшую" сумму (непрошедший рефанд, 
+    /// неполученный взнос, фонд кампании, комиссию платформы)    
+    function claimPendingFunds()  external;
+    
+    // ----------------- функции для владельца ----------------- //
+    
+    /// @notice функция вывода фаундером накопленных средств
+    /// средства выводятся фаундером за вычетом комиссии платформы
+    /// @dev перечисление комиссии платформе производится внутри функции    
+    function withdrawFunds() external;
+    
+    /// @notice функция автоматически актуализирует статус контракта на Failed при истекшем дедлайне
+    /// @dev вызывается внутри функции вывода взносов, чтобы вывод не падал если дедлайн истек, а статус не переведен
+    /// @dev допускается вызывать снаружи    
+    function checkDeadlineStatus() external;    
+
+    /// @notice функция отменяет кампанию
+    /// @dev может вызываться только владельцем, при реализации указать модификатор onlyOwner
+    function cancelCampaign() external;
+
+    /// @notice функция приостанавливает кампанию
+    /// @dev может вызываться только владельцем, при реализации указать модификатор onlyOwner
+    function stopCampaign() external; 
+
+    /// @notice функция запускает приостановленную кампанию
+    /// @dev может вызываться только владельцем, при реализации указать модификатор onlyOwner
+    function resumeCampaign() external;       
 
     // ----------------- геттеры --------------- //
     /// @notice создатель, он же владелец
@@ -244,50 +291,4 @@ interface ICampaign {
     /// @param recipient aдрес возврата
     /// @return uint256 сумма зависших средств инвестора
     function getPendingFunds(address recipient) external view returns(uint256);
-
-    // ----------------- Основные функции взаимодействия ----------------- //
-    
-    /// @notice Внести средства (ERC20)
-    /// @dev Зачисляется только та часть `_amount`, которая не превышает оставшуюся сумму до цели.
-    /// Остаток средств (`_amount - accepted`) не списывается с пользователя, но логируется событием CampaignRefunded.
-    /// Пользователь должен предварительно вызвать `approve` на сумму `_amount`.  
-    /// @dev перегрузка для токенов ERC20, в версии для "нативной валюты" всегда завершается ошибкой
-    /// @param amount вносимая сумма    
-    function contribute(uint128 amount) external;
-    
-    /// @notice Внести средства (ETH)
-    /// @dev перегрузка для нативной валюты, в версии для токенов ERC20 всегда завершается ошибкой    
-    function contribute() external payable;        
-    
-    /// @notice функция позволяте инвесторам вернуть взносы, если кампания провалилась или отмненена
-    /// @dev при реализации необходимо предусмотреть проверку статуса    
-    function claimContribution()  external;    
-    
-    /// @notice функция позволяет затребовать "зависшую" сумму (непрошедший рефанд, 
-    /// неполученный взнос, фонд кампании, комиссию платформы)    
-    function claimPendingFunds()  external;
-    
-    // ----------------- функции для владельца ----------------- //
-    
-    /// @notice функция вывода фаундером накопленных средств
-    /// средства выводятся фаундером за вычетом комиссии платформы
-    /// @dev перечисление комиссии платформе производится внутри функции    
-    function withdrawFunds() external;
-    
-    /// @notice функция автоматически актуализирует статус контракта на Failed при истекшем дедлайне
-    /// @dev вызывается внутри функции вывода взносов, чтобы вывод не падал если дедлайн истек, а статус не переведен
-    /// @dev допускается вызывать снаружи    
-    function checkDeadlineStatus() external;    
-
-    /// @notice функция отменяет кампанию
-    /// @dev может вызываться только владельцем, при реализации указать модификатор onlyOwner
-    function cancelCampaign() external;
-
-    /// @notice функция приостанавливает кампанию
-    /// @dev может вызываться только владельцем, при реализации указать модификатор onlyOwner
-    function stopCampaign() external; 
-
-    /// @notice функция запускает приостановленную кампанию
-    /// @dev может вызываться только владельцем, при реализации указать модификатор onlyOwner
-    function resumeCampaign() external;       
 }

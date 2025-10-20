@@ -13,22 +13,6 @@ abstract contract DepositLogic is IPlatformCommon {
     // Константы для настройки событий изменения параметров платформы    
     bytes32 private constant PARAM_DEPOSIT = keccak256("depositAmount");
     
-    /// @notice регистрирует залог
-    /// @dev следует вызывать после деплоя новой кампании
-    /// @dev функция не проверяет достаточность залога, только регистрирует факт поступления
-    /// @param founder адрес фаундера    
-    /// @param amount сумма залога
-    /// @param campaign адрес кампании, обеспечиваемой залогом
-    function _lockDeposit(address founder, uint256 amount, address campaign) internal {        
-        
-        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
-        // сохраняем залог
-        s.totalDeposit += amount;
-        s.depositsByCampaigns[campaign] = amount;
-
-        emit FVDepositLocked(founder, amount, campaign);
-    }
-
     /// @notice возвращает залог фаундеру
     /// @dev может вызываться только фаундером    
     /// @param campaign адрес кампании
@@ -53,16 +37,6 @@ abstract contract DepositLogic is IPlatformCommon {
         require(success, FVTransferFailed(founder, amount, address(0)));
     }
 
-    /// @notice функция по установке суммы залога    
-    /// @notice действует глобально для всех пользователей, создающих кампании после установки нового значения
-    /// @param depositAmount новое значение суммы залога
-    /// @dev следует переопределить с установкой роли
-    function _setRequiredDeposit(uint256 depositAmount) internal {        
-        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
-        s.requiredDeposit = depositAmount;
-        emit FVPlatformParameterUpdated(PARAM_DEPOSIT, depositAmount, msg.sender);
-    }
-
     //геттеры
     
     /// @notice Получить информацию о сумме залога, требуемой платформой
@@ -76,7 +50,33 @@ abstract contract DepositLogic is IPlatformCommon {
     /// @return uint256 сумма неполученного залога в нативной валюте (wei)
     function getCampaignDeposit(address campaign) external view returns (uint256) {
         return PlatformStorageLib.layout().depositsByCampaigns[campaign];
-    }            
+    }    
+    
+    /// @notice регистрирует залог
+    /// @dev следует вызывать после деплоя новой кампании
+    /// @dev функция не проверяет достаточность залога, только регистрирует факт поступления
+    /// @param founder адрес фаундера    
+    /// @param amount сумма залога
+    /// @param campaign адрес кампании, обеспечиваемой залогом
+    function _lockDeposit(address founder, uint256 amount, address campaign) internal {        
+        
+        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
+        // сохраняем залог
+        s.totalDeposit += amount;
+        s.depositsByCampaigns[campaign] = amount;
+
+        emit FVDepositLocked(founder, amount, campaign);
+    }
+    
+    /// @notice функция по установке суммы залога    
+    /// @notice действует глобально для всех пользователей, создающих кампании после установки нового значения
+    /// @param depositAmount новое значение суммы залога
+    /// @dev следует переопределить с установкой роли
+    function _setRequiredDeposit(uint256 depositAmount) internal {        
+        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
+        s.requiredDeposit = depositAmount;
+        emit FVPlatformParameterUpdated(PARAM_DEPOSIT, depositAmount, msg.sender);
+    }
     
     // служебные функции
     /// @notice служебная функция - проверяет, завершена ли кампания

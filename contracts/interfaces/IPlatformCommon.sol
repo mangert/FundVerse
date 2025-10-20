@@ -7,6 +7,8 @@ pragma solidity ^0.8.30;
 interface IPlatformCommon {    
 
     //события
+    // solhint-disable gas-indexed-events 
+
     /// @notice событие порождается при изменении настроек платформы
     /// @param parameter изменяемый параметр    
     /// @param newValue новое значение
@@ -41,16 +43,16 @@ interface IPlatformCommon {
     
     /// @notice событие порождается при добавлении нового токена в список поддерживаемых    
     /// @param token адрес нового токена валюты кампании
-    event FVNewTokenAdded(address token);
+    event FVNewTokenAdded(address indexed token);
 
     /// @notice событие порождается при удалении токена из списока поддерживаемых    
     /// @param token адрес удаляемого токена валюты кампании
-    event FVTokenRemoved(address token);
+    event FVTokenRemoved(address indexed token);
 
     /// @notice событие индицирует установку фаундеру нового таймлока
     /// @param founder адрес фаундера
     /// @param timelock время истечения таймлока
-    event FVSetFounderTimelock(address founder, uint32 timelock);    
+    event FVSetFounderTimelock(address indexed founder, uint32 timelock);    
 
     /// @notice событие блокировки залога
     /// @param founder адрес фаундера

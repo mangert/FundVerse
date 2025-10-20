@@ -36,6 +36,7 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
     uint16 public feeDiscount;
 
     //события
+    // solhint-disable gas-indexed-events
     
     /// @notice событие порождается при изменении размера дисконта
     /// @param oldValue старое значение дисконта
@@ -94,33 +95,7 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
         foundersTokens[to] = counter;
         // сохраняем скидку для этого NFT
         tokenDiscount[counter] = feeDiscount;    
-    }
-
-    /// @notice функция возвращает ссылку json-файл с метаданными    
-    /// @return string ссылка на метаданные    
-    function tokenURI(uint256) public pure override returns (string memory) { // solhint-disable-line use-natspec
-        return _TOKEN_URI;
-    }
-    
-
-    /// @notice функция возвращает размер скидки фаундера (в вычитаемых из размера комиссии промилле)
-    /// @param founder адрес фаундера, для которого возвращаем скидку
-    /// @return uint16 размер скидки в абсолютном значении промилле
-    function getFounderDiscount(address founder) external view returns(uint16) {        
-
-        uint256 tokenId = foundersTokens[founder];
-        if (tokenId != 0 && _ownerOf(tokenId) == founder) {
-            return tokenDiscount[tokenId]; // скидка зафиксирована в момент минта
-        }
-        return 0;
-    }
-
-    /// @notice внутренняя функция проверки, может ли фаундер получить NFT
-    /// @param founder адрес фаундера
-    /// @return bool результат проверки
-    function validateMintEligibility(address founder) external view returns (bool) {
-        return _validateMintEligibility(founder);
-    }
+    }                       
     
     //функции установки настроек    
     
@@ -136,12 +111,40 @@ contract FundVerseLoyaltyv1 is ERC721, Ownable {
     /// @notice функция позволяет установить новое значение дисконта
     /// @param newFeeDiscount новое значение дисконта
     function setFeeDiscount(uint16 newFeeDiscount) external onlyOwner() {
-        require(newFeeDiscount <= 1000 && // solhint-disable-line gas-strict-inequalities
+        // solhint-disable gas-strict-inequalities
+        require(newFeeDiscount <= 1000 &&
             newFeeDiscount <= IPlatformMinimal(platform).getBaseFee()
             , UnacceptableFeeDiscount(newFeeDiscount));
-        
+        // solhint-enable gas-strict-inequalities
         emit FeeDiscountChanged(feeDiscount, newFeeDiscount, msg.sender);        
         feeDiscount = newFeeDiscount;
+    }
+
+    // геттеры
+
+    /// @notice функция возвращает размер скидки фаундера (в вычитаемых из размера комиссии промилле)
+    /// @param founder адрес фаундера, для которого возвращаем скидку
+    /// @return uint16 размер скидки в абсолютном значении промилле
+    function getFounderDiscount(address founder) external view returns(uint16) {        
+
+        uint256 tokenId = foundersTokens[founder];
+        if (tokenId != 0 && _ownerOf(tokenId) == founder) {
+            return tokenDiscount[tokenId]; // скидка зафиксирована в момент минта
+        }
+        return 0;
+    }
+    
+    /// @notice функция проверки, может ли фаундер получить NFT
+    /// @param founder адрес фаундера
+    /// @return bool результат проверки
+    function validateMintEligibility(address founder) external view returns (bool) {
+        return _validateMintEligibility(founder);
+    }
+    
+    /// @notice функция возвращает ссылку json-файл с метаданными    
+    /// @return string ссылка на метаданные    
+    function tokenURI(uint256) public pure override returns (string memory) { // solhint-disable-line use-natspec
+        return _TOKEN_URI;
     }
 
     //служебные функции

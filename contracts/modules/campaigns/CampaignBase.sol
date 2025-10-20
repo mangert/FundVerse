@@ -75,6 +75,7 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         _;
     }       
     
+    //solhint-disable ordering
     /// @notice фунция инициализации
     /// @param _platformAddress адрес платформы
     /// @param _creator создатель кампании
@@ -112,7 +113,18 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
         statusDispatcher = _statusDispatcher;
 
         register(_deadline); // регистрируем нашу кампанию в диспетчере        
-    }   
+    }    
+
+    /// @notice запрещаем переводы без вызова функции
+    receive() external payable {
+        revert CampaignIncorrectCall(msg.sender, msg.value, "");
+    }
+    
+    /// @notice запрещаем переводы с вызовом несуществующей / неправильной функции
+    fallback() external payable {
+        revert CampaignIncorrectCall(msg.sender, msg.value, msg.data);
+    }
+    //solhint-enable ordering    
     
     //общие функции по выводу средств
     /// @notice затребовать взнос с провалившейся или отмененной кампании
@@ -287,15 +299,6 @@ abstract contract CampaignBase is ICampaign, ReentrancyGuard {
     /// @param recipient получатель
     /// @param amount сумма перевода
     /// @return bool результатм перевода
-    function _transferTo(address recipient, uint256 amount) internal virtual returns (bool);  
+    function _transferTo(address recipient, uint256 amount) internal virtual returns (bool);     
     
-    /// @notice запрещаем переводы без вызова функции
-    receive() external payable {
-        revert CampaignIncorrectCall(msg.sender, msg.value, "");
-    }
-    
-    /// @notice запрещаем переводы с вызовом несуществующей / неправильной функции
-    fallback() external payable {
-        revert CampaignIncorrectCall(msg.sender, msg.value, msg.data);
-    } 
 }

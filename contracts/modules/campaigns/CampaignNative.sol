@@ -11,7 +11,9 @@ contract CampaignNative is ICampaign, CampaignBase {
     
     // Основные функции взаимодействия    
 
+   // solhint-disable ordering
    /// @notice Внести средства - неиспользуемая перегрузка
+   /// @dev Эта версия функции определена для совместимости интерфейсов и всегда вызывает revert.
     function contribute(uint128) external override pure { //solhint-disable-line use-natspec
         revert CampaignIncorrertFunction();
     }
@@ -57,6 +59,8 @@ contract CampaignNative is ICampaign, CampaignBase {
 
         emit CampaignContribution(contributor, contribution);
     }
+
+    // solhint-enable ordering
 
     ///@notice затребовать "зависшие" средства    
     function claimPendingFunds() external override nonReentrant {

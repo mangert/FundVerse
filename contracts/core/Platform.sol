@@ -305,6 +305,7 @@ contract Platform is
         uint256 availableValue = address(this).balance - s.totalDeposit;
         
         //рассчитываем доступные средства
+        //solhint-disable-next-line gas-strict-inequalities
         require(amount <= availableValue,  FVInsufficientFunds(amount, availableValue, address(0)));
 
         emit FVWithdrawn(amount, recipient, address(0));
@@ -322,6 +323,7 @@ contract Platform is
         
         // смотрим доступные средства
         uint256 availableValue = IERC20(token).balanceOf(address(this));
+        //solhint-disable-next-line gas-strict-inequalities
         require(amount <= availableValue,  FVInsufficientFunds(amount, availableValue, token));
         
         emit FVWithdrawn(amount, recipient, token);

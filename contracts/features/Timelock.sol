@@ -12,13 +12,19 @@ abstract contract Timelock is IPlatformCommon {
     // Константы для настройки событий изменения параметров платформы
     bytes32 private constant PARAM_DELAY = keccak256("delay");
 
-    /// @notice функция проверяет, действует ли еще таймлок для фаундера
-    /// @param founder адрес фаундера, которого проверяем
-    /// @return bool результат проверки
-    function _isLocked(address founder) internal view returns(bool) {            
-        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
-        // solhint-disable-next-line gas-strict-inequalities, not-rely-on-time
-        return(s.timelocks[founder] >= uint32(block.timestamp)); // slither-disable-line timestamp
+    //геттеры
+    
+    /// @notice Получить информацию о стандартном значении лока
+    /// @return uint32 установленная на платформе продолжительность лока
+    function getDelay() external view returns (uint32) {
+        return PlatformStorageLib.layout().delay;
+    }
+
+    /// @notice Получить информацию о таймлоке пользователя
+    /// @param founder адрес фаундера, для которого проверяем таймлок
+    /// @return uint32 текущее значение таймлока пользователя    
+    function getFounderTimelock(address founder) external view returns (uint32) {
+        return PlatformStorageLib.layout().timelocks[founder];
     }
 
     /// @notice фунция устанавливает таймлок для пользователя
@@ -42,21 +48,15 @@ abstract contract Timelock is IPlatformCommon {
         PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
         s.delay = newDelay;
         emit FVPlatformParameterUpdated(PARAM_DELAY, newDelay, msg.sender);
-    }
+    }    
 
-    //геттеры
-    
-    /// @notice Получить информацию о стандартном значении лока
-    /// @return uint32 установленная на платформе продолжительность лока
-    function getDelay() external view returns (uint32) {
-        return PlatformStorageLib.layout().delay;
-    }
-
-    /// @notice Получить информацию о таймлоке пользователя
-    /// @param founder адрес фаундера, для которого проверяем таймлок
-    /// @return uint32 текущее значение таймлока пользователя    
-    function getFounderTimelock(address founder) external view returns (uint32) {
-        return PlatformStorageLib.layout().timelocks[founder];
+    /// @notice функция проверяет, действует ли еще таймлок для фаундера
+    /// @param founder адрес фаундера, которого проверяем
+    /// @return bool результат проверки
+    function _isLocked(address founder) internal view returns(bool) {            
+        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();
+        // solhint-disable-next-line gas-strict-inequalities, not-rely-on-time
+        return(s.timelocks[founder] >= uint32(block.timestamp)); // slither-disable-line timestamp
     }
 }
 

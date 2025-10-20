@@ -9,16 +9,7 @@ import {PlatformStorageLib} from "../core/storage/PlatformStorageLib.sol"; //х�
 /// @notice содержит функции проверки, поддерживается ли токен, 
 /// функции добавления и удаления токенов из списка поддержки
 /// @dev для нативной валюты предусмотрено значение address(0) 
-abstract contract TokenAllowList is IPlatformCommon {
-
-    /// @notice функция проверяет, входит ли токен в список поддерживаемых
-    /// @param token адрес проверяемого токена
-    /// @return bool результат проверки
-    function isAllowedToken(address token) internal view returns (bool)
-    {
-        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
-        return(token == address(0) || s.allowedTokens[token]);
-    }
+abstract contract TokenAllowList is IPlatformCommon {    
     
     //служебные функции
     /// @notice функция добавляет токен в список поддерживаемых платформой
@@ -51,4 +42,13 @@ abstract contract TokenAllowList is IPlatformCommon {
         emit FVTokenRemoved(token);
         
     }    
+
+    /// @notice функция проверяет, входит ли токен в список поддерживаемых
+    /// @param token адрес проверяемого токена
+    /// @return bool результат проверки
+    function isAllowedToken(address token) internal view returns (bool)
+    {
+        PlatformStorageLib.Layout storage s = PlatformStorageLib.layout();        
+        return(token == address(0) || s.allowedTokens[token]);
+    }
 }
