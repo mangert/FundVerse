@@ -4,23 +4,60 @@ indexerHints:
 schema:
   file: ./schema.graphql
 dataSources:
-  - kind: ethereum
-    name: ERC1967Proxy
+  # === Platform Proxy ===
+  - kind: ethereum/contract
+    name: Platform
     network: sepolia
     source:
-      address: "0xb996c2cB98A450d5b8E3A70C812427E2dBA73ee7"
-      abi: ERC1967Proxy
+      address: "0xb996c2cB98A450d5b8E3A70C812427E2dBA73ee7" # прокси
+      abi: Platform
       startBlock: 9461244
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
       language: wasm/assemblyscript
       entities:
-        - Upgraded
+        - FVCampaignCreated
+        - FVNewTokenAdded
+        - FVTokenRemoved
       abis:
-        - name: ERC1967Proxy
-          file: ./abis/ERC1967Proxy.json
+        - name: Platform
+          file: ./abis/Platform.json
       eventHandlers:
-        - event: Upgraded(indexed address)
-          handler: handleUpgraded
-      file: ./src/erc-1967-proxy.ts
+        - event: FVCampaignCreated(indexed address,indexed address,uint256)
+          handler: handleCampaignCreated
+        - event: FVNewTokenAdded(indexed address)
+          handler: handleTokenAdded
+        - event: FVTokenRemoved(indexed address)
+          handler: handleTokenRemoved
+      file: ./src/mapping.ts
+
+  # === Dynamic Campaigns ===
+  - kind: ethereum/contract
+    name: Campaign
+    network: sepolia
+    source:
+      abi: ICampaign
+      startBlock: 9461244
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - CampaignContribution
+        - FundsWithdrawn
+      abis:
+        - name: ICampaign
+          file: ./abis/ICampaign.json
+      eventHandlers:
+        - event: CampaignContribution(indexed address, uint256)
+          handler: handleContribution
+        - event: CampaignFundsClaimed(indexed address, uint256)
+          handler: handleFundsClaimed
+      file: ./src/campaign-mapping.ts
+    # Указываем, что это dynamic data source
+    create: true
+    sourceEvent: FVCampaignCreated
+    sourceAddress: "0xb996c2cB98A450d5b8E3A70C812427E2dBA73ee7"
+    sourceAbi: Platform
+    event: FVCampaignCreated(indexed address,indexed address,uint256)
