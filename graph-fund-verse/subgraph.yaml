@@ -3,13 +3,13 @@ indexerHints:
   prune: auto
 schema:
   file: ./schema.graphql
+
 dataSources:
-  # === Platform Proxy ===
   - kind: ethereum/contract
     name: Platform
     network: sepolia
     source:
-      address: "0xb996c2cB98A450d5b8E3A70C812427E2dBA73ee7" # прокси
+      address: "0xb996c2cB98A450d5b8E3A70C812427E2dBA73ee7"
       abi: Platform
       startBlock: 9461244
     mapping:
@@ -24,7 +24,7 @@ dataSources:
         - name: Platform
           file: ./abis/Platform.json
       eventHandlers:
-        - event: FVCampaignCreated(indexed address,indexed address,uint256)
+        - event: FVCampaignCreated(indexed address,indexed address,indexed address,uint256)
           handler: handleCampaignCreated
         - event: FVNewTokenAdded(indexed address)
           handler: handleTokenAdded
@@ -32,32 +32,25 @@ dataSources:
           handler: handleTokenRemoved
       file: ./src/mapping.ts
 
-  # === Dynamic Campaigns ===
+templates:
   - kind: ethereum/contract
     name: Campaign
     network: sepolia
     source:
       abi: ICampaign
-      startBlock: 9461244
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
       language: wasm/assemblyscript
       entities:
         - CampaignContribution
-        - FundsWithdrawn
+        - CampaignFundsClaimed
       abis:
         - name: ICampaign
           file: ./abis/ICampaign.json
       eventHandlers:
-        - event: CampaignContribution(indexed address, uint256)
+        - event: CampaignContribution(indexed address,uint256)
           handler: handleContribution
-        - event: CampaignFundsClaimed(indexed address, uint256)
+        - event: CampaignFundsClaimed(indexed address,uint256)
           handler: handleFundsClaimed
       file: ./src/campaign-mapping.ts
-    # Указываем, что это dynamic data source
-    create: true
-    sourceEvent: FVCampaignCreated
-    sourceAddress: "0xb996c2cB98A450d5b8E3A70C812427E2dBA73ee7"
-    sourceAbi: Platform
-    event: FVCampaignCreated(indexed address,indexed address,uint256)

@@ -1,6 +1,57 @@
+# это осталось от прокси - событие обновления контракта
 type Upgraded @entity(immutable: true) {
   id: Bytes!
   implementation: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+# событие создания новой кампании
+type FVCampaignCreated @entity(immutable: true) {
+  id: Bytes!
+  newCampaignAddress: Bytes! # address
+  founder: Bytes! # address
+  token: Bytes! # address
+  goal: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+# событие добавления токена
+type FVNewTokenAdded @entity(immutable: true) {
+  id: Bytes!
+  token: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!  
+}
+
+# событие удаления токена
+type FVTokenRemoved @entity(immutable: true) {
+  id: Bytes!
+  token: Bytes! # address
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!  
+}
+
+# события кампании
+# поступление взноса
+type CampaignContribution @entity(immutable: true) {
+  id: Bytes!
+  contributor: Bytes! # address
+  amount: BigInt! # uint256
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+# вывод собранных средств
+type CampaignFundsClaimed @entity(immutable: true) {
+  id: Bytes!
+  recipient: Bytes! # address
+  amount: BigInt! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
