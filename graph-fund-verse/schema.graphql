@@ -12,16 +12,39 @@ type FVCampaignCreated @entity(immutable: true) {
   newCampaignAddress: Bytes! # address
   founder: Bytes! # address
   token: Bytes! # address
-  goal: BigInt! # uint256
+  goal: BigInt! # uint256  
+  # данные блока
   blockNumber: BigInt!
   blockTimestamp: BigInt!
-  transactionHash: Bytes!
+  transactionHash: Bytes!              
+}
+# сущности кампаний
+type CampaignData @entity(immutable: false) {  
+  id: Bytes! # address - адрес кампании
+  founder: Bytes! # address
+  token: Bytes! # address
+  goal: BigInt! # uint256
+  # поля, загружаемые из кампании
+  capmpaignId: BigInt! # id кампании
+  raised: BigInt! # uint128
+  deadline: BigInt! # uint32
+  campaignMeta: String
+  status: Int # Status(uint8)
+  # данные блока
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!              
 }
 
 # событие добавления токена
 type FVNewTokenAdded @entity(immutable: true) {
   id: Bytes!
-  token: Bytes! # address
+  token: Bytes! # address    
+  #symbol: string;
+  #decimals: number;
+  #name: string;
+  #status: boolean;"  
+  # данные блока
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!  
@@ -31,6 +54,7 @@ type FVNewTokenAdded @entity(immutable: true) {
 type FVTokenRemoved @entity(immutable: true) {
   id: Bytes!
   token: Bytes! # address
+  # данные блока
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!  
@@ -42,6 +66,7 @@ type CampaignContribution @entity(immutable: true) {
   id: Bytes!
   contributor: Bytes! # address
   amount: BigInt! # uint256
+  # данные блока
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
@@ -52,6 +77,7 @@ type CampaignFundsClaimed @entity(immutable: true) {
   id: Bytes!
   recipient: Bytes! # address
   amount: BigInt! # uint256
+  # данные блока
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
