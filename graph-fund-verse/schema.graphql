@@ -9,7 +9,7 @@ type Upgraded @entity(immutable: true) {
 # событие создания новой кампании
 type FVCampaignCreated @entity(immutable: true) {
   id: Bytes!
-  newCampaignAddress: Bytes! # address
+  newCampaignAddress: CampaignData! # newCampaignAddress: Bytes! # address
   founder: Bytes! # address
   token: Bytes! # address
   goal: BigInt! # uint256  
@@ -21,29 +21,27 @@ type FVCampaignCreated @entity(immutable: true) {
 # сущности кампаний
 type CampaignData @entity(immutable: false) {  
   id: Bytes! # address - адрес кампании
-  founder: Bytes! # address
-  token: Bytes! # address
+  campaignId: BigInt! # id кампании
+  creator: Bytes! # address  
   goal: BigInt! # uint256
-  # поля, загружаемые из кампании
-  capmpaignId: BigInt! # id кампании
   raised: BigInt! # uint128
   deadline: BigInt! # uint32
-  campaignMeta: String
-  status: Int # Status(uint8)
+  token: Bytes! # address
+  campaignMeta: String!
+  status: Int! # Status(uint8)
+  # из событий кампании
+  isFundsWithdrawn: Boolean! # признак, выведены ли фонды
   # данные блока
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!              
 }
 
+#Токены
 # событие добавления токена
 type FVNewTokenAdded @entity(immutable: true) {
   id: Bytes!
-  token: Bytes! # address    
-  #symbol: string;
-  #decimals: number;
-  #name: string;
-  #status: boolean;"  
+  token: Token! # address      
   # данные блока
   blockNumber: BigInt!
   blockTimestamp: BigInt!
@@ -53,7 +51,20 @@ type FVNewTokenAdded @entity(immutable: true) {
 # событие удаления токена
 type FVTokenRemoved @entity(immutable: true) {
   id: Bytes!
-  token: Bytes! # address
+  token: Token! # address
+  # данные блока
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!  
+}
+
+# сущность токена
+type Token @entity(immutable: false) {  
+  id: Bytes! # address - первичный ключ - адрес токена
+  symbol: String!
+  decimals: Int!
+  name: String!
+  status: Boolean!
   # данные блока
   blockNumber: BigInt!
   blockTimestamp: BigInt!

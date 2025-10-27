@@ -1,9 +1,11 @@
 specVersion: 1.3.0
 indexerHints:
   prune: auto
+
 schema:
   file: ./schema.graphql
 
+# --- Основной источник: платформа ---
 dataSources:
   - kind: ethereum/contract
     name: Platform
@@ -20,9 +22,15 @@ dataSources:
         - FVCampaignCreated
         - FVNewTokenAdded
         - FVTokenRemoved
+        - CampaignData          # ✅ добавлено — сущность кампании, создается при событии
+        - Token                 # ✅ добавлено — сущность токена, создается при добавлении токена
       abis:
         - name: Platform
           file: ./abis/Platform.json
+        - name: ICampaign       # ✅ добавлено — ABI кампании, нужно для вызова getSummary()
+          file: ./abis/ICampaign.json
+        - name: IERC20Metadata  # ✅ добавлено — ABI токена для получения symbol/name/decimals
+          file: ./abis/IERC20Metadata.json
       eventHandlers:
         - event: FVCampaignCreated(indexed address,indexed address,indexed address,uint256)
           handler: handleCampaignCreated
@@ -32,6 +40,8 @@ dataSources:
           handler: handleTokenRemoved
       file: ./src/mapping.ts
 
+
+# --- Динамический источник для отдельных кампаний ---
 templates:
   - kind: ethereum/contract
     name: Campaign
@@ -45,6 +55,7 @@ templates:
       entities:
         - CampaignContribution
         - CampaignFundsClaimed
+        - CampaignData          # ✅ добавлено — чтобы обновлять кампанию при поступлении взносов
       abis:
         - name: ICampaign
           file: ./abis/ICampaign.json
@@ -54,3 +65,5 @@ templates:
         - event: CampaignFundsClaimed(indexed address,uint256)
           handler: handleFundsClaimed
       file: ./src/campaign-mapping.ts
+
+

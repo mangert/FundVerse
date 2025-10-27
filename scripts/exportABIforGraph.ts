@@ -11,11 +11,13 @@ async function main() {
 
   const artifactPath = path.join(
     __dirname,
-    "../artifacts/contracts/interfaces/ICampaign.sol/ICampaign.json"
+    "../artifacts/@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol/IERC20Metadata.json"
+    //"../artifacts/contracts/interfaces/ICampaign.sol/ICampaign.json"    
   );
   
   //const outputPath = path.join(__dirname, "../graph-fund-verse/abis/Platform.json");
-  const outputPath = path.join(__dirname, "../graph-fund-verse/abis/ICampaign.json");
+  //const outputPath = path.join(__dirname, "../graph-fund-verse/abis/ICampaign.json");
+  const outputPath = path.join(__dirname, "../graph-fund-verse/abis/IERC20Metadata.json");
 
   const artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
   const abi = artifact.abi;
