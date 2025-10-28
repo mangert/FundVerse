@@ -1,7 +1,7 @@
-// сервис получения данных о добавленных / удаленных токенах
-// прокладка между бэкендом и компонентами
+// 🔹 Сервис получения токенов теперь работает напрямую с The Graph
 import { zeroAddress } from "viem";
 
+// структура, совпадающая с твоей логикой
 export interface TokenInfo {
   address: string;
   symbol: string;
@@ -16,12 +16,10 @@ class TokenService {
   private static instance: TokenService;
   private tokens: Map<string, TokenInfo> = new Map();
   private pollingInterval: NodeJS.Timeout | null = null;
-  private readonly POLL_INTERVAL = 30_000; // 30 секунд  
+  private readonly POLL_INTERVAL = 30_000; // опрос каждые 30 сек
 
-  // Для любого IP-адреса используем прямой доступ, для домена - прокси  
-  private readonly API_BASE = window.location.hostname.match(/^\d+\.\d+\.\d+\.\d+$/) 
-  ? `http://${window.location.hostname}:3001/api`
-  : '/api';
+  // ✅ Graph endpoint из .env  
+  private readonly GRAPH_URL = import.meta.env.VITE_GRAPHQL_API_URL;
 
   static getInstance(): TokenService {
     if (!TokenService.instance) {
@@ -30,33 +28,76 @@ class TokenService {
     return TokenService.instance;
   }
 
+  // инициализация — подгружаем токены и запускаем опрос
   async init() {
-    console.log("Initializing TokenService via backend indexer...");
+    console.log("Initializing TokenService via The Graph...");
 
     try {
       await this.fetchTokens();
       this.startPolling();
-      console.log("TokenService initialized successfully");
+      console.log("TokenService initialized successfully (Graph)");
     } catch (error) {
       console.error("Failed to initialize TokenService:", error);
     }
   }
 
+  // 🔹 Метод получения токенов через GraphQL-запрос
   private async fetchTokens() {
+    const query = `
+      {
+        tokens(first: 1000) {
+          id
+          symbol
+          decimals
+          name
+          status
+          blockNumber
+          blockTimestamp
+        }
+      }
+    `;
+
     try {
-      const res = await fetch(`${this.API_BASE}/tokens`);
+      const res = await fetch(this.GRAPH_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+      });
+
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const tokens: TokenInfo[] = await res.json();
+
+      const { data } = await res.json();
+      if (!data?.tokens) throw new Error("Invalid response from Graph");
+
+      const tokens: TokenInfo[] = data.tokens.map((t: any) => ({
+        address: t.id,
+        symbol: t.symbol,
+        decimals: Number(t.decimals),
+        name: t.name,
+        status: t.status,
+        addedAtBlock: Number(t.blockNumber),
+      }));
 
       this.tokens.clear();
       tokens.forEach((t) => this.tokens.set(t.address.toLowerCase(), t));
 
-      console.log(`Loaded ${tokens.length} tokens from indexer`);
+      //отладочный - удалить!!!
+      console.log(`Loaded ${tokens.length} tokens from The Graph`);
+
+      // 🔹 Проверка: выводим все токены сразу после загрузки
+      console.log("Current tokens in TokenService:");
+      this.tokens.forEach((token, addr) => {
+      console.log(`${addr}: ${token.symbol} (${token.status ? "active" : "inactive"})`);
+      });
+      //конец отладки
+
+      console.log(`Loaded ${tokens.length} tokens from The Graph`);
     } catch (err) {
-      console.error("Error fetching tokens from backend:", err);
+      console.error("Error fetching tokens from The Graph:", err);
     }
   }
 
+  // 🔁 Запускаем периодический опрос (аналогично бэку)
   private startPolling() {
     if (this.pollingInterval) clearInterval(this.pollingInterval);
 
@@ -64,16 +105,16 @@ class TokenService {
       this.fetchTokens();
     }, this.POLL_INTERVAL);
 
-    console.log("Started polling indexer API for tokens");
+    console.log("Started polling The Graph for tokens");
   }
 
-  // 🔹 ВОССТАНОВЛЕННЫЙ метод
+  // 🪙 Возвращаем нативный токен (ETH / native)
   getNativeToken(): TokenInfo {
     const native = this.tokens.get(zeroAddress);
     if (!native) {
       return {
         address: zeroAddress,
-        symbol: "ETH", // fallback
+        symbol: "ETH",
         decimals: 18,
         name: "Ethereum",
         status: true,
@@ -82,18 +123,22 @@ class TokenService {
     return native;
   }
 
+  // 🔍 Получить токен по адресу
   getTokenInfo(address: string): TokenInfo | undefined {
     return this.tokens.get(address.toLowerCase());
   }
 
+  // ✅ Только активные токены
   getActiveTokens(): TokenInfo[] {
     return Array.from(this.tokens.values()).filter((t) => t.status);
   }
 
+  // 🧩 Все токены
   getAllTokens(): TokenInfo[] {
     return Array.from(this.tokens.values());
   }
 
+  // 🛑 Остановить опрос
   stopPolling() {
     if (this.pollingInterval) {
       clearInterval(this.pollingInterval);
@@ -102,6 +147,7 @@ class TokenService {
     }
   }
 
+  // 🔄 Принудительно обновить данные
   forceRefresh() {
     this.fetchTokens();
   }
