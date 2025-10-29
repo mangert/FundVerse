@@ -1,25 +1,49 @@
 // 🔹 Сервис получения токенов теперь работает напрямую с The Graph
 import { zeroAddress } from "viem";
+import { BASE_TOKENS, type TokenConfig } from "../config/tokens";
 
-// структура, совпадающая с твоей логикой
 export interface TokenInfo {
   address: string;
   symbol: string;
   decimals: number;
   name: string;
   status: boolean;
-  addedAtBlock?: number;
-  removedAtBlock?: number;
 }
 
 class TokenService {
   private static instance: TokenService;
   private tokens: Map<string, TokenInfo> = new Map();
   private pollingInterval: NodeJS.Timeout | null = null;
-  private readonly POLL_INTERVAL = 30_000; // опрос каждые 30 сек
+  private readonly POLL_INTERVAL = 30_000; // 30 секунд
 
-  // ✅ Graph endpoint из .env  
-  private readonly GRAPH_URL = import.meta.env.VITE_GRAPHQL_API_URL;
+  private readonly chainId: number;
+  private readonly nativeToken: TokenInfo;
+  private readonly graphUrl: string;
+
+  private constructor() {
+    // Определяем сеть (по умолчанию — Sepolia)
+    this.chainId = Number(import.meta.env.VITE_CHAIN_ID || 11155111);
+
+    // Загружаем конфигурацию сети
+    const config = BASE_TOKENS[this.chainId];
+    if (!config) {
+      throw new Error(`No token configuration found for chain ${this.chainId}`);
+    }
+
+    // Нативный токен из конфига (ETH / Sepolia ETH / HETH)
+    this.nativeToken = {
+      address: zeroAddress,
+      symbol: config.native.symbol,
+      decimals: config.native.decimals,
+      name: config.native.name,
+      status: true,
+    };
+
+    // URL сабграфа для текущей сети
+    this.graphUrl =
+      import.meta.env.VITE_GRAPH_URL ||
+      "https://api.studio.thegraph.com/query/121375/fund-verse/v0.0.1";
+  }
 
   static getInstance(): TokenService {
     if (!TokenService.instance) {
@@ -28,21 +52,44 @@ class TokenService {
     return TokenService.instance;
   }
 
-  // инициализация — подгружаем токены и запускаем опрос
+  /** 🔹 Инициализация сервиса — сначала подгружаем конфиг, потом данные из сабграфа */
   async init() {
-    console.log("Initializing TokenService via The Graph...");
+    console.log("🪙 Initializing TokenService via The Graph...");
 
     try {
-      await this.fetchTokens();
-      this.startPolling();
-      console.log("TokenService initialized successfully (Graph)");
+      this.loadPresetTokens(); // подгружаем токены из BASE_TOKENS
+      await this.fetchTokensFromGraph(); // затем обновляем из сабграфа
+      this.startPolling(); // и включаем периодическую подгрузку
+      console.log("✅ TokenService initialized successfully");
     } catch (error) {
-      console.error("Failed to initialize TokenService:", error);
+      console.error("❌ Failed to initialize TokenService:", error);
     }
   }
 
-  // 🔹 Метод получения токенов через GraphQL-запрос
-  private async fetchTokens() {
+  /** 🔹 Подгрузка предустановленных токенов из конфига */
+  private loadPresetTokens() {
+    const config = BASE_TOKENS[this.chainId];
+    this.tokens.clear();
+
+    // Добавляем нативный токен
+    this.tokens.set(zeroAddress, this.nativeToken);
+
+    // Добавляем предустановленные токены
+    config.tokens.forEach((t: TokenConfig) => {
+      this.tokens.set(t.address.toLowerCase(), {
+        address: t.address,
+        symbol: t.symbol,
+        decimals: t.decimals,
+        name: t.name,
+        status: t.status,
+      });
+    });
+
+    console.log(`🔸 Loaded ${config.tokens.length} preset tokens for chain ${this.chainId}`);
+  }
+
+  /** 🔹 Загрузка актуальных токенов из сабграфа The Graph */
+  private async fetchTokensFromGraph() {
     const query = `
       {
         tokens(first: 1000) {
@@ -51,105 +98,83 @@ class TokenService {
           decimals
           name
           status
-          blockNumber
-          blockTimestamp
         }
       }
     `;
 
     try {
-      const res = await fetch(this.GRAPH_URL, {
+      const res = await fetch(this.graphUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
       });
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
 
-      const { data } = await res.json();
-      if (!data?.tokens) throw new Error("Invalid response from Graph");
+      const tokens = data?.data?.tokens || [];
 
-      const tokens: TokenInfo[] = data.tokens.map((t: any) => ({
-        address: t.id,
-        symbol: t.symbol,
-        decimals: Number(t.decimals),
-        name: t.name,
-        status: t.status,
-        addedAtBlock: Number(t.blockNumber),
-      }));
-
-      this.tokens.clear();
-      tokens.forEach((t) => this.tokens.set(t.address.toLowerCase(), t));
-
-      //отладочный - удалить!!!
-      console.log(`Loaded ${tokens.length} tokens from The Graph`);
-
-      // 🔹 Проверка: выводим все токены сразу после загрузки
-      console.log("Current tokens in TokenService:");
-      this.tokens.forEach((token, addr) => {
-      console.log(`${addr}: ${token.symbol} (${token.status ? "active" : "inactive"})`);
+      // Обновляем локальный кэш
+      tokens.forEach((t: any) => {
+        this.tokens.set(t.id.toLowerCase(), {
+          address: t.id,
+          symbol: t.symbol,
+          decimals: t.decimals,
+          name: t.name,
+          status: t.status,
+        });
       });
-      //конец отладки
 
-      console.log(`Loaded ${tokens.length} tokens from The Graph`);
+      console.log(`🔹 Loaded ${tokens.length} tokens from The Graph`);
     } catch (err) {
-      console.error("Error fetching tokens from The Graph:", err);
+      console.error("⚠️ Error fetching tokens from The Graph:", err);
     }
   }
 
-  // 🔁 Запускаем периодический опрос (аналогично бэку)
+  /** 🔹 Запуск периодического обновления */
   private startPolling() {
     if (this.pollingInterval) clearInterval(this.pollingInterval);
 
     this.pollingInterval = setInterval(() => {
-      this.fetchTokens();
+      this.fetchTokensFromGraph();
     }, this.POLL_INTERVAL);
 
-    console.log("Started polling The Graph for tokens");
+    console.log("🔁 Started polling The Graph for tokens");
   }
 
-  // 🪙 Возвращаем нативный токен (ETH / native)
+  /** 🔹 Возврат нативного токена */
   getNativeToken(): TokenInfo {
     const native = this.tokens.get(zeroAddress);
-    if (!native) {
-      return {
-        address: zeroAddress,
-        symbol: "ETH",
-        decimals: 18,
-        name: "Ethereum",
-        status: true,
-      };
-    }
-    return native;
+    return native || this.nativeToken;
   }
 
-  // 🔍 Получить токен по адресу
+  /** 🔹 Получить токен по адресу */
   getTokenInfo(address: string): TokenInfo | undefined {
     return this.tokens.get(address.toLowerCase());
   }
 
-  // ✅ Только активные токены
+  /** 🔹 Активные токены */
   getActiveTokens(): TokenInfo[] {
     return Array.from(this.tokens.values()).filter((t) => t.status);
   }
 
-  // 🧩 Все токены
+  /** 🔹 Все токены (включая неактивные) */
   getAllTokens(): TokenInfo[] {
     return Array.from(this.tokens.values());
   }
 
-  // 🛑 Остановить опрос
+  /** 🔹 Остановить автообновление */
   stopPolling() {
     if (this.pollingInterval) {
       clearInterval(this.pollingInterval);
       this.pollingInterval = null;
-      console.log("TokenService polling stopped");
+      console.log("⏹️ TokenService polling stopped");
     }
   }
 
-  // 🔄 Принудительно обновить данные
+  /** 🔹 Принудительное обновление данных */
   forceRefresh() {
-    this.fetchTokens();
+    this.fetchTokensFromGraph();
   }
 }
 

@@ -4,7 +4,6 @@ export interface TokenConfig {
   decimals: number;
   name: string;
   status: boolean;
-  addedAtBlock?: number;
 }
 
 export interface NetworkTokensConfig {
@@ -14,11 +13,11 @@ export interface NetworkTokensConfig {
     name: string;
   };
   tokens: TokenConfig[];
-  contractDeploymentBlock: number; // Блок развертывания контракта
+  contractDeploymentBlock: number;
 }
 
 export const BASE_TOKENS: Record<number, NetworkTokensConfig> = {
-  1: { //mainnet
+  1: {
     native: { symbol: 'ETH', decimals: 18, name: 'Ethereum' },
     tokens: [
       {
@@ -27,19 +26,18 @@ export const BASE_TOKENS: Record<number, NetworkTokensConfig> = {
         decimals: 6,
         name: 'USD Coin',
         status: true,
-        addedAtBlock: 12345678 // Пример
-      }
+      },
     ],
-    contractDeploymentBlock: 12345678
+    contractDeploymentBlock: 12345678,
   },
-  11155111: { //Sepolia
+  11155111: {
     native: { symbol: 'ETH', decimals: 18, name: 'Sepolia ETH' },
     tokens: [],
-    contractDeploymentBlock: 	9139180 //исправлять в случае нового деплоя
+    contractDeploymentBlock: 9139180,
   },
-  31337: { //hardhat
+  31337: {
     native: { symbol: 'HETH', decimals: 18, name: 'Hardhat ETH' },
     tokens: [],
-    contractDeploymentBlock: 0
-  }
+    contractDeploymentBlock: 0,
+  },
 };
