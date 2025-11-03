@@ -55,9 +55,10 @@ function normalizeCampaign(raw: CampaignRawData): CampaignData {
 
 // 4️⃣ Основная функция: fetch + нормализация
 export async function fetchCampaigns(): Promise<CampaignData[]> {  
-  const GRAPH_URL = import.meta.env.VITE_GRAPH_URL ||
+  const GRAPH_URL = import.meta.env.VITE_GRAPHQL_API_URL ||
       "https://api.studio.thegraph.com/query/121375/fund-verse/v0.0.1";
-  console.log("Fetch campaigns ", GRAPH_URL);
+  
+  
   const query = `
     {
       campaignDatas(orderBy: blockTimestamp, orderDirection: desc) {

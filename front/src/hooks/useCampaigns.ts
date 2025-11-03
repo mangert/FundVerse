@@ -9,8 +9,7 @@ export function useCampaigns() {
 
   const refetch = async () => {
     try {
-      const newData = await fetchCampaigns();
-      console.log("Refeching use Campaigns");
+      const newData = await fetchCampaigns();      
 
       // сравниваем только id (или address)
       const same =
