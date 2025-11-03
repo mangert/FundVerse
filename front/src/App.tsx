@@ -6,7 +6,7 @@ import { StatusBar } from './components/StatusBar';
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import { Toast } from './components/Toast';
 import { useEffect, useState } from 'react';
-import { initEventService, stopEventService } from './services/eventService';
+import { initEventService, stopEventService } from './services/eventServiceOld';
 import { tokenService } from './services/TokenService';
 
 const AppContent = () => {

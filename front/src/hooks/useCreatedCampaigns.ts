@@ -1,7 +1,7 @@
 // хук для получения списка кампаний, созданных пользователем
 import { useState, useEffect, useCallback } from 'react';
 import { useAccount, usePublicClient } from 'wagmi';
-import { useCampaigns } from './useCampaigns';
+import { useCampaigns } from './useCampaignsOld';
 import { getCampaignSummary } from '../services/campaignService';
 import { type CampaignSummary } from './useCampaign';
 

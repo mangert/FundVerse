@@ -8,7 +8,7 @@ import { useAccount } from 'wagmi';
 
 export const Dashboard = () => {
   const { address, isConnected } = useAccount();
-  const { campaignAddresses, isLoading, refetch } = useCampaigns();
+  const { campaigns, isLoading, refetch } = useCampaigns();
   const [isRefetching, setIsRefetching] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
@@ -64,15 +64,15 @@ export const Dashboard = () => {
       <PlatformInfo />
 
       <div className="campaigns-grid">
-        {campaignAddresses.map((address) => (
+        {campaigns.map((c) => (
           <CampaignCard 
-            key={address}
-            address={address} 
+            key={c.address}
+            address={c.address}            
             onUpdate={refetch} // Передаем функцию обновления
           />
         ))}
         
-        {campaignAddresses.length === 0 && (
+        {campaigns.length === 0 && (
           <div className="empty-state">
             <h2>No campaigns yet</h2>
             <p>Be the first to create a campaign!</p>

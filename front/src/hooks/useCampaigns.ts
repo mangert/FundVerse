@@ -1,70 +1,39 @@
-// хук для получения списка кампаний
-import { useReadContract, useReadContracts } from 'wagmi';
-import { PlatformABI } from '../utils/abi';
-import { PLATFORM_ADDRESS } from '../utils/addresses';
-import { useMemo, useCallback } from 'react';
+// useCampaigns.ts
+import { useState, useEffect } from "react";
+import { fetchCampaigns, type CampaignData } from "../services/CampaingsService";
 
-interface UseCampaignsOptions {
-  latestFirst?: boolean; //флаг для переворота списка
-}
+export function useCampaigns() {
+  const [campaigns, setCampaigns] = useState<CampaignData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export const useCampaigns = ({ latestFirst = true }: UseCampaignsOptions = {}) => {
-  // Получаем общее количество кампаний
-  const { 
-    data: totalCampaigns, 
-    refetch: refetchTotal,
-    isLoading: isLoadingTotal 
-  } = useReadContract({
-    address: PLATFORM_ADDRESS,
-    abi: PlatformABI,
-    functionName: 'getTotalCampaigns',
-  });
+  const refetch = async () => {
+    try {
+      const newData = await fetchCampaigns();
+      console.log("Refeching use Campaigns");
 
-  // Создаем массив индексов
-  const indices = useMemo(() => {
-    if (!totalCampaigns) return [];
-    return Array.from({ length: Number(totalCampaigns) }, (_, i) => i);
-  }, [totalCampaigns]);
+      // сравниваем только id (или address)
+      const same =
+        newData.length === campaigns.length &&
+        newData.every((c, i) => c.address === campaigns[i]?.address);
 
-  // Загружаем адреса кампаний
-  const { 
-    data: campaignsData, 
-    isLoading: isLoadingAddresses, 
-    refetch: refetchAddresses 
-  } = useReadContracts({
-    contracts: indices.map(index => ({
-      address: PLATFORM_ADDRESS,
-      abi: PlatformABI,
-      functionName: 'getCampaignByIndex',
-      args: [index],
-    })),
-    query: {
-      enabled: indices.length > 0,
-      staleTime: 10000, // 10 секунд кэширования
+      if (!same) {
+        console.log("Campaign list changed, updating state");
+        setCampaigns(newData);
+      } else {
+        console.log("No change in campaigns, skip update");
+      }
+    } catch (err) {
+      console.error(err);
+      setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
     }
-  });
-
-  // Преобразуем данные в массив адресов
-  const campaignAddresses = useMemo(() => {
-    if (!campaignsData) return [];
-    const addresses = campaignsData
-      .map(item => item.status === 'success' ? item.result as string : null)
-      .filter(Boolean) as string[];
-
-    // CHG: переворачиваем массив, если latestFirst = true
-    return latestFirst ? addresses.slice().reverse() : addresses;
-  }, [campaignsData, latestFirst]);
-
-  // Функция для полного обновления
-  const refetch = useCallback(async () => {    
-    await Promise.all([refetchTotal(), refetchAddresses()]);
-  }, [refetchTotal, refetchAddresses]);
-
-  const isLoading = isLoadingTotal || isLoadingAddresses;
-
-  return { 
-    campaignAddresses, 
-    isLoading,
-    refetch 
   };
-};
+
+  useEffect(() => {
+    refetch();
+  }, []);  
+
+  return { campaigns, isLoading, error, refetch };
+}
