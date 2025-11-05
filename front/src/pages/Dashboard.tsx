@@ -5,9 +5,10 @@ import { PlatformInfo } from '../components/PlatformInfo';
 import { useState, useEffect } from 'react';
 import { CreateCampaignForm } from '../components/CreateCampaignForm';
 import { useAccount } from 'wagmi';
+import { SubgraphStatus } from '../components/SubgraphStatus';
 
 export const Dashboard = () => {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const { campaigns, isLoading, refetch } = useCampaigns();
   const [isRefetching, setIsRefetching] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -34,6 +35,7 @@ export const Dashboard = () => {
     <div className="page-container">    
       <div className="page-header">
         <h1>All Campaigns</h1>
+        <SubgraphStatus />
         {/* Показываем кнопку только если кошелек подключен */}
         {isConnected ? (
           <button 
