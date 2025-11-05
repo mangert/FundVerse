@@ -1,6 +1,6 @@
 // useCampaigns.ts
 import { useState, useEffect } from "react";
-import { fetchCampaigns, type CampaignData } from "../services/CampaingsService";
+import { fetchCampaigns, type CampaignData } from "../services/CampaignsService";
 
 export function useCampaigns() {
   const [campaigns, setCampaigns] = useState<CampaignData[]>([]);

@@ -1,5 +1,3 @@
-// CampaignsService.ts
-
 // 1️⃣ "Сырой" формат — строго то, что приходит из Graph
 interface CampaignRawData {
   id: string;
@@ -37,7 +35,7 @@ export interface CampaignData {
 // 3️⃣ Преобразователь: Raw → нормализованный
 function normalizeCampaign(raw: CampaignRawData): CampaignData {
   return {
-    address: raw.id, // id в Graph — это адрес кампании
+    address: raw.id,
     campaignId: BigInt(raw.campaignId),
     creator: raw.creator,
     goal: BigInt(raw.goal),
@@ -53,12 +51,13 @@ function normalizeCampaign(raw: CampaignRawData): CampaignData {
   };
 }
 
-// 4️⃣ Основная функция: fetch + нормализация
-export async function fetchCampaigns(): Promise<CampaignData[]> {  
-  const GRAPH_URL = import.meta.env.VITE_GRAPHQL_API_URL ||
-      "https://api.studio.thegraph.com/query/121375/fund-verse/v0.0.1";
-  
-  
+// 4️⃣ Базовый Graph URL
+const GRAPH_URL =
+  import.meta.env.VITE_GRAPHQL_API_URL ||
+  "https://api.studio.thegraph.com/query/121375/fund-verse/v0.0.1";
+
+// 5️⃣ Получить все кампании
+export async function fetchCampaigns(): Promise<CampaignData[]> {
   const query = `
     {
       campaignDatas(orderBy: blockTimestamp, orderDirection: desc) {
@@ -88,6 +87,42 @@ export async function fetchCampaigns(): Promise<CampaignData[]> {
   const { data, errors } = await res.json();
   if (errors) throw new Error(JSON.stringify(errors));
 
-  // data.campaignDatas — массив "сырых" объектов
   return (data.campaignDatas as CampaignRawData[]).map(normalizeCampaign);
+}
+
+// 6️⃣ Получить кампанию по адресу
+export async function fetchCampaignByAddress(address: string): Promise<CampaignData | null> {
+  const query = `
+    {
+      campaignDatas(where: { id: "${address.toLowerCase()}" }) {
+        id
+        campaignId
+        creator
+        goal
+        raised
+        deadline
+        token
+        campaignMeta
+        status
+        isFundsWithdrawn
+        blockNumber
+        blockTimestamp
+        transactionHash
+      }
+    }
+  `;
+
+  const res = await fetch(GRAPH_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query }),
+  });
+
+  const { data, errors } = await res.json();
+  if (errors) throw new Error(JSON.stringify(errors));
+
+  const list = data?.campaignDatas as CampaignRawData[] | undefined;
+  if (!list || list.length === 0) return null;
+
+  return normalizeCampaign(list[0]);
 }
