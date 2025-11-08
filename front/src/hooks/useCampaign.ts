@@ -4,11 +4,11 @@ import { CampaignABI } from '../utils/abi';
 
 export interface CampaignSummary {
   creator: string;
-  id: number;
+  id: bigint;
   token: string;
   goal: bigint;
   raised: bigint;
-  deadline: number;
+  deadline: bigint;
   campaignMeta: string;
   status: number;
 }
@@ -32,7 +32,7 @@ export const useCampaign = (address: string) => {
 
   // Парсим результат getSummary
   const [creator, id, token, goal, raised, deadline, campaignMeta, status] = data as [
-    string, number, string, bigint, bigint, number, string, number
+    string, bigint, string, bigint, bigint, bigint, string, number
   ];
 
   const summary: CampaignSummary = {

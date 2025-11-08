@@ -17,7 +17,7 @@ export const getCampaignSummary = async (address: string, publicClient: PublicCl
     console.log('Raw campaign data:', data);
 
     const [creator, id, token, goal, raised, deadline, campaignMeta, status] = data as [
-      string, number, string, bigint, bigint, number, string, number
+      string, bigint, string, bigint, bigint, bigint, string, number
     ];
 
     const summary: CampaignSummary = {

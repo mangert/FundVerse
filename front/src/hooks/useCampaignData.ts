@@ -1,17 +1,26 @@
 import { useCampaign } from './useCampaign';
 import { useCampaignFromGraph } from './useCampaignFromGraph';
-import type { CampaignData } from '../services/CampaignsService';
-import type { CampaignSummary } from './useCampaign';
+
+export interface UnifiedCampaignData {
+  id: string;
+  campaignId: bigint;
+  creator: string;
+  goal: bigint;
+  raised: bigint;
+  deadline: bigint;
+  token: string;
+  campaignMeta: string;
+  status: number;
+  isFundsWithdrawn?: boolean;
+  blockNumber?: bigint;
+  blockTimestamp?: bigint;
+  transactionHash?: string;
+}
 
 interface UseCampaignDataOptions {
   live?: boolean;
 }
 
-/**
- * Универсальный хук, который решает:
- * - брать ли данные из Graph (summary)
- * - или из контракта (полные данные)
- */
 export const useCampaignData = (address: string, options: UseCampaignDataOptions = {}) => {
   const { live = false } = options;
 
@@ -31,7 +40,44 @@ export const useCampaignData = (address: string, options: UseCampaignDataOptions
 
   const isLoading = live ? chainLoading : graphLoading;
   const error = live ? chainError : graphError;
-  const data: CampaignSummary | CampaignData | null = live ? chainData : graphData;
+
+  // Формируем универсальные данные
+  let unified: UnifiedCampaignData | null = null;
+
+  if (live && chainData) {
+    unified = {
+      id: address,
+      campaignId: chainData.id, // контракты не возвращают
+      creator: chainData.creator,
+      goal: chainData.goal,
+      raised: chainData.raised,
+      deadline: chainData.deadline,
+      token: chainData.token,
+      campaignMeta: chainData.campaignMeta,
+      status: chainData.status,
+      // поля, которых нет в контракте
+      isFundsWithdrawn: undefined,
+      blockNumber: undefined,
+      blockTimestamp: undefined,
+      transactionHash: undefined,
+    };
+  } else if (graphData) {
+    unified = {
+      id: graphData.address,
+      campaignId: graphData.campaignId,
+      creator: graphData.creator,
+      goal: graphData.goal,
+      raised: graphData.raised,
+      deadline: graphData.deadline,
+      token: graphData.token,
+      campaignMeta: graphData.campaignMeta,
+      status: graphData.status,
+      isFundsWithdrawn: graphData.isFundsWithdrawn,
+      blockNumber: graphData.blockNumber,
+      blockTimestamp: graphData.blockTimestamp,
+      transactionHash: graphData.transactionHash,
+    };
+  }
 
   const refetch = async () => {
     if (live) await refetchChain?.();
@@ -39,7 +85,7 @@ export const useCampaignData = (address: string, options: UseCampaignDataOptions
   };
 
   return {
-    data,
+    data: unified,
     isLoading,
     error,
     refetch,

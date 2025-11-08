@@ -1,6 +1,7 @@
 // компонент карточки кампаний на дашборде
 import { useState } from 'react';
-import { useCampaign } from '../hooks/useCampaign';
+//import { useCampaign } from '../hooks/useCampaign';
+import { useCampaignData } from '../hooks/useCampaignData';
 import { formatEther, formatUnits } from 'viem';
 import { tokenService } from '../services/TokenService';
 import { getStatusText, getStatusClass, type CampaignStatus } from '../types/Campaign';
@@ -14,7 +15,7 @@ interface CampaignCardProps {
 
 export const CampaignCard = ({ address, onUpdate }: CampaignCardProps) => {
   const [showDetails, setShowDetails] = useState(false);
-  const { data: summary, isLoading } = useCampaign(address);
+  const { data: summary, isLoading } = useCampaignData(address);
 
   if (isLoading) {
     return (
@@ -40,8 +41,8 @@ export const CampaignCard = ({ address, onUpdate }: CampaignCardProps) => {
   const campaignName = getCampaignName(summary.campaignMeta);
 
   const progress = Number(summary.raised) / Number(summary.goal) * 100;
-  const daysLeft = Math.max(0, Math.ceil((summary.deadline * 1000 - Date.now()) / (1000 * 60 * 60 * 24)));
-  const isDeadlineExpired = Date.now() > summary.deadline * 1000;
+  const daysLeft = Math.max(0, Math.ceil(Number((summary.deadline * 1000n - BigInt(Date.now())) / (1000n * 60n * 60n * 24n))));
+  const isDeadlineExpired = Date.now() > summary.deadline * 1000n;
 
   return (
     <>
@@ -56,7 +57,7 @@ export const CampaignCard = ({ address, onUpdate }: CampaignCardProps) => {
         </span>
         </div>
         
-        <p>ID: #{summary.id.toString()} • By: {summary.creator.slice(0, 8)}...</p>
+        <p>ID: #{summary.campaignId.toString()} • By: {summary.creator.slice(0, 8)}...</p>
         <p><strong>Currency:</strong> {displaySymbol}</p>
         
         <div className="progress-bar">          
