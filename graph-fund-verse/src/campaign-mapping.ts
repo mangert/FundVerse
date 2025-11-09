@@ -1,6 +1,7 @@
 import {
   CampaignContribution as CampaignContributionEvent,
-  CampaignFundsClaimed as CampaignFundsClaimedEvent
+  CampaignFundsClaimed as CampaignFundsClaimedEvent,
+  CampaignStatusChanged
 } from "../generated/templates/Campaign/ICampaign"
 
 import {
@@ -14,15 +15,31 @@ export function handleContribution(event: CampaignContributionEvent): void {
   let entity = new CampaignContribution(
     event.transaction.hash.concatI32(event.logIndex.toI32())
   )
+  let blockNumber = event.block.number
+  let blockTimestamp = event.block.timestamp
+  let transactionHash = event.transaction.hash
 
   entity.contributor = event.params.contributor
   entity.amount = event.params.amount
 
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
+  entity.blockNumber = blockNumber
+  entity.blockTimestamp = blockTimestamp
+  entity.transactionHash = transactionHash
 
   entity.save()
+
+  // корректируем кампанию
+  let entityCampaign = CampaignData.load(event.address);
+  
+  if(entityCampaign) {
+    
+    entityCampaign.raised =entityCampaign.raised.plus(event.params.amount)
+    entityCampaign.blockNumber = blockNumber
+    entityCampaign.blockTimestamp = blockTimestamp
+    entityCampaign.transactionHash = transactionHash
+
+    entityCampaign.save()
+  }
 }
 
 
@@ -56,4 +73,22 @@ export function handleFundsClaimed(event: CampaignFundsClaimedEvent): void {
 
     entityCampaign.save()
   } 
+}
+
+export function handleStatusChanged(event: CampaignStatusChanged): void {
+  
+  let entityCampaign = CampaignData.load(event.address);
+  let blockNumber = event.block.number
+  let blockTimestamp = event.block.timestamp
+  let transactionHash = event.transaction.hash
+  
+  if(entityCampaign) {
+    
+    entityCampaign.status = event.params.newStatus
+    entityCampaign.blockNumber = blockNumber
+    entityCampaign.blockTimestamp = blockTimestamp
+    entityCampaign.transactionHash = transactionHash
+
+    entityCampaign.save()
+  }
 }

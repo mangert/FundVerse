@@ -222,11 +222,11 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
   const campaignMetaData = parseCampaignMeta(summary.campaignMeta);
 
   const progress = Number(summary.raised) / Number(summary.goal) * 100;
-  const daysLeft = Math.max(0, Math.ceil((summary.deadline * 1000 - Date.now()) / (1000 * 60 * 60 * 24)));
+  const daysLeft = Math.max(0, Math.ceil(Number((summary.deadline * 1000n - BigInt(Date.now())) / (1000n * 60n * 60n * 24n))));
   const isLive = summary.status === 0;
   const isFailed = summary.status === 3;
   const isCancelled = summary.status === 2;
-  const isDeadlinePassed = Date.now() >= summary.deadline * 1000;
+  const isDeadlinePassed = Date.now() >= summary.deadline * 1000n;
 
   const canContribute = isLive && isConnected && !isDeadlinePassed;
   const canClaimRefund = (isFailed || isCancelled) && userContribution > 0n;
@@ -263,7 +263,7 @@ export const CampaignDetails = ({ address, onClose, onUpdate }: CampaignDetailsP
             </span>
             <div className="campaign-time-info">
               <div className="deadline-date">
-                Deadline: {new Date(summary.deadline * 1000).toLocaleDateString()}
+                Deadline: {new Date(Number(summary.deadline * 1000n)).toLocaleDateString()}
               </div>
               {daysLeft > 0 && (
                 <div className="days-left">{daysLeft} day{daysLeft !== 1 ? 's' : ''} left</div>

@@ -64,6 +64,8 @@ templates:
           handler: handleContribution
         - event: CampaignFundsClaimed(indexed address,uint256)
           handler: handleFundsClaimed
+        - event: CampaignStatusChanged(uint8,uint8,uint256)
+          handler: handleStatusChanged
       file: ./src/campaign-mapping.ts
 
 

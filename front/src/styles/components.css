@@ -257,7 +257,7 @@ body {
   border-radius: var(--border-radius);
   padding: var(--spacing-lg);
   box-shadow: var(--shadow-md);
-  border: 1px solid var(--border-glow);
+  border: 1px solid var(--border-glow);  
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;

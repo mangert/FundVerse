@@ -42,7 +42,7 @@ class TokenService {
     // URL сабграфа для текущей сети
     this.graphUrl =
       import.meta.env.VITE_GRAPHQL_API_URL ||
-      "https://api.studio.thegraph.com/query/121375/fund-verse/v0.0.1";
+      "https://api.studio.thegraph.com/query/121375/fund-verse/v0.0.3";
   }
 
   static getInstance(): TokenService {

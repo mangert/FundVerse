@@ -54,7 +54,7 @@ function normalizeCampaign(raw: CampaignRawData): CampaignData {
 // 4️⃣ Базовый Graph URL
 const GRAPH_URL =
   import.meta.env.VITE_GRAPHQL_API_URL ||
-  "https://api.studio.thegraph.com/query/121375/fund-verse/v0.0.1";
+  "https://api.studio.thegraph.com/query/121375/fund-verse/v0.0.3";
 
 // 5️⃣ Получить все кампании
 export async function fetchCampaigns(): Promise<CampaignData[]> {
